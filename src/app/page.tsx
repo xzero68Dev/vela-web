@@ -91,9 +91,8 @@ function TrackCard({ result, index }: { result: TrackingResult; index: number })
   const [open, setOpen] = useState(index === 0)
   if (result.error) {
     return (
-      <div className="rounded-2xl border-2 border-dashed p-5 text-center"
-        style={{ borderColor: '#C5BAB0' }}
-        className="rounded-2xl p-5 text-center opacity-60">
+      <div className="rounded-2xl border-2 border-dashed p-5 text-center opacity-60"
+        style={{ borderColor: '#C5BAB0' }}>
         <p className="font-mono text-sm" style={{ color: '#8C7B6E' }}>{result.barcode}</p>
         <p className="text-xs mt-1" style={{ color: '#C5BAB0' }}>ไม่พบข้อมูล</p>
       </div>
