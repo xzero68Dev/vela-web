@@ -15,6 +15,8 @@ type ImportResult = {
     shipping: number
     tracking_added: number
     tracking_list: string[]
+    accounting?: number
+    daily_summary?: number
   }
 }
 
@@ -171,11 +173,13 @@ export default function UploadPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 divide-x-2" style={{ borderColor: '#E0D9CE' }}>
+            <div className="grid grid-cols-5 divide-x-2" style={{ borderColor: '#E0D9CE' }}>
               {[
-                { label: 'Orders',   value: result.imported.orders },
-                { label: 'Shipping', value: result.imported.shipping },
-                { label: 'Tracking', value: result.imported.tracking_added },
+                { label: 'Orders',      value: result.imported.orders },
+                { label: 'Shipping',    value: result.imported.shipping },
+                { label: 'Tracking',    value: result.imported.tracking_added },
+                { label: 'Accounting',  value: result.imported.accounting || 0 },
+                { label: 'Daily Sum',   value: result.imported.daily_summary || 0 },
               ].map(s => (
                 <div key={s.label} className="px-4 py-4 text-center">
                   <p className="text-3xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
