@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import VelaBunny from '@/components/VelaBunny'
+import Link from 'next/link'
 
 const API  = process.env.NEXT_PUBLIC_API_URL  || 'https://vela-tracking.onrender.com'
 const PASS = process.env.NEXT_PUBLIC_ADMIN_PASS || 'vela2024'
@@ -107,6 +108,11 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Link href="/admin/upload"
+              className="px-4 py-2 rounded-xl border-2 text-xs font-mono uppercase tracking-wider transition-all"
+              style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+              + Import Excel
+            </Link>
             <button onClick={fetchData} disabled={loading}
               className="px-4 py-2 rounded-xl border-2 text-xs font-mono uppercase tracking-wider transition-all disabled:opacity-40"
               style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
