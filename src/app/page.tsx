@@ -191,10 +191,18 @@ function TrackingSection() {
 }
 
 export default function HomePage() {
-  const [products, setProducts]     = useState<Product[]>([])
-  const [cart,     setCart]         = useState<CartItem[]>([])
-  const [loading,  setLoading]      = useState(true)
-  const [showCart, setShowCart]     = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [cart,     setCart]     = useState<CartItem[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [showCart, setShowCart] = useState(false)
+
+  // โหลด cart จาก localStorage ตอนเริ่ม
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('vela_cart')
+      if (saved) setCart(JSON.parse(saved))
+    } catch {}
+  }, [])
 
   useEffect(() => {
     if (!SB_URL || !SB_KEY) { setLoading(false); return }
@@ -206,18 +214,37 @@ export default function HomePage() {
       .catch(() => setLoading(false))
   }, [])
 
+  const saveCart = (newCart: CartItem[]) => {
+    setCart(newCart)
+    localStorage.setItem('vela_cart', JSON.stringify(
+      newCart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))
+    ))
+  }
+
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(i => i.product.sku === product.sku)
-      if (existing) return prev.map(i => i.product.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
-      return [...prev, { product, qty: 1 }]
+      const newCart = existing
+        ? prev.map(i => i.product.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
+        : [...prev, { product, qty: 1 }]
+      localStorage.setItem('vela_cart', JSON.stringify(
+        newCart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))
+      ))
+      return newCart
     })
     setShowCart(true)
   }
 
   const updateQty = (sku: string, qty: number) => {
-    if (qty <= 0) setCart(prev => prev.filter(i => i.product.sku !== sku))
-    else setCart(prev => prev.map(i => i.product.sku === sku ? { ...i, qty } : i))
+    setCart(prev => {
+      const newCart = qty <= 0
+        ? prev.filter(i => i.product.sku !== sku)
+        : prev.map(i => i.product.sku === sku ? { ...i, qty } : i)
+      localStorage.setItem('vela_cart', JSON.stringify(
+        newCart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))
+      ))
+      return newCart
+    })
   }
 
   const total = cart.reduce((sum, i) => sum + i.product.price * i.qty, 0)
@@ -323,7 +350,7 @@ export default function HomePage() {
                   ฿{total.toLocaleString()}
                 </span>
               </div>
-              <Link href={`/checkout?cart=${encodeURIComponent(JSON.stringify(cart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))))}`}
+              <Link href={`/checkout?cart=${encodeURIComponent(localStorage.getItem('vela_cart') || '[]')}`}
                 className="block w-full py-3.5 rounded-2xl text-center font-black uppercase tracking-widest transition-all active:scale-95"
                 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', background: '#D64B2A', color: '#EDE8DF' }}>
                 สั่งซื้อเลย

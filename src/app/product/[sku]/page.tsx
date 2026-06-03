@@ -80,6 +80,22 @@ export default function ProductPage() {
   const [qty,        setQty]        = useState(1)
   const [added,      setAdded]      = useState(false)
   const [loading,    setLoading]    = useState(true)
+  const [cartCount,  setCartCount]  = useState(0)
+  const [cartTotal,  setCartTotal]  = useState(0)
+
+  // โหลด cart count จาก localStorage
+  useEffect(() => {
+    const updateCartInfo = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem('vela_cart') || '[]')
+        setCartCount(saved.reduce((s: number, i: any) => s + i.qty, 0))
+        setCartTotal(saved.reduce((s: number, i: any) => s + i.price * i.qty, 0))
+      } catch {}
+    }
+    updateCartInfo()
+    window.addEventListener('storage', updateCartInfo)
+    return () => window.removeEventListener('storage', updateCartInfo)
+  }, [])
 
   useEffect(() => {
     if (!SB_URL || !SB_KEY) { setLoading(false); return }
@@ -102,6 +118,8 @@ export default function ProductPage() {
     if (idx >= 0) cart[idx].qty += qty
     else cart.push({ sku: current.sku, qty, price: current.price, name: current.name })
     localStorage.setItem('vela_cart', JSON.stringify(cart))
+    setCartCount(cart.reduce((s: number, i: any) => s + i.qty, 0))
+    setCartTotal(cart.reduce((s: number, i: any) => s + i.price * i.qty, 0))
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
@@ -265,6 +283,14 @@ export default function ProductPage() {
           </div>
         )}
       </div>
+    {/* Floating cart */}
+      {cartCount > 0 && (
+        <Link href={`/checkout?cart=${encodeURIComponent(localStorage.getItem('vela_cart') || '[]')}`}
+          className="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl shadow-lg font-black uppercase text-sm transition-all active:scale-95"
+          style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+          🛒 ({cartCount}) · ฿{cartTotal.toLocaleString()}
+        </Link>
+      )}
     </main>
   )
 }
