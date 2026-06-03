@@ -202,7 +202,13 @@ export default function ProductPage() {
                 {added ? '✓ เพิ่มแล้ว!' : '+ ใส่ตะกร้า'}
               </button>
             </div>
-            <p className="text-xs font-mono opacity-50" style={{ color: textColor }}>
+            {/* ปุ่ม checkout ทันที */}
+            <Link href={`/checkout?cart=${encodeURIComponent(JSON.stringify([{ sku: current?.sku, qty, price: current?.price, name: current?.name }]))}`}
+              className="block w-full py-3 rounded-xl text-center font-black uppercase tracking-wider mt-2 transition-all active:scale-95 border-2"
+              style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: meta.accent, borderColor: meta.accent }}>
+              สั่งซื้อเลย →
+            </Link>
+            <p className="text-xs font-mono opacity-50 mt-2" style={{ color: textColor }}>
               🚚 ส่งฟรี · ผลิตสดทุกวัน · เก็บได้ 1 เดือน (นับจากวันที่ส่ง)
             </p>
           </div>

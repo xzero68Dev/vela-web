@@ -71,41 +71,34 @@ const SKU_META: Record<string, { bg: string; accent: string; img: string; dark: 
 function getBaseSku(sku: string) { return sku.replace('-200', '') }
 
 function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product) => void }) {
-  const baseSku  = getBaseSku(product.sku)
-  const meta     = SKU_META[baseSku] || { bg: '#F5F1EB', accent: '#D64B2A', img: '', dark: false }
-  const discount = product.price_shopee > product.price
-    ? Math.round((1 - product.price / product.price_shopee) * 100) : 0
-  const textColor = meta.dark ? '#EDE8DF' : '#3D1F0F'
+  const baseSku = getBaseSku(product.sku)
+  const meta    = SKU_META[baseSku] || { bg: '#F5F1EB', accent: '#D64B2A', img: '', dark: false }
 
   return (
-    <div className="group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-      style={{ background: meta.bg, borderColor: meta.bg }}>
+    <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+      style={{ background: meta.bg }}>
 
-      {/* Product image — click goes to detail */}
+      {/* Product image — full frame */}
       <Link href={`/product/${baseSku}`} className="block">
         <div className="aspect-square overflow-hidden">
           {meta.img
-            ? <img src={meta.img} alt={product.name} className="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
+            ? <img src={meta.img} alt={product.name}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
             : <div className="w-full h-full flex items-center justify-center opacity-20"><VelaBunny size={60} /></div>
           }
         </div>
       </Link>
 
-      <div className="p-3" style={{ background: '#F5F1EB' }}>
-        {discount > 0 && (
-          <span className="text-xs font-mono px-2 py-0.5 rounded-full mb-1 inline-block"
-            style={{ background: meta.accent + '20', color: meta.accent }}>
-            -{discount}% vs Shopee
-          </span>
-        )}
+      {/* Bottom info */}
+      <div className="px-4 py-3" style={{ background: 'rgba(245,241,235,0.95)' }}>
         <Link href={`/product/${baseSku}`}>
-          <h3 className="font-black text-base uppercase leading-tight mb-0.5 hover:opacity-70 transition-opacity"
+          <h3 className="font-black text-lg uppercase leading-none hover:opacity-70 transition-opacity"
             style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>
             {baseSku}
           </h3>
         </Link>
         {product.roast && (
-          <p className="text-xs font-mono mb-2" style={{ color: '#8C7B6E' }}>{product.roast}</p>
+          <p className="text-xs font-mono mt-0.5 mb-2" style={{ color: '#8C7B6E' }}>{product.roast}</p>
         )}
         <div className="flex items-center justify-between">
           <span className="text-xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
@@ -262,19 +255,11 @@ export default function HomePage() {
           {loading ? (
             <div className="text-center py-12 text-sm font-mono" style={{ color: '#C5BAB0' }}>กำลังโหลด...</div>
           ) : (
-            Object.entries(groups).map(([key, prods]) =>
-              prods.length > 0 && (
-                <div key={key} className="mb-12">
-                  <h2 className="text-2xl font-black uppercase mb-6"
-                    style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
-                    {GROUP_LABELS[key]}
-                  </h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {prods.map(p => <ProductCard key={p.sku} product={p} onAdd={addToCart} />)}
-                  </div>
-                </div>
-              )
-            )
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {products
+                .filter(p => !p.sku.includes('-200'))
+                .map(p => <ProductCard key={p.sku} product={p} onAdd={addToCart} />)}
+            </div>
           )}
         </div>
       </section>
