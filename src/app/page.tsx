@@ -57,61 +57,64 @@ function groupProducts(products: Product[]) {
   return groups
 }
 
+// SKU metadata (same as product page)
+const SKU_META: Record<string, { bg: string; accent: string; img: string; dark: boolean }> = {
+  'ORIGINAL': { bg: '#F5C5A0', accent: '#D64B2A', img: '/products/original.png', dark: false },
+  'DARK':     { bg: '#2C1810', accent: '#C17F3A', img: '/products/dark.png',     dark: true  },
+  'HONEY':    { bg: '#F9D0DC', accent: '#E05A7A', img: '/products/honey.png',    dark: false },
+  'NUTTY':    { bg: '#C8E8F5', accent: '#4A8FBF', img: '/products/nutty.png',    dark: false },
+  'FRUITY':   { bg: '#C8EFC0', accent: '#3A8F3A', img: '/products/fruity.png',   dark: false },
+  'KYOHO':    { bg: '#2A1A3A', accent: '#9B6AC0', img: '/products/kyoho.png',    dark: true  },
+  'GESHA':    { bg: '#F0E0C0', accent: '#C07830', img: '/products/gesha.png',    dark: false },
+}
+
+function getBaseSku(sku: string) { return sku.replace('-200', '') }
+
 function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product) => void }) {
-  const accent = SKU_COLOR[product.sku] || '#D64B2A'
+  const baseSku  = getBaseSku(product.sku)
+  const meta     = SKU_META[baseSku] || { bg: '#F5F1EB', accent: '#D64B2A', img: '', dark: false }
   const discount = product.price_shopee > product.price
-    ? Math.round((1 - product.price / product.price_shopee) * 100)
-    : 0
+    ? Math.round((1 - product.price / product.price_shopee) * 100) : 0
+  const textColor = meta.dark ? '#EDE8DF' : '#3D1F0F'
 
   return (
-    <div className="group relative rounded-2xl border-2 overflow-hidden transition-all duration-300 hover:shadow-lg cursor-pointer"
-      style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}
-      onClick={() => onAdd(product)}>
+    <div className="group relative rounded-2xl overflow-hidden border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+      style={{ background: meta.bg, borderColor: meta.bg }}>
 
-      {/* Color bar top */}
-      <div className="h-1.5 w-full" style={{ background: accent }} />
+      {/* Product image — click goes to detail */}
+      <Link href={`/product/${baseSku}`} className="block">
+        <div className="aspect-square overflow-hidden">
+          {meta.img
+            ? <img src={meta.img} alt={product.name} className="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
+            : <div className="w-full h-full flex items-center justify-center opacity-20"><VelaBunny size={60} /></div>
+          }
+        </div>
+      </Link>
 
-      <div className="p-4">
-        {/* Discount badge */}
+      <div className="p-3" style={{ background: '#F5F1EB' }}>
         {discount > 0 && (
-          <div className="inline-block text-xs font-mono px-2 py-0.5 rounded-full mb-2"
-            style={{ background: accent + '20', color: accent }}>
-            ถูกกว่า Shopee {discount}%
-          </div>
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full mb-1 inline-block"
+            style={{ background: meta.accent + '20', color: meta.accent }}>
+            -{discount}% vs Shopee
+          </span>
         )}
-
-        <h3 className="font-black text-lg uppercase leading-tight mb-1"
-          style={{ fontFamily: 'var(--font-display)', color: accent }}>
-          {product.name}
-        </h3>
-
+        <Link href={`/product/${baseSku}`}>
+          <h3 className="font-black text-base uppercase leading-tight mb-0.5 hover:opacity-70 transition-opacity"
+            style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>
+            {baseSku}
+          </h3>
+        </Link>
         {product.roast && (
-          <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>
-            {product.roast} · {product.process}
-          </p>
+          <p className="text-xs font-mono mb-2" style={{ color: '#8C7B6E' }}>{product.roast}</p>
         )}
-
-        {product.flavor && (
-          <p className="text-xs leading-relaxed mb-3" style={{ color: '#8C7B6E', fontFamily: 'var(--font-body)' }}>
-            {product.flavor}
-          </p>
-        )}
-
-        <div className="flex items-end justify-between mt-auto">
-          <div>
-            <span className="text-2xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
-              ฿{product.price}
-            </span>
-            {product.price_shopee > product.price && (
-              <span className="text-xs line-through ml-1.5" style={{ color: '#C5BAB0' }}>
-                ฿{product.price_shopee}
-              </span>
-            )}
-          </div>
-          <button
+        <div className="flex items-center justify-between">
+          <span className="text-xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
+            ฿{product.price}
+          </span>
+          <button onClick={() => onAdd(product)}
             className="text-xs font-black uppercase px-3 py-1.5 rounded-xl transition-all active:scale-95"
-            style={{ background: accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
-            + ใส่ตะกร้า
+            style={{ background: meta.accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
+            + ตะกร้า
           </button>
         </div>
       </div>
