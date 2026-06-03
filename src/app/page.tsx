@@ -254,21 +254,21 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-5 pt-10 pb-8 flex flex-col items-center text-center">
 
           {/* Logo */}
-          <img src="/logo.png" alt="VeLA Cold Brew" className="h-16 md:h-20 mb-6 object-contain"
+          <img src="/logo.png" alt="VeLA Cold Brew" className="h-24 md:h-32 mb-4 object-contain"
             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
 
-          {/* Tagline — typographic play */}
-          <div className="max-w-2xl">
-            <p className="font-black uppercase leading-none mb-1"
-              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', fontSize: 'clamp(28px, 5vw, 52px)', letterSpacing: '-0.02em' }}>
+          {/* Tagline */}
+          <div className="max-w-xl">
+            <p className="font-black uppercase leading-tight"
+              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', fontSize: 'clamp(14px, 2.5vw, 22px)', letterSpacing: '0.08em', opacity: 0.8 }}>
               Have a nice
             </p>
-            <p className="font-black uppercase leading-none mb-1"
-              style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F', fontSize: 'clamp(40px, 8vw, 80px)', letterSpacing: '-0.03em' }}>
+            <p className="font-black uppercase leading-none"
+              style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F', fontSize: 'clamp(28px, 5vw, 52px)', letterSpacing: '-0.02em' }}>
               Full Day
             </p>
-            <p className="font-black uppercase leading-none"
-              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', fontSize: 'clamp(20px, 3.5vw, 40px)', letterSpacing: '0.05em', opacity: 0.7 }}>
+            <p className="font-black uppercase"
+              style={{ fontFamily: 'var(--font-display)', color: '#8C7B6E', fontSize: 'clamp(12px, 2vw, 18px)', letterSpacing: '0.15em' }}>
               with Cold Brew ☕
             </p>
           </div>
@@ -287,6 +287,33 @@ export default function HomePage() {
                 .map(p => <ProductCard key={p.sku} product={p} onAdd={addToCart} />)}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* LINE Banner */}
+      <section className="py-8 px-5">
+        <div className="max-w-2xl mx-auto">
+          <div className="rounded-3xl overflow-hidden border-2 flex flex-col md:flex-row items-center gap-5 px-6 py-5"
+            style={{ background: '#06C755', borderColor: '#05A847' }}>
+            <div className="flex-1 text-center md:text-left">
+              <p className="font-black text-xl uppercase leading-tight mb-1"
+                style={{ fontFamily: 'var(--font-display)', color: '#FFFFFF' }}>
+                แอด LINE รับโปรพิเศษ
+              </p>
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                ข่าวสาร สินค้าใหม่ และโปรโมชั่นเฉพาะสมาชิก LINE
+              </p>
+            </div>
+            <a href="https://lin.ee/rdPxbQ8" target="_blank" rel="noopener noreferrer"
+              className="flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 hover:opacity-90"
+              style={{ background: '#FFFFFF', color: '#06C755', fontFamily: 'var(--font-display)' }}>
+              <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
+                <path d="M20 4C11.163 4 4 10.268 4 18c0 5.946 3.917 11.11 9.8 13.687.43.186.36.501.27.699l-.87 3.247c-.1.383.35.695.711.505C18.447 33.993 28 27.9 28 27.9c.695 0 8-.895 8-9.9C36 10.268 28.837 4 20 4z" fill="#06C755"/>
+                <path d="M16.5 22h-2.25v-6H16.5v6zm5.25 0h-2.25v-3.5L17.25 22H15v-6h2.25v3.5L19.5 16H21.75v6zm4.5 0H23v-6h3.25v1.5H25v1h1.75v1.5H25V22z" fill="white"/>
+              </svg>
+              เพิ่มเพื่อน
+            </a>
+          </div>
         </div>
       </section>
 
