@@ -22,7 +22,7 @@ type Product = {
   sort_order: number
 }
 
-type CartItem = { product: Product; qty: number }
+type CartItem = { sku: string; qty: number; price: number; name: string }
 
 // Color accent per product
 const SKU_COLOR: Record<string, string> = {
@@ -217,19 +217,17 @@ export default function HomePage() {
   const saveCart = (newCart: CartItem[]) => {
     setCart(newCart)
     localStorage.setItem('vela_cart', JSON.stringify(
-      newCart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))
+      newCart
     ))
   }
 
   const addToCart = (product: Product) => {
     setCart(prev => {
-      const existing = prev.find(i => i.product.sku === product.sku)
-      const newCart = existing
-        ? prev.map(i => i.product.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
-        : [...prev, { product, qty: 1 }]
-      localStorage.setItem('vela_cart', JSON.stringify(
-        newCart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))
-      ))
+      const existing = prev.find(i => i.sku === product.sku)
+      const newCart: CartItem[] = existing
+        ? prev.map(i => i.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
+        : [...prev, { sku: product.sku, qty: 1, price: product.price, name: product.name }]
+      localStorage.setItem('vela_cart', JSON.stringify(newCart))
       return newCart
     })
     setShowCart(true)
@@ -237,17 +235,15 @@ export default function HomePage() {
 
   const updateQty = (sku: string, qty: number) => {
     setCart(prev => {
-      const newCart = qty <= 0
-        ? prev.filter(i => i.product.sku !== sku)
-        : prev.map(i => i.product.sku === sku ? { ...i, qty } : i)
-      localStorage.setItem('vela_cart', JSON.stringify(
-        newCart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))
-      ))
+      const newCart: CartItem[] = qty <= 0
+        ? prev.filter(i => i.sku !== sku)
+        : prev.map(i => i.sku === sku ? { ...i, qty } : i)
+      localStorage.setItem('vela_cart', JSON.stringify(newCart))
       return newCart
     })
   }
 
-  const total = cart.reduce((sum, i) => sum + i.product.price * i.qty, 0)
+  const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0)
   const groups = groupProducts(products)
 
   return (
@@ -324,18 +320,18 @@ export default function HomePage() {
 
             <div className="px-5 py-3 max-h-64 overflow-y-auto">
               {cart.map(item => (
-                <div key={item.product.sku} className="flex items-center justify-between py-2 border-b"
+                <div key={item.sku} className="flex items-center justify-between py-2 border-b"
                   style={{ borderColor: '#E0D9CE' }}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: '#3D1F0F' }}>{item.product.name}</p>
-                    <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>฿{item.product.price} × {item.qty}</p>
+                    <p className="text-sm font-medium truncate" style={{ color: '#3D1F0F' }}>{item.name}</p>
+                    <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>฿{item.price} × {item.qty}</p>
                   </div>
                   <div className="flex items-center gap-2 ml-3">
-                    <button onClick={() => updateQty(item.product.sku, item.qty - 1)}
+                    <button onClick={() => updateQty(item.sku, item.qty - 1)}
                       className="w-7 h-7 rounded-lg border-2 text-sm font-bold flex items-center justify-center"
                       style={{ borderColor: '#D8D0C5', color: '#3D1F0F' }}>−</button>
                     <span className="text-sm font-mono w-4 text-center" style={{ color: '#3D1F0F' }}>{item.qty}</span>
-                    <button onClick={() => updateQty(item.product.sku, item.qty + 1)}
+                    <button onClick={() => updateQty(item.sku, item.qty + 1)}
                       className="w-7 h-7 rounded-lg border-2 text-sm font-bold flex items-center justify-center"
                       style={{ borderColor: '#D8D0C5', color: '#3D1F0F' }}>+</button>
                   </div>
