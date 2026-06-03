@@ -251,23 +251,26 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden" style={{ background: '#EDE8DF' }}>
-        <div className="max-w-5xl mx-auto px-5 py-16 flex flex-col items-center text-center">
-          <div className="animate-float mb-6">
-            <VelaBunny size={64} />
-          </div>
-          <h1 className="text-7xl md:text-9xl font-black uppercase leading-none mb-2"
-            style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', letterSpacing: '-0.03em' }}>
-            VeLA
-          </h1>
-          <p className="text-sm tracking-[0.3em] uppercase font-mono mb-2" style={{ color: '#8C7B6E' }}>
-            Cold Brew Coffee
-          </p>
-          <p className="text-base max-w-md" style={{ color: '#8C7B6E', fontFamily: 'var(--font-body)' }}>
-            กาแฟสกัดเย็น จากเมล็ดกาแฟคุณภาพสูง<br />สัดดนานกว่า 20 ชั่วโมง
-          </p>
-          <div className="mt-6 px-5 py-2 rounded-full text-xs font-mono border-2"
-            style={{ borderColor: '#D64B2A', color: '#D64B2A' }}>
-            🐰 ราคาพิเศษ สั่งตรงกับร้าน ถูกกว่า Shopee
+        <div className="max-w-5xl mx-auto px-5 pt-10 pb-8 flex flex-col items-center text-center">
+
+          {/* Logo */}
+          <img src="/logo.png" alt="VeLA Cold Brew" className="h-16 md:h-20 mb-6 object-contain"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+
+          {/* Tagline — typographic play */}
+          <div className="max-w-2xl">
+            <p className="font-black uppercase leading-none mb-1"
+              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', fontSize: 'clamp(28px, 5vw, 52px)', letterSpacing: '-0.02em' }}>
+              Have a nice
+            </p>
+            <p className="font-black uppercase leading-none mb-1"
+              style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F', fontSize: 'clamp(40px, 8vw, 80px)', letterSpacing: '-0.03em' }}>
+              Full Day
+            </p>
+            <p className="font-black uppercase leading-none"
+              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', fontSize: 'clamp(20px, 3.5vw, 40px)', letterSpacing: '0.05em', opacity: 0.7 }}>
+              with Cold Brew ☕
+            </p>
           </div>
         </div>
       </section>
