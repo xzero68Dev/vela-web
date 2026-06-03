@@ -1,273 +1,349 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-type TrackingEvent = {
-  status_code: string
-  status: string
+type Product = {
+  id: number
+  sku: string
+  name: string
   description: string
-  datetime: string
-  location: string
+  flavor: string
+  roast: string
+  process: string
+  price: number
+  price_shopee: number
+  stock: number
+  active: boolean
+  sort_order: number
 }
 
-type TrackingResult = {
-  barcode: string
-  status: string
-  status_th: string
-  latest_event: TrackingEvent | null
-  events: TrackingEvent[]
-  error?: string
+type CartItem = { product: Product; qty: number }
+
+// Color accent per product
+const SKU_COLOR: Record<string, string> = {
+  'ORIGINAL':     '#8B5E3C',
+  'DARK':         '#2C1810',
+  'HONEY':        '#D4890A',
+  'NUTTY':        '#C17F3A',
+  'FRUITY':       '#E05A7A',
+  'ORIGINAL-200': '#8B5E3C',
+  'DARK-200':     '#2C1810',
+  'HONEY-200':    '#D4890A',
+  'NUTTY-200':    '#C17F3A',
+  'FRUITY-200':   '#E05A7A',
+  'KYOHO':        '#6B3FA0',
+  'GESHA':        '#C17F3A',
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-  accepted:         { label: 'รับฝากแล้ว',         color: '#8C7B6E', bg: '#E0D9CE', dot: '●' },
-  in_transit:       { label: 'อยู่ระหว่างขนส่ง',    color: '#8B5E00', bg: '#F5E6C0', dot: '◎' },
-  out_for_delivery: { label: 'ออกนำจ่ายแล้ว',      color: '#1A5C8F', bg: '#C8E0F5', dot: '◈' },
-  delivered:        { label: 'จัดส่งสำเร็จ',        color: '#1A6B3C', bg: '#C5E8D5', dot: '✓' },
-  returned:         { label: 'ตีกลับ',              color: '#D64B2A', bg: '#F5D5CC', dot: '↩' },
-  problem:          { label: 'มีปัญหา',             color: '#D64B2A', bg: '#F5D5CC', dot: '!' },
-  pending:          { label: 'รอข้อมูล',            color: '#8C7B6E', bg: '#E0D9CE', dot: '○' },
-  unknown:          { label: 'ไม่ทราบสถานะ',        color: '#C5BAB0', bg: '#EDE8DF', dot: '?' },
+// Group products
+const GROUP_LABELS: Record<string, string> = {
+  '1L':   'Cold Brew Concentrate 1L',
+  '200ml': 'ขนาดทดลอง 200ml',
+  'drip': 'Cold Drip Premium 200ml',
 }
 
-function StatusPill({ status, status_th }: { status: string; status_th: string }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.unknown
+function groupProducts(products: Product[]) {
+  const groups: Record<string, Product[]> = { '1L': [], '200ml': [], 'drip': [] }
+  products.forEach(p => {
+    if (p.sku.includes('-200')) groups['200ml'].push(p)
+    else if (p.sku === 'KYOHO' || p.sku === 'GESHA') groups['drip'].push(p)
+    else groups['1L'].push(p)
+  })
+  return groups
+}
+
+function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product) => void }) {
+  const accent = SKU_COLOR[product.sku] || '#D64B2A'
+  const discount = product.price_shopee > product.price
+    ? Math.round((1 - product.price / product.price_shopee) * 100)
+    : 0
+
   return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium"
-      style={{ color: cfg.color, background: cfg.bg }}>
-      <span>{cfg.dot}</span>
-      {status_th || cfg.label}
-    </span>
-  )
-}
+    <div className="group relative rounded-2xl border-2 overflow-hidden transition-all duration-300 hover:shadow-lg cursor-pointer"
+      style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}
+      onClick={() => onAdd(product)}>
 
-function Timeline({ events }: { events: TrackingEvent[] }) {
-  const ordered = [...events].reverse()
-  return (
-    <div className="mt-4">
-      {ordered.map((e, i) => {
-        const cfg = STATUS_CONFIG[e.status] || STATUS_CONFIG.unknown
-        const isLatest = i === 0
-        return (
-          <div key={i} className="flex gap-3">
-            <div className="flex flex-col items-center pt-1">
-              <div className="w-2 h-2 rounded-full flex-shrink-0 transition-all"
-                style={{ background: isLatest ? cfg.color : '#C5BAB0',
-                  boxShadow: isLatest ? `0 0 6px ${cfg.color}60` : 'none' }} />
-              {i < ordered.length - 1 && (
-                <div className="w-px flex-1 my-1" style={{ background: '#D8D0C5', minHeight: '16px' }} />
-              )}
-            </div>
-            <div className={`pb-4 flex-1 ${isLatest ? '' : 'opacity-40'}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium" style={{ fontFamily: 'var(--font-body)', color: isLatest ? cfg.color : '#8C7B6E' }}>
-                    {e.description}
-                  </p>
-                  {e.location && (
-                    <p className="text-xs mt-0.5" style={{ color: '#8C7B6E', fontFamily: 'var(--font-mono)' }}>
-                      {e.location}
-                    </p>
-                  )}
-                </div>
-                {e.datetime && (
-                  <p className="text-xs font-mono whitespace-nowrap text-right flex-shrink-0" style={{ color: '#C5BAB0' }}>
-                    {e.datetime.split(' ')[0]}<br/>
-                    <span style={{ color: '#8C7B6E' }}>{e.datetime.split(' ')[1]?.split('+')[0]}</span>
-                  </p>
-                )}
-              </div>
-            </div>
+      {/* Color bar top */}
+      <div className="h-1.5 w-full" style={{ background: accent }} />
+
+      <div className="p-4">
+        {/* Discount badge */}
+        {discount > 0 && (
+          <div className="inline-block text-xs font-mono px-2 py-0.5 rounded-full mb-2"
+            style={{ background: accent + '20', color: accent }}>
+            ถูกกว่า Shopee {discount}%
           </div>
-        )
-      })}
-    </div>
-  )
-}
+        )}
 
-function TrackCard({ result, index }: { result: TrackingResult; index: number }) {
-  const [open, setOpen] = useState(index === 0)
-  if (result.error) {
-    return (
-      <div className="rounded-2xl border-2 border-dashed p-5 text-center opacity-60"
-        style={{ borderColor: '#C5BAB0' }}>
-        <p className="font-mono text-sm" style={{ color: '#8C7B6E' }}>{result.barcode}</p>
-        <p className="text-xs mt-1" style={{ color: '#C5BAB0' }}>ไม่พบข้อมูล</p>
-      </div>
-    )
-  }
-  return (
-    <div className="rounded-2xl overflow-hidden border-2 animate-fade-up"
-      style={{ borderColor: '#D8D0C5', animationDelay: `${index * 100}ms`, opacity: 0, background: '#F5F1EB' }}>
-      {/* Header */}
-      <button className="w-full px-5 py-4 flex items-center justify-between gap-3 text-left transition-colors hover:bg-vela-cream-dark"
-        onClick={() => setOpen(!open)}>
-        <div className="flex items-center gap-3 min-w-0">
-          <StatusPill status={result.status} status_th={result.status_th} />
-          <span className="font-mono text-sm truncate" style={{ color: '#8C7B6E' }}>{result.barcode}</span>
-        </div>
-        <span className="flex-shrink-0 text-vela-muted text-xs font-mono">{open ? '▲' : '▼'}</span>
-      </button>
+        <h3 className="font-black text-lg uppercase leading-tight mb-1"
+          style={{ fontFamily: 'var(--font-display)', color: accent }}>
+          {product.name}
+        </h3>
 
-      {/* Latest location */}
-      {result.latest_event?.location && (
-        <div className="px-5 pb-2">
-          <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>
-            ตำแหน่งล่าสุด: {result.latest_event.location}
+        {product.roast && (
+          <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>
+            {product.roast} · {product.process}
           </p>
-        </div>
-      )}
+        )}
 
-      {/* Timeline */}
-      {open && result.events?.length > 0 && (
-        <div className="px-5 pb-4 border-t-2" style={{ borderColor: '#E0D9CE' }}>
-          <Timeline events={result.events} />
+        {product.flavor && (
+          <p className="text-xs leading-relaxed mb-3" style={{ color: '#8C7B6E', fontFamily: 'var(--font-body)' }}>
+            {product.flavor}
+          </p>
+        )}
+
+        <div className="flex items-end justify-between mt-auto">
+          <div>
+            <span className="text-2xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
+              ฿{product.price}
+            </span>
+            {product.price_shopee > product.price && (
+              <span className="text-xs line-through ml-1.5" style={{ color: '#C5BAB0' }}>
+                ฿{product.price_shopee}
+              </span>
+            )}
+          </div>
+          <button
+            className="text-xs font-black uppercase px-3 py-1.5 rounded-xl transition-all active:scale-95"
+            style={{ background: accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
+            + ใส่ตะกร้า
+          </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }
 
-export default function TrackingPage() {
+// Tracking section
+function TrackingSection() {
   const [input,   setInput]   = useState('')
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<TrackingResult[]>([])
+  const [results, setResults] = useState<any[]>([])
   const [error,   setError]   = useState('')
-  const [tried,   setTried]   = useState(false)
 
   const parseInput = (raw: string) =>
-    raw.split(/[\n,\s]+/)
-      .map(s => s.trim().toUpperCase())
-      .filter(s => /^[A-Z]{2}\d{6,}TH$/i.test(s))
+    raw.split(/[\n,\s]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z]{2}\d{6,}TH$/i.test(s))
 
   const handleTrack = async () => {
     const barcodes = parseInput(input)
-    if (!barcodes.length) { setError('กรุณาใส่เลข tracking ในรูปแบบ JMxxxxxxxxTH'); return }
-    setError(''); setLoading(true); setResults([]); setTried(true)
+    if (!barcodes.length) { setError('กรุณาใส่เลข tracking รูปแบบ JMxxxxxxxxTH'); return }
+    setError(''); setLoading(true); setResults([])
     try {
       const res  = await fetch(`${API}/track/bulk`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ barcodes }),
       })
       const data = await res.json()
       setResults(data.results || [])
-    } catch {
-      setError('เชื่อมต่อไม่ได้ กรุณาลองใหม่')
-    } finally {
-      setLoading(false)
-    }
+    } catch { setError('เชื่อมต่อไม่ได้ กรุณาลองใหม่') }
+    finally { setLoading(false) }
   }
 
-  const hasResults = results.length > 0
-  const delivered  = results.filter(r => r.status === 'delivered').length
+  const STATUS_COLOR: Record<string, string> = {
+    accepted: '#8C7B6E', in_transit: '#8B5E00', out_for_delivery: '#1A5C8F',
+    delivered: '#1A6B3C', returned: '#D64B2A', problem: '#D64B2A', pending: '#C5BAB0',
+  }
 
   return (
-    <main className="min-h-screen" style={{ background: '#EDE8DF' }}>
-      <div className="max-w-xl mx-auto px-5 py-12">
+    <section className="py-16 px-5" style={{ background: '#E8E2D8' }}>
+      <div className="max-w-2xl mx-auto">
+        <h2 className="text-4xl font-black uppercase text-center mb-2"
+          style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+          ติดตามพัสดุ
+        </h2>
+        <p className="text-center text-sm mb-6" style={{ color: '#8C7B6E' }}>ใส่เลข tracking เพื่อตรวจสอบสถานะ</p>
 
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-block animate-float mb-4">
-            <VelaBunny size={56} />
-          </div>
-
-          <h1 className="text-6xl font-black uppercase leading-none mb-1"
-            style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', letterSpacing: '-0.02em' }}>
-            VeLA
-          </h1>
-          <p className="text-xs tracking-[0.25em] uppercase font-mono mb-1" style={{ color: '#8C7B6E' }}>
-            Cold Brew Coffee
-          </p>
-          <p className="text-sm mt-3" style={{ color: '#8C7B6E', fontFamily: 'var(--font-body)' }}>
-            ติดตามสถานะพัสดุของคุณ
-          </p>
-        </div>
-
-        {/* Input card */}
-        <div className="rounded-3xl p-5 mb-4 border-2"
-          style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
-          <label className="block text-xs font-mono uppercase tracking-wider mb-2" style={{ color: '#8C7B6E' }}>
-            เลข Tracking (1 เลขต่อ 1 บรรทัด)
-          </label>
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
+        <div className="rounded-2xl border-2 p-5" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+          <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleTrack())}
-            placeholder={'JM123456789TH\nJM987654321TH'}
-            rows={3}
-            className="w-full rounded-xl px-4 py-3 text-sm font-mono resize-none transition-all
-              focus:outline-none border-2"
-            style={{
-              background: '#EDE8DF', color: '#3D1F0F',
-              borderColor: '#D8D0C5', fontFamily: 'var(--font-mono)',
-            }}
-            onFocus={e => e.target.style.borderColor = '#D64B2A'}
-            onBlur={e => e.target.style.borderColor = '#D8D0C5'}
-          />
-          {error && <p className="text-xs mt-2 font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
-
+            placeholder={'JM123456789TH\nJM987654321TH'} rows={2}
+            className="w-full rounded-xl px-4 py-3 text-sm font-mono resize-none focus:outline-none border-2 transition-all"
+            style={{ background: '#EDE8DF', color: '#3D1F0F', borderColor: '#D8D0C5' }} />
+          {error && <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
           <button onClick={handleTrack} disabled={loading}
-            className="mt-3 w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all
-              disabled:opacity-50 active:scale-95"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '16px',
-              background: loading ? '#C5BAB0' : '#D64B2A',
-              color: '#EDE8DF',
-              letterSpacing: '0.15em',
-            }}>
+            className="mt-3 w-full py-3 rounded-xl font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+            style={{ fontFamily: 'var(--font-display)', fontSize: '15px', background: '#D64B2A', color: '#EDE8DF' }}>
             {loading ? 'กำลังตรวจสอบ...' : 'ตรวจสอบสถานะ'}
           </button>
         </div>
 
-        {/* Summary bar */}
-        {hasResults && !loading && (
-          <div className="flex items-center justify-between px-4 py-2 rounded-xl mb-4 animate-fade-in"
-            style={{ background: '#F5F1EB', border: '2px solid #D8D0C5' }}>
-            <span className="text-xs font-mono" style={{ color: '#8C7B6E' }}>
-              {results.length} รายการ
-            </span>
-            <span className="text-xs font-mono" style={{ color: '#1A6B3C' }}>
-              จัดส่งแล้ว {delivered}/{results.length}
-            </span>
-          </div>
-        )}
-
-        {/* Loading skeletons */}
-        {loading && (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 rounded-2xl animate-pulse"
-                style={{ background: '#E0D9CE', animationDelay: `${i * 150}ms` }} />
-            ))}
-          </div>
-        )}
-
-        {/* Results */}
-        {!loading && results.map((r, i) => (
-          <div key={r.barcode} className="mb-3">
-            <TrackCard result={r} index={i} />
+        {results.map(r => (
+          <div key={r.barcode} className="mt-3 rounded-2xl border-2 px-5 py-4"
+            style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+            <div className="flex items-center justify-between">
+              <p className="font-mono text-sm" style={{ color: '#3D1F0F' }}>{r.barcode}</p>
+              <span className="text-xs font-medium px-3 py-1 rounded-full"
+                style={{ color: STATUS_COLOR[r.status] || '#8C7B6E', background: (STATUS_COLOR[r.status] || '#8C7B6E') + '15' }}>
+                {r.status_th || r.status}
+              </span>
+            </div>
+            {r.latest_event?.location && (
+              <p className="text-xs mt-1 font-mono" style={{ color: '#8C7B6E' }}>
+                {r.latest_event.location}
+              </p>
+            )}
           </div>
         ))}
-
-        {/* Empty state */}
-        {tried && !loading && results.length === 0 && (
-          <div className="text-center py-12 animate-fade-in">
-            <VelaBunny size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm" style={{ color: '#8C7B6E' }}>ไม่พบข้อมูลพัสดุ</p>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="text-center mt-12">
-          <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>
-            VeLA Cold Brew Coffee © {new Date().getFullYear()}
-          </p>
-        </div>
       </div>
+    </section>
+  )
+}
+
+export default function HomePage() {
+  const [products, setProducts]     = useState<Product[]>([])
+  const [cart,     setCart]         = useState<CartItem[]>([])
+  const [loading,  setLoading]      = useState(true)
+  const [showCart, setShowCart]     = useState(false)
+
+  useEffect(() => {
+    if (!SB_URL || !SB_KEY) { setLoading(false); return }
+    fetch(`${SB_URL}/rest/v1/products?active=eq.true&order=sort_order`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
+    })
+      .then(r => r.json())
+      .then(data => { setProducts(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const addToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.product.sku === product.sku)
+      if (existing) return prev.map(i => i.product.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
+      return [...prev, { product, qty: 1 }]
+    })
+    setShowCart(true)
+  }
+
+  const updateQty = (sku: string, qty: number) => {
+    if (qty <= 0) setCart(prev => prev.filter(i => i.product.sku !== sku))
+    else setCart(prev => prev.map(i => i.product.sku === sku ? { ...i, qty } : i))
+  }
+
+  const total = cart.reduce((sum, i) => sum + i.product.price * i.qty, 0)
+  const groups = groupProducts(products)
+
+  return (
+    <main style={{ background: '#EDE8DF', minHeight: '100vh' }}>
+
+      {/* Hero */}
+      <section className="relative overflow-hidden" style={{ background: '#EDE8DF' }}>
+        <div className="max-w-5xl mx-auto px-5 py-16 flex flex-col items-center text-center">
+          <div className="animate-float mb-6">
+            <VelaBunny size={64} />
+          </div>
+          <h1 className="text-7xl md:text-9xl font-black uppercase leading-none mb-2"
+            style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', letterSpacing: '-0.03em' }}>
+            VeLA
+          </h1>
+          <p className="text-sm tracking-[0.3em] uppercase font-mono mb-2" style={{ color: '#8C7B6E' }}>
+            Cold Brew Coffee
+          </p>
+          <p className="text-base max-w-md" style={{ color: '#8C7B6E', fontFamily: 'var(--font-body)' }}>
+            กาแฟสกัดเย็น จากเมล็ดกาแฟคุณภาพสูง<br />สัดดนานกว่า 20 ชั่วโมง
+          </p>
+          <div className="mt-6 px-5 py-2 rounded-full text-xs font-mono border-2"
+            style={{ borderColor: '#D64B2A', color: '#D64B2A' }}>
+            🐰 ราคาพิเศษ สั่งตรงกับร้าน ถูกกว่า Shopee
+          </div>
+        </div>
+      </section>
+
+      {/* Products */}
+      <section className="px-5 pb-16">
+        <div className="max-w-5xl mx-auto">
+          {loading ? (
+            <div className="text-center py-12 text-sm font-mono" style={{ color: '#C5BAB0' }}>กำลังโหลด...</div>
+          ) : (
+            Object.entries(groups).map(([key, prods]) =>
+              prods.length > 0 && (
+                <div key={key} className="mb-12">
+                  <h2 className="text-2xl font-black uppercase mb-6"
+                    style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
+                    {GROUP_LABELS[key]}
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {prods.map(p => <ProductCard key={p.sku} product={p} onAdd={addToCart} />)}
+                  </div>
+                </div>
+              )
+            )
+          )}
+        </div>
+      </section>
+
+      {/* Tracking */}
+      <TrackingSection />
+
+      {/* Footer */}
+      <footer className="py-8 text-center text-xs font-mono" style={{ color: '#C5BAB0', background: '#EDE8DF' }}>
+        VeLA Cold Brew Coffee © {new Date().getFullYear()}
+      </footer>
+
+      {/* Cart floating button */}
+      {cart.length > 0 && !showCart && (
+        <button onClick={() => setShowCart(true)}
+          className="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl shadow-lg font-black uppercase text-sm transition-all active:scale-95"
+          style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+          🛒 ตะกร้า ({cart.reduce((s, i) => s + i.qty, 0)}) · ฿{total.toLocaleString()}
+        </button>
+      )}
+
+      {/* Cart drawer */}
+      {showCart && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowCart(false)} />
+          <div className="relative w-full max-w-md mx-4 mb-4 md:mb-0 rounded-3xl border-2 overflow-hidden"
+            style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+
+            <div className="px-5 py-4 border-b-2 flex items-center justify-between" style={{ borderColor: '#E0D9CE' }}>
+              <h3 className="font-black text-xl uppercase" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                ตะกร้าสินค้า
+              </h3>
+              <button onClick={() => setShowCart(false)} style={{ color: '#8C7B6E' }}>✕</button>
+            </div>
+
+            <div className="px-5 py-3 max-h-64 overflow-y-auto">
+              {cart.map(item => (
+                <div key={item.product.sku} className="flex items-center justify-between py-2 border-b"
+                  style={{ borderColor: '#E0D9CE' }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: '#3D1F0F' }}>{item.product.name}</p>
+                    <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>฿{item.product.price} × {item.qty}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3">
+                    <button onClick={() => updateQty(item.product.sku, item.qty - 1)}
+                      className="w-7 h-7 rounded-lg border-2 text-sm font-bold flex items-center justify-center"
+                      style={{ borderColor: '#D8D0C5', color: '#3D1F0F' }}>−</button>
+                    <span className="text-sm font-mono w-4 text-center" style={{ color: '#3D1F0F' }}>{item.qty}</span>
+                    <button onClick={() => updateQty(item.product.sku, item.qty + 1)}
+                      className="w-7 h-7 rounded-lg border-2 text-sm font-bold flex items-center justify-center"
+                      style={{ borderColor: '#D8D0C5', color: '#3D1F0F' }}>+</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-5 py-4 border-t-2" style={{ borderColor: '#E0D9CE' }}>
+              <div className="flex justify-between mb-4">
+                <span className="font-mono text-sm" style={{ color: '#8C7B6E' }}>รวม</span>
+                <span className="font-black text-xl" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
+                  ฿{total.toLocaleString()}
+                </span>
+              </div>
+              <Link href={`/checkout?cart=${encodeURIComponent(JSON.stringify(cart.map(i => ({ sku: i.product.sku, qty: i.qty, price: i.product.price, name: i.product.name }))))}`}
+                className="block w-full py-3.5 rounded-2xl text-center font-black uppercase tracking-widest transition-all active:scale-95"
+                style={{ fontFamily: 'var(--font-display)', fontSize: '16px', background: '#D64B2A', color: '#EDE8DF' }}>
+                สั่งซื้อเลย
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
