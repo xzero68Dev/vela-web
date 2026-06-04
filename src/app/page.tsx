@@ -257,21 +257,22 @@ export default function HomePage() {
           <img src="/logo.png" alt="VeLA Cold Brew" className="h-24 md:h-32 mb-4 object-contain"
             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
 
-          {/* Tagline */}
-          <div className="max-w-xl">
-            <p className="font-black uppercase leading-tight"
-              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A', fontSize: 'clamp(14px, 2.5vw, 22px)', letterSpacing: '0.08em', opacity: 0.8 }}>
-              Have a nice
-            </p>
-            <p className="font-black uppercase leading-none"
-              style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F', fontSize: 'clamp(28px, 5vw, 52px)', letterSpacing: '-0.02em' }}>
-              Full Day
-            </p>
-            <p className="font-black uppercase"
-              style={{ fontFamily: 'var(--font-display)', color: '#8C7B6E', fontSize: 'clamp(12px, 2vw, 18px)', letterSpacing: '0.15em' }}>
-              with Cold Brew ☕
-            </p>
-          </div>
+          {/* Tagline — single line mixed font */}
+          <p className="text-center leading-none" style={{ fontSize: 'clamp(18px, 3vw, 32px)' }}>
+            <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: '#8C7B6E', fontWeight: 400 }}>
+              Have a nice{' '}
+            </span>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, color: '#3D1F0F', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
+              Full Day{' '}
+            </span>
+            <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: '#8C7B6E', fontWeight: 400 }}>
+              with{' '}
+            </span>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, color: '#D64B2A', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
+              Cold Brew
+            </span>
+            <span style={{ fontFamily: 'Georgia, serif', color: '#D64B2A' }}> ☕</span>
+          </p>
         </div>
       </section>
 
