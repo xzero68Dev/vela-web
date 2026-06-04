@@ -259,19 +259,18 @@ export default function HomePage() {
 
           {/* Tagline — single line mixed font */}
           <p className="text-center leading-none" style={{ fontSize: 'clamp(18px, 3vw, 32px)' }}>
-            <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: '#8C7B6E', fontWeight: 400 }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontWeight: 300, color: '#8C7B6E' }}>
               Have a nice{' '}
             </span>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, color: '#3D1F0F', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
               Full Day{' '}
             </span>
-            <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', color: '#8C7B6E', fontWeight: 400 }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontWeight: 300, color: '#8C7B6E' }}>
               with{' '}
             </span>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, color: '#D64B2A', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
               Cold Brew
             </span>
-            <span style={{ fontFamily: 'Georgia, serif', color: '#D64B2A' }}> ☕</span>
           </p>
         </div>
       </section>
