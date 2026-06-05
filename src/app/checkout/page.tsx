@@ -17,7 +17,7 @@ function CheckoutForm() {
   const router       = useRouter()
 
   const [cart,       setCart]       = useState<CartItem[]>([])
-  const { user } = useAuth()
+  const { user, updateProfile } = useAuth()
   const [form,       setForm]       = useState({ name: '', phone: '', address: '', province: '', zip: '', note: '' })
 
   // Auto-fill จาก LINE user (ดึงข้อมูลทั้งหมดจาก customers table)
@@ -63,6 +63,17 @@ function CheckoutForm() {
     if (!validate()) return
     setLoading(true)
     try {
+      // บันทึกที่อยู่ลง customers ถ้า login LINE แล้ว
+      if (user) {
+        await updateProfile({
+          name:     form.name,
+          phone:    form.phone,
+          address:  form.address,
+          province: form.province,
+          zip:      form.zip,
+        })
+      }
+
       // สร้าง order ID
       const oid = `WEB${Date.now().toString().slice(-8)}`
 
