@@ -1,32 +1,66 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 
-type LineUser = {
-  lineUserId:  string
-  displayName: string
-  pictureUrl?: string
-  phone?:      string
-  isNewUser?:  boolean
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+type Customer = {
+  id?:          number
+  line_user_id: string
+  display_name: string
+  picture_url?: string
+  phone?:       string
+  name?:        string
+  address?:     string
+  province?:    string
+  zip?:         string
 }
 
 type AuthContextType = {
-  user:      LineUser | null
-  loading:   boolean
-  login:     () => Promise<void>
-  logout:    () => void
-  savePhone: (phone: string) => void
+  user:          Customer | null
+  loading:       boolean
+  login:         () => Promise<void>
+  logout:        () => void
+  updateProfile: (data: Partial<Customer>) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null, loading: false,
-  login: async () => {}, logout: () => {}, savePhone: () => {},
+  login: async () => {}, logout: () => {}, updateProfile: async () => {},
 })
 
+async function upsertCustomer(data: Partial<Customer> & { line_user_id: string }) {
+  const res = await fetch(
+    `${SB_URL}/rest/v1/customers?line_user_id=eq.${data.line_user_id}&on_conflict=line_user_id`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: SB_KEY,
+        Authorization: `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
+    }
+  )
+  const result = await res.json()
+  return Array.isArray(result) ? result[0] : result
+}
+
+async function fetchCustomer(lineUserId: string): Promise<Customer | null> {
+  const res = await fetch(
+    `${SB_URL}/rest/v1/customers?line_user_id=eq.${lineUserId}&limit=1`,
+    { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+  )
+  const data = await res.json()
+  return Array.isArray(data) && data.length > 0 ? data[0] : null
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user,    setUser]    = useState<LineUser | null>(null)
+  const [user,    setUser]    = useState<Customer | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // โหลด user จาก localStorage
+  // โหลด user จาก localStorage ตอนเริ่ม
   useEffect(() => {
     try {
       const saved = localStorage.getItem('vela_user')
@@ -41,24 +75,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || '2010290578-odw3e7nF' })
 
       if (!liff.isLoggedIn()) {
-        liff.login()
+        liff.login({ redirectUri: window.location.href })
         return
       }
 
       const profile = await liff.getProfile()
-      const saved   = localStorage.getItem('vela_user')
-      const existing = saved ? JSON.parse(saved) : null
 
-      const newUser: LineUser = {
-        lineUserId:  profile.userId,
-        displayName: profile.displayName,
-        pictureUrl:  profile.pictureUrl,
-        phone:       existing?.lineUserId === profile.userId ? existing.phone : undefined,
-        isNewUser:   !existing || existing.lineUserId !== profile.userId,
+      // ดึงข้อมูลจาก database ก่อน (อาจมีอยู่แล้ว)
+      let customer = await fetchCustomer(profile.userId)
+
+      if (!customer) {
+        // สร้างใหม่
+        customer = await upsertCustomer({
+          line_user_id: profile.userId,
+          display_name: profile.displayName,
+          picture_url:  profile.pictureUrl,
+        })
+      } else {
+        // อัพเดทชื่อและรูปล่าสุด
+        customer = await upsertCustomer({
+          line_user_id: profile.userId,
+          display_name: profile.displayName,
+          picture_url:  profile.pictureUrl,
+        })
       }
 
-      setUser(newUser)
-      localStorage.setItem('vela_user', JSON.stringify(newUser))
+      const userData: Customer = {
+        line_user_id: profile.userId,
+        display_name: profile.displayName,
+        picture_url:  profile.pictureUrl,
+        ...customer,
+      }
+
+      setUser(userData)
+      localStorage.setItem('vela_user', JSON.stringify(userData))
     } catch (e) {
       console.error('LINE login error:', e)
     } finally {
@@ -71,15 +121,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('vela_user')
   }
 
-  const savePhone = (phone: string) => {
+  const updateProfile = async (data: Partial<Customer>) => {
     if (!user) return
-    const updated = { ...user, phone, isNewUser: false }
-    setUser(updated)
-    localStorage.setItem('vela_user', JSON.stringify(updated))
+    try {
+      const updated = await upsertCustomer({
+        line_user_id: user.line_user_id,
+        ...data,
+      })
+      const newUser = { ...user, ...updated }
+      setUser(newUser)
+      localStorage.setItem('vela_user', JSON.stringify(newUser))
+    } catch (e) {
+      console.error('update profile error:', e)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, savePhone }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   )
