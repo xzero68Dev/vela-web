@@ -1,16 +1,20 @@
 import type { Metadata } from 'next'
+import { AuthProvider } from '@/context/AuthContext'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'VeLA Cold Brew — ติดตามพัสดุ',
-  description: 'ติดตามสถานะการจัดส่ง VeLA Cold Brew Coffee',
-  icons: { icon: '/favicon.ico' },
+  title: 'VeLA Cold Brew Coffee',
+  description: 'กาแฟสกัดเย็น คุณภาพสูง',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   )
 }

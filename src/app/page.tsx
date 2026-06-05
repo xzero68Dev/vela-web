@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
+import LineLoginButton from '@/components/LineLoginButton'
+import { useAuth } from '@/context/AuthContext'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -191,6 +193,7 @@ function TrackingSection() {
 }
 
 export default function HomePage() {
+  const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [cart,     setCart]     = useState<CartItem[]>([])
   const [loading,  setLoading]  = useState(true)
@@ -250,12 +253,17 @@ export default function HomePage() {
     <main style={{ background: '#EDE8DF', minHeight: '100vh' }}>
 
       {/* Hero */}
-      <section className="relative overflow-hidden" style={{ background: '#EDE8DF' }}>
+      <section className="relative overflow-hidden" style={{ background: '#EDE8DF', position: 'relative' }}>
         <div className="max-w-5xl mx-auto px-5 pt-10 pb-8 flex flex-col items-center text-center">
 
           {/* Logo */}
           <img src="/logo.png" alt="VeLA Cold Brew" className="h-24 md:h-32 mb-4 object-contain"
             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+
+          {/* LINE Login top right */}
+          <div className="absolute top-5 right-5">
+            <LineLoginButton />
+          </div>
 
           {/* Tagline — single line mixed font */}
           <p className="text-center leading-none" style={{ fontSize: 'clamp(18px, 3vw, 32px)' }}>

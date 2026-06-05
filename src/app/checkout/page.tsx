@@ -2,6 +2,8 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import VelaBunny from '@/components/VelaBunny'
+import LineLoginButton from '@/components/LineLoginButton'
+import { useAuth } from '@/context/AuthContext'
 
 const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
@@ -14,7 +16,15 @@ function CheckoutForm() {
   const router       = useRouter()
 
   const [cart,       setCart]       = useState<CartItem[]>([])
+  const { user } = useAuth()
   const [form,       setForm]       = useState({ name: '', phone: '', address: '', province: '', zip: '', note: '' })
+
+  // Auto-fill จาก LINE user
+  useEffect(() => {
+    if (user?.displayName && !form.name) {
+      setForm(prev => ({ ...prev, name: prev.name || user.displayName || '', phone: prev.phone || user.phone || '' }))
+    }
+  }, [user])
   const [loading,    setLoading]    = useState(false)
   const [submitted,  setSubmitted]  = useState(false)
   const [orderId,    setOrderId]    = useState('')
@@ -139,6 +149,17 @@ function CheckoutForm() {
             สั่งซื้อ
           </h1>
         </div>
+
+        {/* LINE Login shortcut */}
+        {!user && (
+          <div className="rounded-2xl border-2 px-5 py-4 mb-4 flex items-center justify-between" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+            <div>
+              <p className="text-sm font-medium" style={{ color: '#3D1F0F' }}>Login ด้วย LINE</p>
+              <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>กรอกข้อมูลได้เร็วขึ้น + ดูประวัติสั่งซื้อ</p>
+            </div>
+            <LineLoginButton onDone={() => {}} />
+          </div>
+        )}
 
         {/* Order summary */}
         <div className="rounded-2xl border-2 overflow-hidden mb-6" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
