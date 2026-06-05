@@ -171,20 +171,45 @@ function TrackingSection() {
         </div>
 
         {results.map(r => (
-          <div key={r.barcode} className="mt-3 rounded-2xl border-2 px-5 py-4"
+          <div key={r.barcode} className="mt-3 rounded-2xl border-2 overflow-hidden"
             style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-sm" style={{ color: '#3D1F0F' }}>{r.barcode}</p>
+            {/* Header */}
+            <div className="px-5 py-3 flex items-center justify-between border-b-2" style={{ borderColor: '#E0D9CE' }}>
+              <p className="font-mono text-sm font-bold" style={{ color: '#3D1F0F' }}>{r.barcode}</p>
               <span className="text-xs font-medium px-3 py-1 rounded-full"
-                style={{ color: STATUS_COLOR[r.status] || '#8C7B6E', background: (STATUS_COLOR[r.status] || '#8C7B6E') + '15' }}>
+                style={{ color: STATUS_COLOR[r.status] || '#8C7B6E', background: (STATUS_COLOR[r.status] || '#8C7B6E') + '20' }}>
                 {r.status_th || r.status}
               </span>
             </div>
-            {r.latest_event?.location && (
-              <p className="text-xs mt-1 font-mono" style={{ color: '#8C7B6E' }}>
-                {r.latest_event.location}
-              </p>
-            )}
+            {/* Timeline */}
+            {r.events && r.events.length > 0 ? (
+              <div className="px-5 py-3 space-y-2">
+                {[...r.events].reverse().map((e: any, i: number) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <div className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: i === 0 ? '#D64B2A' : '#D8D0C5' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium leading-tight" style={{ color: i === 0 ? '#3D1F0F' : '#8C7B6E' }}>
+                        {e.description || e.status_th || e.status}
+                      </p>
+                      <div className="flex gap-2 flex-wrap">
+                        {e.location && (
+                          <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{e.location}</p>
+                        )}
+                        {e.datetime && (
+                          <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{e.datetime}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : r.latest_event ? (
+              <div className="px-5 py-3">
+                <p className="text-xs" style={{ color: '#8C7B6E' }}>{r.latest_event.description || r.latest_event.location}</p>
+                {r.latest_event.datetime && <p className="text-xs font-mono mt-0.5" style={{ color: '#C5BAB0' }}>{r.latest_event.datetime}</p>}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
