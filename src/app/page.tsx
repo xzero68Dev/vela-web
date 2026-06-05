@@ -285,8 +285,14 @@ export default function HomePage() {
           <img src="/logo.png" alt="VeLA Cold Brew" className="h-24 md:h-32 mb-4 object-contain"
             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
 
-          {/* LINE Login top right */}
-          <div className="absolute top-5 right-5">
+          {/* Top right — LINE login + account */}
+          <div className="absolute top-5 right-5 flex items-center gap-2">
+            {user && (
+              <Link href="/account" className="text-xs font-mono px-3 py-1.5 rounded-xl border-2 transition-all hover:opacity-80"
+                style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                บัญชีฉัน
+              </Link>
+            )}
             <LineLoginButton />
           </div>
 
