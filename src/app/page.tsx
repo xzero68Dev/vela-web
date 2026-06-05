@@ -301,7 +301,7 @@ export default function HomePage() {
             <span style={{ fontFamily: 'var(--font-body)', fontWeight: 300, color: '#8C7B6E' }}>
               Have a nice{' '}
             </span>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, color: '#3D1F0F', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, color: '#D64B2A', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
               Full Day{' '}
             </span>
             <span style={{ fontFamily: 'var(--font-body)', fontWeight: 300, color: '#8C7B6E' }}>

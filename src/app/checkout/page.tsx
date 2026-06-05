@@ -142,12 +142,18 @@ function CheckoutForm() {
       <div className="max-w-lg mx-auto">
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
-          <VelaBunny size={32} />
-          <h1 className="text-3xl font-black uppercase"
-            style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-            สั่งซื้อ
-          </h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <VelaBunny size={32} />
+            <h1 className="text-3xl font-black uppercase"
+              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+              สั่งซื้อ
+            </h1>
+          </div>
+          <Link href="/" className="text-xs font-mono px-3 py-1.5 rounded-xl border-2 hover:opacity-70 transition-opacity"
+            style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+            ← หน้าร้าน
+          </Link>
         </div>
 
         {/* LINE Login shortcut */}
