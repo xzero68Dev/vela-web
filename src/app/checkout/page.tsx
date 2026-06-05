@@ -22,8 +22,8 @@ function CheckoutForm() {
 
   // Auto-fill จาก LINE user
   useEffect(() => {
-    if (user?.displayName && !form.name) {
-      setForm(prev => ({ ...prev, name: prev.name || user.displayName || '', phone: prev.phone || user.phone || '' }))
+    if (user?.display_name && !form.name) {
+      setForm(prev => ({ ...prev, name: prev.name || user?.name || user?.display_name || '', phone: prev.phone || user?.phone || '' }))
     }
   }, [user])
   const [loading,    setLoading]    = useState(false)
