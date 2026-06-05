@@ -20,12 +20,19 @@ function CheckoutForm() {
   const { user } = useAuth()
   const [form,       setForm]       = useState({ name: '', phone: '', address: '', province: '', zip: '', note: '' })
 
-  // Auto-fill จาก LINE user
+  // Auto-fill จาก LINE user (ดึงข้อมูลทั้งหมดจาก customers table)
   useEffect(() => {
-    if (user?.display_name && !form.name) {
-      setForm(prev => ({ ...prev, name: prev.name || user?.name || user?.display_name || '', phone: prev.phone || user?.phone || '' }))
+    if (user) {
+      setForm(prev => ({
+        name:     prev.name     || user.name     || user.display_name || '',
+        phone:    prev.phone    || user.phone    || '',
+        address:  prev.address  || user.address  || '',
+        province: prev.province || user.province || '',
+        zip:      prev.zip      || user.zip      || '',
+        note:     prev.note,
+      }))
     }
-  }, [user])
+  }, [user?.line_user_id])
   const [loading,    setLoading]    = useState(false)
   const [submitted,  setSubmitted]  = useState(false)
   const [orderId,    setOrderId]    = useState('')
