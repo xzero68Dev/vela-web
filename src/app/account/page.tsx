@@ -22,7 +22,7 @@ export default function AccountPage() {
   const [tab,       setTab]       = useState<'orders' | 'profile'>('orders')
 
   // Form state
-  const [form, setForm] = useState({ phone: '', name: '', address: '', province: '', zip: '' })
+  const [form, setForm] = useState({ phone: '', name: '', address: '', province: '', zip: '', notify_channel: 'sms' })
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
 
@@ -35,6 +35,7 @@ export default function AccountPage() {
         address:  user.address  || '',
         province: user.province || '',
         zip:      user.zip      || '',
+        notify_channel: (user as any).notify_channel || 'sms',
       })
     }
   }, [user?.line_user_id])
@@ -205,6 +206,32 @@ export default function AccountPage() {
                     style={{ background: '#EDE8DF', borderColor: '#D8D0C5', color: '#3D1F0F' }} />
                 </div>
               ))}
+              {/* ช่องทางแจ้งเตือน */}
+              <div>
+                <label className="block text-xs font-mono mb-2" style={{ color: '#8C7B6E' }}>ช่องทางแจ้งเตือนสถานะพัสดุ</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'sms',  label: 'SMS',         icon: '📱', desc: 'รับ SMS' },
+                    { value: 'line', label: 'LINE',        icon: '💬', desc: 'รับผ่าน LINE' },
+                    { value: 'none', label: 'ไม่รับ',      icon: '🔕', desc: 'เช็คเอง' },
+                  ].map(opt => (
+                    <button key={opt.value}
+                      onClick={() => setForm(prev => ({ ...prev, notify_channel: opt.value }))}
+                      className="py-3 px-2 rounded-xl border-2 text-center transition-all"
+                      style={form.notify_channel === opt.value
+                        ? { background: '#D64B2A', borderColor: '#D64B2A', color: '#EDE8DF' }
+                        : { background: '#EDE8DF', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                      <div className="text-lg mb-0.5">{opt.icon}</div>
+                      <div className="text-xs font-black uppercase" style={{ fontFamily: 'var(--font-display)', fontSize: '11px' }}>{opt.label}</div>
+                      <div className="text-xs opacity-70" style={{ fontSize: '10px' }}>{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {form.notify_channel === 'line' && !user?.phone && (
+                  <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>⚠ ต้องใส่เบอร์โทรด้วย</p>
+                )}
+              </div>
+
               <button onClick={handleSave} disabled={saving}
                 className="w-full py-3 rounded-xl font-black uppercase text-sm mt-2 transition-all active:scale-95 disabled:opacity-50"
                 style={{ fontFamily: 'var(--font-display)', background: saved ? '#1A6B3C' : '#D64B2A', color: '#EDE8DF' }}>
