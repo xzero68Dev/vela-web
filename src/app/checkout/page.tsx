@@ -106,6 +106,62 @@ function CheckoutForm() {
     }
   }
 
+  const SlipUpload = ({ orderId }: { orderId: string }) => {
+    const [uploading, setUploading] = useState(false)
+    const [uploaded,  setUploaded]  = useState(false)
+    const [error,     setError]     = useState('')
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      setUploading(true); setError('')
+      try {
+        const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+        const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        const ext  = file.name.split('.').pop()
+        const path = `${orderId}-${Date.now()}.${ext}`
+
+        // Upload ไปที่ Supabase Storage bucket "slips"
+        const upRes = await fetch(`${SB_URL}/storage/v1/object/slips/${path}`, {
+          method: 'POST',
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type },
+          body: file,
+        })
+        if (!upRes.ok) throw new Error('upload failed')
+
+        const slip_url = `${SB_URL}/storage/v1/object/public/slips/${path}`
+
+        // บันทึก slip_url ลง orders
+        await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}`, {
+          method: 'PATCH',
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ slip_url }),
+        })
+        setUploaded(true)
+      } catch {
+        setError('อัพโหลดไม่สำเร็จ กรุณาลองใหม่')
+      } finally { setUploading(false) }
+    }
+
+    return (
+      <div className="rounded-2xl border-2 p-4 mb-4" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+        <p className="text-sm font-black uppercase mb-2" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
+          อัพโหลดสลิปโอนเงิน
+        </p>
+        {uploaded ? (
+          <p className="text-sm font-mono" style={{ color: '#1A6B3C' }}>✓ อัพโหลดสลิปแล้ว รอการยืนยัน</p>
+        ) : (
+          <label className="flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed cursor-pointer transition-all hover:opacity-70"
+            style={{ borderColor: '#D64B2A', color: '#D64B2A' }}>
+            <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+            <span className="text-sm font-mono">{uploading ? 'กำลังอัพโหลด...' : '📎 เลือกรูปสลิป'}</span>
+          </label>
+        )}
+        {error && <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
+      </div>
+    )
+  }
+
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center px-5" style={{ background: '#EDE8DF' }}>
@@ -134,9 +190,12 @@ function CheckoutForm() {
             </p>
           </div>
 
+          {/* Slip upload */}
+          <SlipUpload orderId={orderId} />
+
           <div className="rounded-2xl border-2 p-4 mb-6 text-left" style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
             <p className="text-xs" style={{ color: '#854F0B' }}>
-              📸 กรุณาส่งสลิปโอนเงินมาที่ LINE: <strong>@301saklb</strong> พร้อมแจ้ง Order #{orderId}
+              หรือส่งสลิปมาที่ LINE: <strong>@301saklb</strong> พร้อมแจ้ง Order #{orderId}
             </p>
           </div>
 
