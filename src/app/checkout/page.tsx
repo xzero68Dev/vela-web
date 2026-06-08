@@ -126,23 +126,17 @@ function CheckoutForm() {
             </p>
             <p className="text-xs font-mono mb-4" style={{ color: '#8C7B6E' }}>PromptPay · โอนภายใน 24 ชั่วโมง</p>
 
-            {/* QR Code placeholder - ใส่ QR จริงได้ที่นี่ */}
-            <div className="w-48 h-48 mx-auto rounded-2xl border-2 flex items-center justify-center mb-3"
-              style={{ borderColor: '#D8D0C5', background: '#EDE8DF' }}>
-              <p className="text-xs text-center font-mono px-4" style={{ color: '#C5BAB0' }}>
-                QR Code<br/>PromptPay<br/>(ใส่รูปจริงที่นี่)
-              </p>
-            </div>
-
+            {/* QR PromptPay */}
+            <img src="/promptpay-qr.jpg" alt="PromptPay QR"
+              className="w-56 h-auto mx-auto rounded-2xl mb-3 shadow-md" />
             <p className="text-sm font-mono" style={{ color: '#3D1F0F' }}>
-              เบอร์พร้อมเพย์: <strong>0906980460</strong>
+              ชื่อบัญชี: <strong>นาย จตุรพร งามขจรกุลกิจ</strong>
             </p>
-            <p className="text-xs mt-1" style={{ color: '#8C7B6E' }}>ชื่อบัญชี: VeLA Cold Brew</p>
           </div>
 
           <div className="rounded-2xl border-2 p-4 mb-6 text-left" style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
             <p className="text-xs" style={{ color: '#854F0B' }}>
-              📸 กรุณาส่งสลิปโอนเงินมาที่ LINE: <strong>@vela</strong> พร้อมแจ้ง Order #{orderId}
+              📸 กรุณาส่งสลิปโอนเงินมาที่ LINE: <strong>@301saklb</strong> พร้อมแจ้ง Order #{orderId}
             </p>
           </div>
 
