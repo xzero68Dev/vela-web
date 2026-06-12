@@ -75,7 +75,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || '2010290578-odw3e7nF' })
 
       if (!liff.isLoggedIn()) {
-        liff.login({ redirectUri: window.location.href })
+        const returnUrl = window.location.href
+        sessionStorage.setItem('vela_return_url', returnUrl)
+        liff.login({ redirectUri: window.location.origin })
         return
       }
 
@@ -109,6 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(userData)
       localStorage.setItem('vela_user', JSON.stringify(userData))
+      // redirect กลับหน้าเดิมถ้ามี
+      const returnUrl = sessionStorage.getItem('vela_return_url')
+      if (returnUrl && returnUrl !== window.location.href) {
+        sessionStorage.removeItem('vela_return_url')
+        window.location.href = returnUrl
+      }
     } catch (e) {
       console.error('LINE login error:', e)
     } finally {
