@@ -30,6 +30,8 @@ export default function AdminPage() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [loading,   setLoading]   = useState(false)
   const [checking,  setChecking]  = useState(false)
+  const [custDetail, setCustDetail] = useState<any>(null)
+  const [loadingCust, setLoadingCust] = useState(false)
   const [filter,    setFilter]    = useState<'pending' | 'all'>('pending')
   const [updated,   setUpdated]   = useState('')
 
@@ -45,6 +47,26 @@ export default function AdminPage() {
   }, [filter])
 
   useEffect(() => { if (ready) fetchData() }, [ready, fetchData])
+
+  const fetchCustomerByBarcode = async (barcode: string) => {
+    setLoadingCust(true)
+    try {
+      const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      // หา order_id จาก shipping
+      const shipRes = await fetch(`${SB_URL}/rest/v1/shipping?tracking=eq.${barcode}&select=order_id`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+      const shipData = await shipRes.json()
+      if (!shipData?.[0]?.order_id) { setCustDetail({ error: 'ไม่พบข้อมูลลูกค้า' }); return }
+      const orderId = shipData[0].order_id
+      const orderRes = await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+      const orderData = await orderRes.json()
+      if (orderData?.[0]) setCustDetail({ ...orderData[0], barcode })
+      else setCustDetail({ error: 'ไม่พบข้อมูล order' })
+    } catch { setCustDetail({ error: 'เชื่อมต่อไม่ได้' }) }
+    finally { setLoadingCust(false) }
+  }
 
   const checkNow = async () => {
     setChecking(true)
@@ -141,7 +163,13 @@ export default function AdminPage() {
                   <tr key={s.barcode}
                     style={{ borderBottom: i < shipments.length - 1 ? '1px solid #E0D9CE' : 'none' }}
                     className="hover:bg-vela-cream transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: '#3D1F0F' }}>{s.barcode}</td>
+                    <td className="px-4 py-3">
+                        <button onClick={() => { setCustDetail(null); fetchCustomerByBarcode(s.barcode) }}
+                          className="font-mono text-xs hover:underline transition-opacity hover:opacity-70 text-left"
+                          style={{ color: '#D64B2A' }}>
+                          {s.barcode}
+                        </button>
+                      </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-medium" style={{ color: STATUS_COLOR[s.status] || '#8C7B6E' }}>
                         {s.status_th || s.status}
@@ -160,6 +188,52 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+    {/* Customer detail modal */}
+      {(custDetail || loadingCust) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCustDetail(null)} />
+          <div className="relative w-full max-w-md rounded-3xl border-2 overflow-hidden"
+            style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+            <div className="px-5 py-4 border-b-2 flex items-center justify-between" style={{ borderColor: '#E0D9CE' }}>
+              <h3 className="font-black text-lg uppercase" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                ข้อมูลลูกค้า
+              </h3>
+              <button onClick={() => setCustDetail(null)} style={{ color: '#8C7B6E' }}>✕</button>
+            </div>
+            <div className="px-5 py-4">
+              {loadingCust ? (
+                <p className="text-center text-xs font-mono py-4" style={{ color: '#C5BAB0' }}>กำลังโหลด...</p>
+              ) : custDetail?.error ? (
+                <p className="text-center text-xs font-mono py-4" style={{ color: '#D64B2A' }}>{custDetail.error}</p>
+              ) : custDetail && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl p-4" style={{ background: '#EDE8DF' }}>
+                    <p className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: '#C5BAB0' }}>ลูกค้า</p>
+                    <p className="font-black text-lg" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>{custDetail.customer}</p>
+                    <p className="font-mono text-sm mt-1" style={{ color: '#3D1F0F' }}>{custDetail.phone}</p>
+                  </div>
+                  <div className="rounded-2xl p-4" style={{ background: '#EDE8DF' }}>
+                    <p className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: '#C5BAB0' }}>ที่อยู่</p>
+                    <p className="text-sm" style={{ color: '#3D1F0F' }}>{custDetail.full_address}</p>
+                    <p className="text-sm" style={{ color: '#3D1F0F' }}>{custDetail.province} {custDetail.zip}</p>
+                  </div>
+                  <div className="rounded-2xl p-4" style={{ background: '#EDE8DF' }}>
+                    <p className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: '#C5BAB0' }}>ออเดอร์</p>
+                    <p className="text-xs font-mono" style={{ color: '#3D1F0F' }}>{custDetail.order_id}</p>
+                    <p className="text-sm mt-1" style={{ color: '#3D1F0F' }}>{custDetail.sku}</p>
+                    <p className="text-xs font-mono mt-1" style={{ color: '#8C7B6E' }}>{custDetail.order_date} · {custDetail.channel}</p>
+                    {custDetail.note && <p className="text-xs mt-1" style={{ color: '#8C7B6E' }}>หมายเหตุ: {custDetail.note}</p>}
+                  </div>
+                  <div className="rounded-2xl p-4" style={{ background: '#EDE8DF' }}>
+                    <p className="text-xs font-mono uppercase tracking-wider mb-1" style={{ color: '#C5BAB0' }}>Tracking</p>
+                    <p className="font-mono text-sm" style={{ color: '#3D1F0F' }}>{custDetail.barcode}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

@@ -36,7 +36,7 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      let url = `${SB_URL}/rest/v1/orders?order=order_date.desc&limit=100`
+      let url = `${SB_URL}/rest/v1/orders?order=created_at.desc&limit=200`
       if (filter !== 'ทั้งหมด') url += `&status=eq.${encodeURIComponent(filter)}`
       const res  = await fetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
       const data = await res.json()
@@ -68,6 +68,7 @@ export default function AdminOrdersPage() {
     pending: orders.filter(o => o.status === 'รอชำระเงิน').length,
     paid:    orders.filter(o => o.status === 'ชำระแล้ว').length,
     slips:   orders.filter(o => o.slip_url && o.status === 'รอชำระเงิน').length,
+    total:   orders.length,
   }
 
   if (!ready) return null
@@ -78,11 +79,12 @@ export default function AdminOrdersPage() {
         <AdminNav />
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           {[
             { label: 'รอชำระเงิน', value: stats.pending, bg: '#F5E6C0', color: '#854F0B' },
             { label: 'มีสลิปรอยืนยัน', value: stats.slips, bg: '#F5D5CC', color: '#D64B2A' },
             { label: 'ชำระแล้ว', value: stats.paid, bg: '#C5E8D5', color: '#1A6B3C' },
+            { label: 'ทั้งหมด', value: stats.total, bg: '#E0D9CE', color: '#8C7B6E' },
           ].map(s => (
             <div key={s.label} className="rounded-2xl border-2 px-4 py-3" style={{ background: s.bg, borderColor: s.color + '30' }}>
               <p className="text-xs font-mono mb-1" style={{ color: s.color }}>{s.label}</p>
