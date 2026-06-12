@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
+import LineLoginButton from '@/components/LineLoginButton'
+import { useAuth } from '@/context/AuthContext'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
@@ -30,6 +32,7 @@ export default function TrackPage() {
   const params  = useParams()
   const barcode = (params.barcode as string || '').toUpperCase()
 
+  const { user } = useAuth()
   const [result,  setResult]  = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
@@ -137,6 +140,29 @@ export default function TrackPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* LINE Login CTA */}
+            {!user && (
+              <div className="mt-4 rounded-2xl border-2 px-5 py-4" style={{ background: '#F0FFF4', borderColor: '#06C75530' }}>
+                <p className="font-black text-sm uppercase mb-1" style={{ fontFamily: 'var(--font-display)', color: '#06C755' }}>
+                  รับแจ้งเตือนผ่าน LINE
+                </p>
+                <p className="text-xs mb-3" style={{ color: '#8C7B6E' }}>
+                  Login ด้วย LINE เพื่อรับแจ้งเตือนสถานะพัสดุทันที และรับสิทธิพิเศษเฉพาะสมาชิก 🐰
+                </p>
+                <LineLoginButton onDone={() => {}} />
+              </div>
+            )}
+
+            {user && (
+              <div className="mt-4 rounded-2xl border-2 px-5 py-3 flex items-center gap-3" style={{ background: '#F0FFF4', borderColor: '#06C75530' }}>
+                {user.picture_url && <img src={user.picture_url} alt="" className="w-8 h-8 rounded-full flex-shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-mono" style={{ color: '#1A6B3C' }}>✓ เชื่อมต่อ LINE แล้ว</p>
+                  <p className="text-xs" style={{ color: '#8C7B6E' }}>จะได้รับแจ้งเตือนผ่าน LINE เมื่อพัสดุถึง</p>
                 </div>
               </div>
             )}
