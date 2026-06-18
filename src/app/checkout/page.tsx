@@ -36,6 +36,7 @@ function CheckoutForm() {
   const [loading,    setLoading]    = useState(false)
   const [submitted,  setSubmitted]  = useState(false)
   const [orderId,    setOrderId]    = useState('')
+  const [paidTotal,  setPaidTotal]  = useState(0)
   const [errors,     setErrors]     = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -97,6 +98,14 @@ function CheckoutForm() {
       })
 
       if (!res.ok) throw new Error('บันทึก order ไม่สำเร็จ')
+
+      // เก็บยอดรวมไว้ก่อนเคลียร์ตะกร้า (เพราะ total คำนวณจาก cart สดๆ — เคลียร์แล้ว total จะกลายเป็น 0)
+      setPaidTotal(total)
+
+      // เคลียร์ตะกร้าทิ้ง — ทั้ง localStorage (ที่หน้าแรก/หน้าสินค้าใช้เป็นค่าจริง) และ state ปัจจุบัน
+      localStorage.removeItem('vela_cart')
+      setCart([])
+
       setOrderId(oid)
       setSubmitted(true)
     } catch (e: any) {
@@ -178,7 +187,7 @@ function CheckoutForm() {
           {/* QR PromptPay */}
           <div className="rounded-3xl border-2 p-6 mb-6" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
             <p className="font-black text-lg uppercase mb-1" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-              ชำระเงิน ฿{total.toLocaleString()}
+              ชำระเงิน ฿{paidTotal.toLocaleString()}
             </p>
             <p className="text-xs font-mono mb-4" style={{ color: '#8C7B6E' }}>PromptPay · โอนภายใน 24 ชั่วโมง</p>
 
