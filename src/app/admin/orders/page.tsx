@@ -6,6 +6,7 @@ import AdminNav from '@/components/AdminNav'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const API    = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
 
 type Order = {
   order_id: string; order_date: string; ship_date: string
@@ -50,11 +51,15 @@ export default function AdminOrdersPage() {
   const confirmPayment = async (order: Order) => {
     setConfirming(true)
     try {
-      await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${order.order_id}`, {
-        method: 'PATCH',
-        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ status: 'ชำระแล้ว', paid_at: new Date().toISOString() })
+      const res = await fetch(`${API}/admin/confirm-payment?order_id=${encodeURIComponent(order.order_id)}`, {
+        method: 'POST',
+        headers: { 'x-api-key': ADMIN_KEY },
       })
+      if (!res.ok) {
+        const errText = await res.text()
+        alert(`ยืนยันการชำระเงินไม่สำเร็จ: ${errText}`)
+        return
+      }
       await fetchOrders()
       setSelected(prev => prev ? { ...prev, status: 'ชำระแล้ว' } : null)
     } finally { setConfirming(false) }
