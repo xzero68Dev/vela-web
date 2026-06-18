@@ -117,6 +117,52 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
   )
 }
 
+// Leaderboard teaser — แสดง top 3 คร่าวๆ พร้อมลิงก์ไปหน้า leaderboard เต็ม
+function LeaderboardTeaser() {
+  const [top3,    setTop3]    = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`${API}/leaderboard?limit=3`)
+      .then(r => r.json())
+      .then(data => setTop3(data.results || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  // ถ้ายังไม่มีข้อมูลเลย หรือกำลังโหลด — ไม่ต้องแสดง section นี้เพื่อไม่ให้ดูว่างเปล่า
+  if (loading || top3.length === 0) return null
+
+  const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
+
+  return (
+    <section className="py-8 px-5">
+      <div className="max-w-2xl mx-auto">
+        <Link href="/leaderboard" className="block rounded-3xl overflow-hidden border-2 transition-all hover:shadow-md active:scale-[0.99]"
+          style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
+          <div className="px-6 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-black text-lg uppercase" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
+                🏆 VeLA Ranking เดือนนี้
+              </p>
+              <span className="text-xs font-mono" style={{ color: '#854F0B' }}>ดูทั้งหมด →</span>
+            </div>
+            <div className="space-y-1.5">
+              {top3.map(entry => (
+                <div key={entry.rank} className="flex items-center gap-2 text-sm">
+                  <span>{MEDAL[entry.rank]}</span>
+                  <span className="flex-1 truncate" style={{ color: '#3D1F0F' }}>{entry.customer || 'ลูกค้า VeLA'}</span>
+                  <span className="font-mono font-bold" style={{ color: '#D64B2A' }}>{entry.points} pt</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Link>
+      </div>
+    </section>
+  )
+}
+
 // Tracking section
 function TrackingSection() {
   const [input,   setInput]   = useState('')
@@ -328,6 +374,9 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Leaderboard teaser */}
+      <LeaderboardTeaser />
 
       {/* LINE Banner */}
       <section className="py-8 px-5">

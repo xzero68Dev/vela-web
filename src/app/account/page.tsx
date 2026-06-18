@@ -20,6 +20,8 @@ export default function AccountPage() {
   const [shipments, setShipments] = useState<Record<string, any>>({})
   const [loading,   setLoading]   = useState(false)
   const [tab,       setTab]       = useState<'orders' | 'profile'>('orders')
+  const [myRank,    setMyRank]    = useState<{ rank: number; points: number } | null>(null)
+  const [rankMonth, setRankMonth] = useState('')
 
   // Form state
   const [form, setForm] = useState({ phone: '', name: '', address: '', province: '', zip: '', notify_channel: 'sms' })
@@ -72,6 +74,18 @@ export default function AccountPage() {
       .finally(() => setLoading(false))
   }, [user?.phone])
 
+  // โหลด rank ส่วนตัวประจำเดือนนี้
+  useEffect(() => {
+    if (!user?.phone) return
+    fetch(`${API}/leaderboard?limit=0&phone=${user.phone}`)
+      .then(r => r.json())
+      .then(data => {
+        setMyRank(data.me || null)
+        setRankMonth(data.month || '')
+      })
+      .catch(() => {})
+  }, [user?.phone])
+
   const handleSave = async () => {
     setSaving(true)
     await updateProfile(form)
@@ -117,6 +131,28 @@ export default function AccountPage() {
             }
           </div>
         </div>
+
+        {/* Personal rank card */}
+        {myRank && (
+          <Link href="/leaderboard"
+            className="block rounded-2xl border-2 px-5 py-3 mb-5 flex items-center justify-between transition-all hover:shadow-sm active:scale-[0.99]"
+            style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
+            <div>
+              <p className="text-xs font-mono" style={{ color: '#854F0B' }}>
+                🏆 อันดับของคุณเดือนนี้
+              </p>
+              <p className="font-black text-lg leading-none mt-0.5" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
+                อันดับ #{myRank.rank}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-black text-2xl leading-none" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                {myRank.points}
+              </p>
+              <p className="text-xs font-mono" style={{ color: '#854F0B' }}>point</p>
+            </div>
+          </Link>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-2 mb-5">
