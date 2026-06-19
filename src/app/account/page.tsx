@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
@@ -86,7 +86,7 @@ export default function AccountPage() {
   }, [user?.line_user_id])
 
   // โหลด orders
-  useEffect(() => {
+  const fetchOrders = useCallback(async () => {
     if (!user?.phone) return
     setLoading(true)
     fetch(`${SB_URL}/rest/v1/orders?phone=eq.${user.phone}&order=order_date.desc&limit=20`,
@@ -116,6 +116,8 @@ export default function AccountPage() {
       })
       .finally(() => setLoading(false))
   }, [user?.phone])
+
+  useEffect(() => { fetchOrders() }, [fetchOrders])
 
   // โหลด rank ส่วนตัวประจำเดือนนี้
   useEffect(() => {
