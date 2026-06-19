@@ -37,7 +37,7 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      let url = `${SB_URL}/rest/v1/orders?order=created_at.desc&limit=200`
+      let url = `${SB_URL}/rest/v1/orders?order=created_at.desc&limit=200&select=order_id,order_date,customer,phone,province,full_address,sku,qty,channel,status,slip_url,paid_at,note`
       if (filter !== 'ทั้งหมด') url += `&status=eq.${encodeURIComponent(filter)}`
       const res  = await fetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
       const data = await res.json()
