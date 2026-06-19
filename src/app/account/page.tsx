@@ -14,6 +14,49 @@ const STATUS_COLOR: Record<string, string> = {
   delivered: '#1A6B3C', returned: '#D64B2A', problem: '#D64B2A', pending: '#C5BAB0',
 }
 
+function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => void }) {
+  const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const [uploading, setUploading] = useState(false)
+  const [error,     setError]     = useState('')
+
+  const handleUpload = async (e: { target: HTMLInputElement }) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    setUploading(true); setError('')
+    try {
+      const ext  = file.name.split('.').pop()
+      const path = `${orderId}-${Date.now()}.${ext}`
+      const upRes = await fetch(`${SB_URL}/storage/v1/object/slips/${path}`, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type },
+        body: file,
+      })
+      if (!upRes.ok) throw new Error('อัปโหลดไม่สำเร็จ')
+      const slip_url = `${SB_URL}/storage/v1/object/public/slips/${path}`
+      await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}`, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ slip_url }),
+      })
+      onDone()
+    } catch (e: any) {
+      setError(e.message || 'เกิดข้อผิดพลาด')
+    } finally { setUploading(false) }
+  }
+
+  return (
+    <div className="mt-2">
+      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 cursor-pointer text-xs font-mono transition-all active:scale-95"
+        style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
+        <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+        {uploading ? 'กำลังอัปโหลด...' : '📎 แนบสลิปการโอน'}
+      </label>
+      {error && <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
+    </div>
+  )
+}
+
 export default function AccountPage() {
   const { user, logout, updateProfile } = useAuth()
   const [orders,    setOrders]    = useState<any[]>([])
@@ -196,7 +239,14 @@ export default function AccountPage() {
                         <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{o.order_date} · {o.channel || 'web'}</p>
                       </div>
                       <span className="text-xs px-3 py-1 rounded-full font-mono"
-                        style={{ background: o.status === 'จัดส่งแล้ว' ? '#1A6B3C20' : '#E0D9CE', color: o.status === 'จัดส่งแล้ว' ? '#1A6B3C' : '#8C7B6E' }}>
+                        style={{
+                          background: o.status === 'ชำระแล้ว' || o.status === 'จัดส่งแล้ว' ? '#1A6B3C20'
+                                    : o.status === 'รอชำระเงิน' ? '#F5E6C0'
+                                    : '#E0D9CE',
+                          color:      o.status === 'ชำระแล้ว' || o.status === 'จัดส่งแล้ว' ? '#1A6B3C'
+                                    : o.status === 'รอชำระเงิน' ? '#854F0B'
+                                    : '#8C7B6E'
+                        }}>
                         {o.status}
                       </span>
                     </div>
@@ -212,6 +262,22 @@ export default function AccountPage() {
                             <span className="text-xs font-mono" style={{ color: '#C5BAB0' }}>· {ship.latest_location}</span>
                           )}
                         </div>
+                      )}
+
+                      {/* สลิปที่อัปโหลดแล้ว */}
+                      {o.slip_url && (
+                        <div className="mt-2">
+                          <a href={o.slip_url} target="_blank" rel="noopener noreferrer">
+                            <img src={o.slip_url} alt="slip" className="h-16 w-auto rounded-xl border-2 object-cover"
+                              style={{ borderColor: '#E0D9CE' }} />
+                          </a>
+                          <p className="text-xs font-mono mt-1" style={{ color: '#1A6B3C' }}>✓ ส่งสลิปแล้ว</p>
+                        </div>
+                      )}
+
+                      {/* ปุ่มอัปโหลดสลิป — เฉพาะ order รอชำระและยังไม่มีสลิป */}
+                      {o.status === 'รอชำระเงิน' && !o.slip_url && (
+                        <SlipUploadInline orderId={o.order_id} onDone={() => fetchOrders()} />
                       )}
                     </div>
                   </div>
