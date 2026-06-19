@@ -32,6 +32,8 @@ export default function AdminOrdersPage() {
   const [search,     setSearch]     = useState('')
   const [selected,   setSelected]   = useState<Order | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [shipping,   setShipping]   = useState({ tracking: '', carrier: 'POST SABUY' })
+  const [addingShip, setAddingShip] = useState(false)
   const [updated,    setUpdated]    = useState('')
 
   const fetchOrders = useCallback(async () => {
@@ -63,6 +65,30 @@ export default function AdminOrdersPage() {
       await fetchOrders()
       setSelected(prev => prev ? { ...prev, status: 'ชำระแล้ว' } : null)
     } finally { setConfirming(false) }
+  }
+
+  const addShipping = async (order: Order) => {
+    if (!shipping.tracking.trim()) { alert('กรุณาใส่เลข tracking'); return }
+    setAddingShip(true)
+    try {
+      const res = await fetch(`${API}/admin/add-shipping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        body: JSON.stringify({
+          order_id: order.order_id,
+          tracking: shipping.tracking.trim().toUpperCase(),
+          carrier:  shipping.carrier,
+        }),
+      })
+      if (!res.ok) {
+        const errText = await res.text()
+        alert(`เพิ่มการจัดส่งไม่สำเร็จ: ${errText}`)
+        return
+      }
+      setShipping({ tracking: '', carrier: 'POST SABUY' })
+      await fetchOrders()
+      setSelected(prev => prev ? { ...prev, status: 'จัดส่งแล้ว' } : null)
+    } finally { setAddingShip(false) }
   }
 
   const filtered = orders.filter(o =>
@@ -259,6 +285,35 @@ export default function AdminOrdersPage() {
                 <p className="text-xs font-mono text-center" style={{ color: '#1A6B3C' }}>
                   ✓ ยืนยันชำระเมื่อ {new Date(selected.paid_at).toLocaleString('th-TH')}
                 </p>
+              )}
+
+              {/* ฟอร์มเพิ่มการจัดส่ง — แสดงเฉพาะตอนยังไม่มี tracking */}
+              {selected.status === 'ชำระแล้ว' && (
+                <div className="rounded-2xl border-2 p-4 space-y-3" style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
+                  <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>เพิ่มการจัดส่ง</p>
+                  <div className="space-y-2">
+                    <select value={shipping.carrier} onChange={e => setShipping(s => ({ ...s, carrier: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm font-mono"
+                      style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }}>
+                      <option value="POST SABUY">POST SABUY</option>
+                      <option value="KERRY">Kerry Express</option>
+                      <option value="FLASH">Flash Express</option>
+                      <option value="J&T">J&T Express</option>
+                      <option value="SCG">SCG Express</option>
+                      <option value="DHL">DHL</option>
+                    </select>
+                    <input value={shipping.tracking}
+                      onChange={e => setShipping(s => ({ ...s, tracking: e.target.value }))}
+                      placeholder="เลข tracking เช่น JM123456789TH"
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm font-mono uppercase"
+                      style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+                    <button onClick={() => addShipping(selected)} disabled={addingShip || !shipping.tracking.trim()}
+                      className="w-full py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
+                      style={{ fontFamily: 'var(--font-display)', background: '#1A5C8F', color: '#EDE8DF' }}>
+                      {addingShip ? 'กำลังบันทึก...' : '🚚 บันทึกการจัดส่ง'}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
