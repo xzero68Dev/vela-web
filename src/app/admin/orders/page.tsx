@@ -13,7 +13,7 @@ type Order = {
   customer: string; phone: string; province: string
   full_address: string; sku: string; qty: number
   channel: string; status: string
-  slip_url?: string; paid_at?: string; note?: string
+  slip_url?: string; paid_at?: string; note?: string; total?: number
 }
 
 const STATUS_OPTIONS = ['ทั้งหมด', 'รอชำระเงิน', 'ชำระแล้ว', 'จัดส่งแล้ว', 'ตีกลับ']
@@ -39,7 +39,7 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      let url = `${SB_URL}/rest/v1/orders?order=created_at.desc&limit=200&select=order_id,order_date,customer,phone,province,full_address,sku,qty,channel,status,slip_url,paid_at,note`
+      let url = `${SB_URL}/rest/v1/orders?order=created_at.desc&limit=200&select=order_id,order_date,customer,phone,province,full_address,sku,qty,channel,status,slip_url,paid_at,note,total`
       if (filter !== 'ทั้งหมด') url += `&status=eq.${encodeURIComponent(filter)}`
       const res  = await fetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
       const data = await res.json()
@@ -252,6 +252,11 @@ export default function AdminOrdersPage() {
               <div className="rounded-2xl p-4" style={{ background: '#EDE8DF' }}>
                 <p className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: '#C5BAB0' }}>รายการสินค้า</p>
                 <p className="font-medium" style={{ color: '#3D1F0F' }}>{selected.sku}</p>
+                {selected.total ? (
+                  <p className="font-black text-lg mt-1" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                    ฿{selected.total.toLocaleString()}
+                  </p>
+                ) : null}
                 <p className="text-xs font-mono mt-1" style={{ color: '#8C7B6E' }}>
                   วันที่สั่ง: {selected.order_date} · ช่องทาง: {selected.channel}
                 </p>
