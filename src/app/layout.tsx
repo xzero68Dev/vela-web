@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import { AuthProvider } from '@/context/AuthContext'
 import './globals.css'
 
@@ -35,6 +36,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="th">
       <body>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-GMGH6GDS9N"
+          strategy="afterInteractive"
+        />
+        <Script id="ga4" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-GMGH6GDS9N');
+        `}</Script>
         <AuthProvider>
           {children}
         </AuthProvider>
