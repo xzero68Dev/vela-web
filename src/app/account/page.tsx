@@ -16,62 +16,110 @@ const STATUS_COLOR: Record<string, string> = {
 
 function PhoneLoginForm() {
   const { setUser } = useAuth()
-  const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  const [phone,  setPhone]  = useState('')
-  const [name,   setName]   = useState('')
+  const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+  const [step,    setStep]    = useState<'phone' | 'otp'>('phone')
+  const [phone,   setPhone]   = useState('')
+  const [name,    setName]    = useState('')
+  const [otp,     setOtp]     = useState('')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
+  const [timer,   setTimer]   = useState(0)
 
-  const handleSubmit = async () => {
+  // นับถอยหลัง resend
+  useEffect(() => {
+    if (timer <= 0) return
+    const t = setTimeout(() => setTimer(v => v - 1), 1000)
+    return () => clearTimeout(t)
+  }, [timer])
+
+  const requestOTP = async () => {
     const cleanPhone = phone.replace(/\D/g, '')
     if (cleanPhone.length < 9) { setError('กรุณาใส่เบอร์โทรให้ถูกต้อง'); return }
-    if (!name.trim()) { setError('กรุณาใส่ชื่อ'); return }
     setLoading(true); setError('')
     try {
-      // เช็คว่ามีลูกค้าเบอร์นี้อยู่แล้วไหม
-      const res = await fetch(`${SB_URL}/rest/v1/customers?phone=eq.${cleanPhone}`,
-        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-      const existing = await res.json()
-      let customer = existing?.[0] || null
-
-      if (!customer) {
-        // สร้างใหม่
-        const createRes = await fetch(`${SB_URL}/rest/v1/customers`, {
-          method: 'POST',
-          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ phone: cleanPhone, display_name: name.trim() }),
-        })
-        const created = await createRes.json()
-        customer = Array.isArray(created) ? created[0] : created
-      }
-
-      if (customer) {
-        localStorage.setItem('vela_user', JSON.stringify(customer))
-        setUser(customer)
-      }
-    } catch {
-      setError('เกิดข้อผิดพลาด กรุณาลองใหม่')
+      const res = await fetch(`${API}/auth/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'ส่ง OTP ไม่สำเร็จ')
+      setStep('otp')
+      setTimer(60)
+    } catch (e: any) {
+      setError(e.message)
     } finally { setLoading(false) }
   }
 
-  return (
+  const verifyOTP = async () => {
+    if (otp.length !== 6) { setError('กรุณาใส่ OTP 6 หลัก'); return }
+    setLoading(true); setError('')
+    try {
+      const cleanPhone = phone.replace(/\D/g, '')
+      const res = await fetch(`${API}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, otp, name: name || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'OTP ไม่ถูกต้อง')
+      localStorage.setItem('vela_user', JSON.stringify(data.customer))
+      window.dispatchEvent(new StorageEvent('storage', { key: 'vela_user' }))
+      setUser(data.customer)
+    } catch (e: any) {
+      setError(e.message)
+    } finally { setLoading(false) }
+  }
+
+  if (step === 'phone') return (
     <div className="space-y-3">
-      <input value={name} onChange={e => setName(e.target.value)}
-        placeholder="ชื่อ-นามสกุล"
-        className="w-full px-4 py-3 rounded-2xl border-2 text-sm"
-        style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
       <input value={phone} onChange={e => setPhone(e.target.value)}
         placeholder="เบอร์โทรศัพท์ (เช่น 0812345678)"
         type="tel" inputMode="numeric"
         className="w-full px-4 py-3 rounded-2xl border-2 text-sm font-mono"
         style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+      <input value={name} onChange={e => setName(e.target.value)}
+        placeholder="ชื่อ (ถ้าเป็นสมาชิกใหม่)"
+        className="w-full px-4 py-3 rounded-2xl border-2 text-sm"
+        style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
       {error && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
-      <button onClick={handleSubmit} disabled={loading}
+      <button onClick={requestOTP} disabled={loading}
         className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
         style={{ fontFamily: 'var(--font-display)', background: '#3D1F0F', color: '#EDE8DF' }}>
-        {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วยเบอร์โทร'}
+        {loading ? 'กำลังส่ง OTP...' : 'รับรหัส OTP ทาง SMS'}
       </button>
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-center font-mono" style={{ color: '#8C7B6E' }}>
+        ส่ง OTP ไปยัง {phone} แล้วครับ
+      </p>
+      <input value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,'').slice(0,6))}
+        placeholder="รหัส OTP 6 หลัก"
+        type="tel" inputMode="numeric" maxLength={6}
+        className="w-full px-4 py-3 rounded-2xl border-2 text-sm font-mono text-center tracking-widest"
+        style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F', fontSize: '22px' }} />
+      {error && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
+      <button onClick={verifyOTP} disabled={loading}
+        className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
+        style={{ fontFamily: 'var(--font-display)', background: '#3D1F0F', color: '#EDE8DF' }}>
+        {loading ? 'กำลังตรวจสอบ...' : 'ยืนยัน OTP'}
+      </button>
+      <div className="flex justify-between items-center">
+        <button onClick={() => { setStep('phone'); setOtp(''); setError('') }}
+          className="text-xs font-mono" style={{ color: '#C5BAB0' }}>
+          ← แก้ไขเบอร์
+        </button>
+        {timer > 0
+          ? <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>ส่งใหม่ได้ใน {timer}s</p>
+          : <button onClick={requestOTP} disabled={loading}
+              className="text-xs font-mono" style={{ color: '#D64B2A' }}>
+              ส่ง OTP ใหม่
+            </button>
+        }
+      </div>
     </div>
   )
 }
