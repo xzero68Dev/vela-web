@@ -1,29 +1,75 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-/**
- * หน้านี้รับ OAuth callback จาก LINE login popup
- * flow: LINE OAuth → redirect มาที่นี่ → ส่ง code กลับไปให้ parent window → ปิด popup
- */
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+
 export default function LineCallbackPage() {
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const code  = params.get('code')
-    const state = params.get('state')
+  const router = useRouter()
+  const [status, setStatus] = useState('กำลังเข้าสู่ระบบ...')
 
-    if (window.opener) {
-      // ส่งข้อมูลกลับไปให้ parent window แล้วปิด popup
-      window.opener.postMessage({ type: 'LINE_OAUTH_CALLBACK', code, state }, window.location.origin)
-      window.close()
-    } else {
-      // ถ้าไม่มี opener (redirect flow) → ให้ AuthContext จัดการเอง
-      window.location.href = '/'
+  useEffect(() => {
+    const handleCallback = async () => {
+      const params = new URLSearchParams(window.location.search)
+      const code  = params.get('code')
+      const state = params.get('state')
+      const error = params.get('error')
+
+      if (error) {
+        setStatus('ยกเลิกการเข้าสู่ระบบ')
+        setTimeout(() => router.push('/'), 1500)
+        return
+      }
+
+      const savedState = sessionStorage.getItem('line_oauth_state')
+      if (!code || state !== savedState) {
+        setStatus('เกิดข้อผิดพลาด กรุณาลองใหม่')
+        setTimeout(() => router.push('/account'), 2000)
+        return
+      }
+
+      sessionStorage.removeItem('line_oauth_state')
+
+      try {
+        const res = await fetch(`${API}/auth/line-oauth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code,
+            redirect_uri: window.location.origin + '/line-callback',
+          }),
+        })
+        const data = await res.json()
+        if (data.customer) {
+          localStorage.setItem('vela_user', JSON.stringify(data.customer))
+          setStatus('เข้าสู่ระบบสำเร็จ! ✓')
+          const returnUrl = sessionStorage.getItem('vela_return_url') || '/'
+          sessionStorage.removeItem('vela_return_url')
+          setTimeout(() => router.push(returnUrl), 800)
+        } else {
+          setStatus('เกิดข้อผิดพลาด กรุณาลองใหม่')
+          setTimeout(() => router.push('/account'), 2000)
+        }
+      } catch {
+        setStatus('เชื่อมต่อไม่ได้ กรุณาลองใหม่')
+        setTimeout(() => router.push('/account'), 2000)
+      }
     }
+
+    handleCallback()
   }, [])
 
   return (
     <main style={{ background: '#EDE8DF', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ fontFamily: 'sans-serif', color: '#8C7B6E', fontSize: '14px' }}>กำลังเข้าสู่ระบบ...</p>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: 40, height: 40, border: '4px solid #E0D9CE',
+          borderTopColor: '#D64B2A', borderRadius: '50%',
+          animation: 'spin 1s linear infinite', margin: '0 auto 16px'
+        }} />
+        <p style={{ fontFamily: 'sans-serif', color: '#8C7B6E', fontSize: '14px' }}>{status}</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
     </main>
   )
 }
