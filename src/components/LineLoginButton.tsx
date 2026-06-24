@@ -127,7 +127,7 @@ export default function LineLoginButton({ onDone }: { onDone?: (isNew: boolean) 
           <svg width="14" height="14" viewBox="0 0 40 40" fill="none">
             <path d="M20 4C11.163 4 4 10.268 4 18c0 5.946 3.917 11.11 9.8 13.687.43.186.36.501.27.699l-.87 3.247c-.1.383.35.695.711.505C18.447 33.993 28 27.9 28 27.9c.695 0 8-.895 8-9.9C36 10.268 28.837 4 20 4z" fill="white"/>
           </svg>
-          Login LINE
+          เปิดผ่าน LINE
         </>
       )}
     </button>

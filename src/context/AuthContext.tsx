@@ -74,6 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const liff = (await import('@line/liff')).default
       await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || '2010290578-odw3e7nF' })
 
+      // ถ้าไม่ได้เปิดใน LINE browser → ชวนให้เปิดจาก LINE OA แทน
+      // เพราะ login ผ่าน browser ธรรมดาต้องใส่ email/สแกน QR ซึ่งยากมาก
+      if (!liff.isInClient()) {
+        // เปิด LINE OA ให้ลูกค้าแอดและกดลิงก์เข้าเว็บจาก LINE
+        window.open('https://line.me/R/ti/p/@301saklb', '_blank')
+        setLoading(false)
+        return
+      }
+
       if (!liff.isLoggedIn()) {
         const returnUrl = window.location.href
         sessionStorage.setItem('vela_return_url', returnUrl)
