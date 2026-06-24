@@ -333,9 +333,17 @@ export default function HomePage() {
 
           {/* Top right — LINE login + account */}
           <div className="absolute top-5 right-5 flex items-center gap-2">
+            {user?.picture_url && (
+              <Link href="/account">
+                <img src={user.picture_url} alt={user.display_name || 'profile'}
+                  className="w-8 h-8 rounded-full border-2 object-cover"
+                  style={{ borderColor: '#D8D0C5' }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              </Link>
+            )}
             <Link href="/account" className="text-xs font-mono px-3 py-1.5 rounded-xl border-2 transition-all hover:opacity-80"
               style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
-              {user ? 'บัญชีฉัน' : 'เข้าสู่ระบบ'}
+              {user ? (user.display_name?.split(' ')[0] || 'บัญชีฉัน') : 'เข้าสู่ระบบ'}
             </Link>
             {!user && <LineLoginButton />}
           </div>
