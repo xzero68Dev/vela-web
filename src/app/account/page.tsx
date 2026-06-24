@@ -110,7 +110,8 @@ export default function AccountPage() {
         const map: Record<string, any> = {}
         shipping.forEach((s: any) => {
           const t = trackData.results?.find((r: any) => r.barcode === s.tracking)
-          if (t) map[s.order_id] = t
+          if (t) map[s.order_id] = { ...t, tracking: s.tracking }
+          else if (s.tracking) map[s.order_id] = { tracking: s.tracking }
         })
         setShipments(map)
       })
@@ -255,13 +256,20 @@ export default function AccountPage() {
                     <div className="px-5 py-3">
                       <p className="text-sm" style={{ color: '#3D1F0F' }}>{o.sku}</p>
                       {ship && (
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_COLOR[ship.status] || '#8C7B6E' }} />
+                        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: STATUS_COLOR[ship.status] || '#8C7B6E' }} />
                           <span className="text-xs font-mono" style={{ color: STATUS_COLOR[ship.status] || '#8C7B6E' }}>
                             {ship.status_th || ship.status}
                           </span>
                           {ship.latest_location && (
                             <span className="text-xs font-mono" style={{ color: '#C5BAB0' }}>· {ship.latest_location}</span>
+                          )}
+                          {ship.tracking && (
+                            <Link href={`/track/${ship.tracking}`}
+                              className="text-xs font-mono px-2 py-0.5 rounded-lg border transition-all active:scale-95"
+                              style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
+                              ดูสถานะ →
+                            </Link>
                           )}
                         </div>
                       )}
