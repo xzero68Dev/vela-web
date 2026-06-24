@@ -333,13 +333,11 @@ export default function HomePage() {
 
           {/* Top right — LINE login + account */}
           <div className="absolute top-5 right-5 flex items-center gap-2">
-            {user && (
-              <Link href="/account" className="text-xs font-mono px-3 py-1.5 rounded-xl border-2 transition-all hover:opacity-80"
-                style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
-                บัญชีฉัน
-              </Link>
-            )}
-            <LineLoginButton />
+            <Link href="/account" className="text-xs font-mono px-3 py-1.5 rounded-xl border-2 transition-all hover:opacity-80"
+              style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+              {user ? 'บัญชีฉัน' : 'เข้าสู่ระบบ'}
+            </Link>
+            {!user && <LineLoginButton />}
           </div>
 
           {/* Tagline — single line mixed font */}
