@@ -68,6 +68,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [])
 
+  // auto-login ถ้าเปิดอยู่ใน LINE browser และยังไม่ได้ login
+  useEffect(() => {
+    const autoLogin = async () => {
+      try {
+        const saved = localStorage.getItem('vela_user')
+        if (saved) return  // login แล้ว ไม่ต้องทำอะไร
+
+        const liff = (await import('@line/liff')).default
+        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || '2010290578-odw3e7nF' })
+
+        // เฉพาะตอนอยู่ใน LINE browser เท่านั้น
+        if (!liff.isInClient()) return
+
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href })
+          return
+        }
+
+        // login แล้ว ดึงโปรไฟล์
+        setLoading(true)
+        const profile = await liff.getProfile()
+        let customer = await fetchCustomer(profile.userId)
+        if (!customer) {
+          customer = await upsertCustomer({
+            line_user_id: profile.userId,
+            display_name: profile.displayName,
+            picture_url:  profile.pictureUrl,
+          })
+        }
+        if (customer) {
+          setUser(customer)
+          localStorage.setItem('vela_user', JSON.stringify(customer))
+        }
+      } catch (e) {
+        console.error('[auto-login]', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    autoLogin()
+  }, [])
+
   const login = async () => {
     setLoading(true)
     try {
