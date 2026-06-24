@@ -14,6 +14,68 @@ const STATUS_COLOR: Record<string, string> = {
   delivered: '#1A6B3C', returned: '#D64B2A', problem: '#D64B2A', pending: '#C5BAB0',
 }
 
+function PhoneLoginForm() {
+  const { setUser } = useAuth()
+  const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const [phone,  setPhone]  = useState('')
+  const [name,   setName]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+
+  const handleSubmit = async () => {
+    const cleanPhone = phone.replace(/\D/g, '')
+    if (cleanPhone.length < 9) { setError('กรุณาใส่เบอร์โทรให้ถูกต้อง'); return }
+    if (!name.trim()) { setError('กรุณาใส่ชื่อ'); return }
+    setLoading(true); setError('')
+    try {
+      // เช็คว่ามีลูกค้าเบอร์นี้อยู่แล้วไหม
+      const res = await fetch(`${SB_URL}/rest/v1/customers?phone=eq.${cleanPhone}`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+      const existing = await res.json()
+      let customer = existing?.[0] || null
+
+      if (!customer) {
+        // สร้างใหม่
+        const createRes = await fetch(`${SB_URL}/rest/v1/customers`, {
+          method: 'POST',
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+          body: JSON.stringify({ phone: cleanPhone, display_name: name.trim() }),
+        })
+        const created = await createRes.json()
+        customer = Array.isArray(created) ? created[0] : created
+      }
+
+      if (customer) {
+        localStorage.setItem('vela_user', JSON.stringify(customer))
+        setUser(customer)
+      }
+    } catch {
+      setError('เกิดข้อผิดพลาด กรุณาลองใหม่')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <input value={name} onChange={e => setName(e.target.value)}
+        placeholder="ชื่อ-นามสกุล"
+        className="w-full px-4 py-3 rounded-2xl border-2 text-sm"
+        style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+      <input value={phone} onChange={e => setPhone(e.target.value)}
+        placeholder="เบอร์โทรศัพท์ (เช่น 0812345678)"
+        type="tel" inputMode="numeric"
+        className="w-full px-4 py-3 rounded-2xl border-2 text-sm font-mono"
+        style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+      {error && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
+      <button onClick={handleSubmit} disabled={loading}
+        className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
+        style={{ fontFamily: 'var(--font-display)', background: '#3D1F0F', color: '#EDE8DF' }}>
+        {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วยเบอร์โทร'}
+      </button>
+    </div>
+  )
+}
+
 function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => void }) {
   const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -142,12 +204,29 @@ export default function AccountPage() {
 
   if (!user) return (
     <main className="min-h-screen flex items-center justify-center px-5" style={{ background: '#EDE8DF' }}>
-      <div className="text-center">
-        <VelaBunny size={56} className="mx-auto mb-4 opacity-30" />
-        <h1 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>บัญชีของฉัน</h1>
-        <p className="text-sm mb-6" style={{ color: '#8C7B6E' }}>Login ด้วย LINE เพื่อดูประวัติสั่งซื้อ</p>
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <VelaBunny size={56} className="mx-auto mb-4 opacity-30" />
+          <h1 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>บัญชีของฉัน</h1>
+          <p className="text-sm" style={{ color: '#8C7B6E' }}>เข้าสู่ระบบเพื่อดูประวัติสั่งซื้อ</p>
+        </div>
+
+        {/* LINE login */}
         <LineLoginButton />
-        <div className="mt-4"><Link href="/" className="text-xs font-mono" style={{ color: '#C5BAB0' }}>← กลับหน้าร้าน</Link></div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px" style={{ background: '#D8D0C5' }} />
+          <span className="text-xs font-mono" style={{ color: '#C5BAB0' }}>หรือ</span>
+          <div className="flex-1 h-px" style={{ background: '#D8D0C5' }} />
+        </div>
+
+        {/* Phone login */}
+        <PhoneLoginForm />
+
+        <div className="mt-6 text-center">
+          <Link href="/" className="text-xs font-mono" style={{ color: '#C5BAB0' }}>← กลับหน้าร้าน</Link>
+        </div>
       </div>
     </main>
   )

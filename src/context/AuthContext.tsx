@@ -22,11 +22,12 @@ type AuthContextType = {
   login:         () => Promise<void>
   logout:        () => void
   updateProfile: (data: Partial<Customer>) => Promise<void>
+  setUser:       (user: Customer | null) => void
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null, loading: false,
-  login: async () => {}, logout: () => {}, updateProfile: async () => {},
+  login: async () => {}, logout: () => {}, updateProfile: async () => {}, setUser: () => {},
 })
 
 async function upsertCustomer(data: Partial<Customer> & { line_user_id: string }) {
@@ -212,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateProfile, setUser }}>
       {children}
     </AuthContext.Provider>
   )
