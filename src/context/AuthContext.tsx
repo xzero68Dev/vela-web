@@ -182,8 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const CLIENT_ID = '2010290578'
         const REDIRECT_URI = encodeURIComponent(window.location.origin + '/line-callback')
         const STATE = Math.random().toString(36).substring(2)
-        sessionStorage.setItem('line_oauth_state', STATE)
-        sessionStorage.setItem('vela_return_url', window.location.href)
+        localStorage.setItem('line_oauth_state', STATE)
+        localStorage.setItem('vela_return_url', window.location.href)
         const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&state=${STATE}&scope=profile%20openid`
         window.location.href = lineAuthUrl
         return

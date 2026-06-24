@@ -21,14 +21,14 @@ export default function LineCallbackPage() {
         return
       }
 
-      const savedState = sessionStorage.getItem('line_oauth_state')
+      const savedState = localStorage.getItem('line_oauth_state')
       if (!code || state !== savedState) {
         setStatus('เกิดข้อผิดพลาด กรุณาลองใหม่')
         setTimeout(() => router.push('/account'), 2000)
         return
       }
 
-      sessionStorage.removeItem('line_oauth_state')
+      localStorage.removeItem('line_oauth_state')
 
       try {
         const res = await fetch(`${API}/auth/line-oauth`, {
@@ -43,8 +43,8 @@ export default function LineCallbackPage() {
         if (data.customer) {
           localStorage.setItem('vela_user', JSON.stringify(data.customer))
           setStatus('เข้าสู่ระบบสำเร็จ! ✓')
-          const returnUrl = sessionStorage.getItem('vela_return_url') || '/'
-          sessionStorage.removeItem('vela_return_url')
+          const returnUrl = localStorage.getItem('vela_return_url') || '/'
+          localStorage.removeItem('vela_return_url')
           setTimeout(() => router.push(returnUrl), 800)
         } else {
           setStatus('เกิดข้อผิดพลาด กรุณาลองใหม่')
