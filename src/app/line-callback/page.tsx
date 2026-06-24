@@ -42,6 +42,8 @@ export default function LineCallbackPage() {
         const data = await res.json()
         if (data.customer) {
           localStorage.setItem('vela_user', JSON.stringify(data.customer))
+          // บอกให้ทุก tab รู้ว่า user เปลี่ยนแปลง
+          window.dispatchEvent(new StorageEvent('storage', { key: 'vela_user' }))
           setStatus('เข้าสู่ระบบสำเร็จ! ✓')
           const returnUrl = localStorage.getItem('vela_return_url') || '/'
           localStorage.removeItem('vela_return_url')

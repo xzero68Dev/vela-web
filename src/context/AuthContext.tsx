@@ -61,12 +61,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,    setUser]    = useState<Customer | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // โหลด user จาก localStorage ตอนเริ่ม
+  // โหลด user จาก localStorage ตอนเริ่ม + ฟัง storage event จากหน้าอื่น (เช่น line-callback)
   useEffect(() => {
     try {
       const saved = localStorage.getItem('vela_user')
       if (saved) setUser(JSON.parse(saved))
     } catch {}
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'vela_user') {
+        try {
+          const val = localStorage.getItem('vela_user')
+          setUser(val ? JSON.parse(val) : null)
+        } catch {}
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   // รับ LINE OAuth callback จาก popup window
