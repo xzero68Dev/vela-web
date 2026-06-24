@@ -69,6 +69,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [])
 
+  // รับ LINE OAuth callback จาก popup window
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type !== 'LINE_OAUTH_CALLBACK') return
+
+      const { code, state } = event.data
+      const savedState = sessionStorage.getItem('line_oauth_state')
+      if (state !== savedState) return
+
+      sessionStorage.removeItem('line_oauth_state')
+      setLoading(true)
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'}/auth/line-oauth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code,
+            redirect_uri: window.location.origin + '/line-callback',
+          }),
+        })
+        const data = await res.json()
+        if (data.customer) {
+          setUser(data.customer)
+          localStorage.setItem('vela_user', JSON.stringify(data.customer))
+          // redirect กลับหน้าเดิม
+          const returnUrl = sessionStorage.getItem('vela_return_url')
+          if (returnUrl && returnUrl !== window.location.href) {
+            sessionStorage.removeItem('vela_return_url')
+            window.location.href = returnUrl
+          }
+        }
+      } catch (e) {
+        console.error('[LINE OAuth]', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
   // auto-login ถ้าเปิดอยู่ใน LINE browser และยังไม่ได้ login
   useEffect(() => {
     const autoLogin = async () => {
@@ -135,9 +177,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await liff.init({ liffId })
 
-      // ถ้าไม่ได้เปิดใน LINE browser → เปิด LINE OA แทน
+      // ถ้าไม่ได้เปิดใน LINE browser → ใช้ LINE OAuth popup แทน
       if (!liff.isInClient()) {
-        window.open('https://line.me/R/ti/p/@301saklb', '_blank')
+        const CLIENT_ID = '2010290578'
+        const REDIRECT_URI = encodeURIComponent(window.location.origin + '/line-callback')
+        const STATE = Math.random().toString(36).substring(2)
+        sessionStorage.setItem('line_oauth_state', STATE)
+        sessionStorage.setItem('vela_return_url', window.location.href)
+        const lineAuthUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&state=${STATE}&scope=profile%20openid`
+        // เปิด popup
+        const popup = window.open(lineAuthUrl, 'line_login', 'width=500,height=650,scrollbars=yes')
+        if (!popup) {
+          // ถ้า popup ถูกบล็อก → redirect ตรงๆ แทน
+          window.location.href = lineAuthUrl
+        }
         setLoading(false)
         return
       }
