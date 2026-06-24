@@ -76,7 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (saved) return  // login แล้ว ไม่ต้องทำอะไร
 
         const liff = (await import('@line/liff')).default
-        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || '2010290578-odw3e7nF' })
+
+        // รองรับทั้ง 3 LIFF ID ตามหน้าที่เปิด
+        const LIFF_IDS: Record<string, string> = {
+          '/account':     '2010290578-fIH4NUCe',
+          '/leaderboard': '2010290578-QJ6pXszj',
+        }
+        const path = window.location.pathname
+        const liffId = LIFF_IDS[path] || '2010290578-odw3e7nF'
+
+        await liff.init({ liffId })
 
         // เฉพาะตอนอยู่ใน LINE browser เท่านั้น
         if (!liff.isInClient()) return
@@ -114,12 +123,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       const liff = (await import('@line/liff')).default
-      await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || '2010290578-odw3e7nF' })
 
-      // ถ้าไม่ได้เปิดใน LINE browser → ชวนให้เปิดจาก LINE OA แทน
-      // เพราะ login ผ่าน browser ธรรมดาต้องใส่ email/สแกน QR ซึ่งยากมาก
+      // ใช้ LIFF ID ที่ถูกต้องตาม path ปัจจุบัน
+      const LIFF_IDS: Record<string, string> = {
+        '/account':     '2010290578-fIH4NUCe',
+        '/leaderboard': '2010290578-QJ6pXszj',
+      }
+      const path = window.location.pathname
+      const liffId = LIFF_IDS[path] || '2010290578-odw3e7nF'
+
+      await liff.init({ liffId })
+
+      // ถ้าไม่ได้เปิดใน LINE browser → เปิด LINE OA แทน
       if (!liff.isInClient()) {
-        // เปิด LINE OA ให้ลูกค้าแอดและกดลิงก์เข้าเว็บจาก LINE
         window.open('https://line.me/R/ti/p/@301saklb', '_blank')
         setLoading(false)
         return
