@@ -292,6 +292,31 @@ export default function AdminOrdersPage() {
                 </p>
               )}
 
+              {/* แสดง tracking link ถ้าจัดส่งแล้ว */}
+              {selected.status === 'จัดส่งแล้ว' && selected.ship_date && (
+                <div className="rounded-2xl border-2 p-4" style={{ background: '#D0E8F520', borderColor: '#1A5C8F30' }}>
+                  <p className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: '#C5BAB0' }}>ติดตามพัสดุ</p>
+                  <p className="text-xs font-mono mb-2" style={{ color: '#8C7B6E' }}>
+                    จัดส่งเมื่อ {new Date(selected.ship_date).toLocaleDateString('th-TH')}
+                  </p>
+                  {/* ปุ่ม tracking ตาม carrier */}
+                  <div className="flex gap-2">
+                    <a href={`https://velacoldbrew.com/track/${selected.order_id}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex-1 py-2 rounded-xl text-xs font-mono text-center border-2 transition-all hover:opacity-80"
+                      style={{ borderColor: '#1A5C8F', color: '#1A5C8F', background: '#F5F1EB' }}>
+                      🚚 ดูสถานะ (ไปรษณีย์)
+                    </a>
+                    <a href="https://th.kerryexpress.com/th/track/"
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex-1 py-2 rounded-xl text-xs font-mono text-center border-2 transition-all hover:opacity-80"
+                      style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#F5F1EB' }}>
+                      📦 Kerry tracking
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {/* ฟอร์มเพิ่มการจัดส่ง — แสดงเฉพาะตอนยังไม่มี tracking */}
               {selected.status === 'ชำระแล้ว' && (
                 <div className="rounded-2xl border-2 p-4 space-y-3" style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
