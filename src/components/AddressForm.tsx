@@ -188,11 +188,16 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
       )}
 
       <style>{`
-        .thai-addr {
-          position: relative;
-          overflow: visible;
+        .thai-addr,
+        .thai-addr > *,
+        .thai-addr > * > * {
+          box-shadow: none !important;
+          border: none !important;
+          outline: none !important;
         }
-        .thai-addr input {
+        .thai-addr input,
+        .thai-addr input:focus,
+        .thai-addr input:active {
           width: 100% !important;
           padding: 10px 14px !important;
           border-radius: 12px !important;
@@ -202,30 +207,21 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
           font-size: 14px !important;
           font-family: inherit !important;
           outline: none !important;
+          box-shadow: none !important;
           box-sizing: border-box !important;
-          box-shadow: none !important;
           -webkit-appearance: none !important;
-        }
-        .thai-addr input:focus {
-          border-color: #D64B2A !important;
-          box-shadow: none !important;
-          outline: none !important;
-        }
-        .thai-addr > div {
-          width: 100% !important;
-          box-shadow: none !important;
-          border: none !important;
-          background: transparent !important;
+          appearance: none !important;
         }
         .thai-addr ul {
           position: absolute !important;
           top: 100% !important;
           left: 0 !important;
           right: 0 !important;
+          width: 100% !important;
           border-radius: 12px !important;
           border: 2px solid #E0D9CE !important;
           background: #F5F1EB !important;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
           z-index: 9999 !important;
           list-style: none !important;
           margin: 4px 0 0 !important;
@@ -239,6 +235,7 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
           color: #3D1F0F !important;
           cursor: pointer !important;
           list-style: none !important;
+          border: none !important;
         }
         .thai-addr li:hover {
           background: #EDE8DF !important;

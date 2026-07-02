@@ -200,6 +200,7 @@ export default function AccountPage() {
   const [form, setForm] = useState({ phone: '', name: '', address: '', province: '', zip: '', notify_channel: 'sms' })
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
+  const [editingProfile, setEditingProfile] = useState(false)
 
   // sync form กับ user
   useEffect(() => {
@@ -481,56 +482,87 @@ export default function AccountPage() {
 
         {tab === 'profile' && (
           <div className="rounded-2xl border-2 p-5" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
-            <h3 className="font-black text-sm uppercase mb-4" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>ข้อมูลส่วนตัว</h3>
-            <div className="space-y-3">
-              {[
-                { key: 'name',  label: 'ชื่อ-นามสกุล',  placeholder: 'สมชาย ใจดี',  type: 'text' },
-                { key: 'phone', label: 'เบอร์โทรศัพท์', placeholder: '0812345678', type: 'tel'  },
-              ].map(f => (
-                <div key={f.key}>
-                  <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{f.label}</label>
-                  <input type={f.type} value={(form as any)[f.key]}
-                    onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    placeholder={f.placeholder}
-                    className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none transition-all"
-                    style={{ background: '#EDE8DF', borderColor: '#D8D0C5', color: '#3D1F0F' }} />
-                </div>
-              ))}
-              {/* ช่องทางแจ้งเตือน */}
-              <div>
-                <label className="block text-xs font-mono mb-2" style={{ color: '#8C7B6E' }}>ช่องทางแจ้งเตือนสถานะพัสดุ</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'sms',  label: 'SMS',         icon: '📱', desc: 'รับ SMS' },
-                    { value: 'line', label: 'LINE',        icon: '💬', desc: 'รับผ่าน LINE' },
-                    { value: 'none', label: 'ไม่รับ',      icon: '🔕', desc: 'เช็คเอง' },
-                  ].map(opt => (
-                    <button key={opt.value}
-                      onClick={() => setForm(prev => ({ ...prev, notify_channel: opt.value }))}
-                      className="py-3 px-2 rounded-xl border-2 text-center transition-all"
-                      style={form.notify_channel === opt.value
-                        ? { background: '#D64B2A', borderColor: '#D64B2A', color: '#EDE8DF' }
-                        : { background: '#EDE8DF', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
-                      <div className="text-lg mb-0.5">{opt.icon}</div>
-                      <div className="text-xs font-black uppercase" style={{ fontFamily: 'var(--font-display)', fontSize: '11px' }}>{opt.label}</div>
-                      <div className="text-xs opacity-70" style={{ fontSize: '10px' }}>{opt.desc}</div>
-                    </button>
-                  ))}
-                </div>
-                {form.notify_channel === 'line' && !user?.phone && (
-                  <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>⚠ ต้องใส่เบอร์โทรด้วย</p>
-                )}
-              </div>
-
-              <button onClick={handleSave} disabled={saving}
-                className="w-full py-3 rounded-xl font-black uppercase text-sm mt-2 transition-all active:scale-95 disabled:opacity-50"
-                style={{ fontFamily: 'var(--font-display)', background: saved ? '#1A6B3C' : '#D64B2A', color: '#EDE8DF' }}>
-                {saving ? 'กำลังบันทึก...' : saved ? '✓ บันทึกแล้ว' : 'บันทึกข้อมูล'}
-              </button>
-              <p className="text-xs font-mono text-center" style={{ color: '#C5BAB0' }}>
-                ข้อมูลจะถูกนำไปใช้ตอนสั่งซื้อโดยอัตโนมัติ
-              </p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-sm uppercase" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>ข้อมูลส่วนตัว</h3>
+              {!editingProfile && (
+                <button onClick={() => setEditingProfile(true)}
+                  className="text-xs px-3 py-1.5 rounded-xl border-2 transition-all active:scale-95"
+                  style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
+                  ✏️ แก้ไข
+                </button>
+              )}
             </div>
+
+            {!editingProfile ? (
+              /* View mode */
+              <div className="space-y-3">
+                {[
+                  { label: 'ชื่อ-นามสกุล',  value: user?.name || user?.display_name || '-' },
+                  { label: 'เบอร์โทรศัพท์', value: user?.phone || '-' },
+                  { label: 'ช่องทางแจ้งเตือน', value: user?.notify_channel === 'line' ? '💬 LINE' : user?.notify_channel === 'none' ? '🔕 ไม่รับ' : '📱 SMS' },
+                ].map(f => (
+                  <div key={f.label} className="rounded-xl px-4 py-3" style={{ background: '#EDE8DF' }}>
+                    <p className="text-xs font-mono mb-0.5" style={{ color: '#C5BAB0' }}>{f.label}</p>
+                    <p className="text-sm" style={{ color: '#3D1F0F' }}>{f.value}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Edit mode */
+              <div className="space-y-3">
+                {[
+                  { key: 'name',  label: 'ชื่อ-นามสกุล',  placeholder: 'สมชาย ใจดี',  type: 'text' },
+                  { key: 'phone', label: 'เบอร์โทรศัพท์', placeholder: '0812345678', type: 'tel'  },
+                ].map(f => (
+                  <div key={f.key}>
+                    <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{f.label}</label>
+                    <input type={f.type} value={(form as any)[f.key]}
+                      onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      placeholder={f.placeholder}
+                      className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none transition-all"
+                      style={{ background: '#EDE8DF', borderColor: '#D8D0C5', color: '#3D1F0F' }} />
+                  </div>
+                ))}
+                {/* ช่องทางแจ้งเตือน */}
+                <div>
+                  <label className="block text-xs font-mono mb-2" style={{ color: '#8C7B6E' }}>ช่องทางแจ้งเตือนสถานะพัสดุ</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'sms',  label: 'SMS',   icon: '📱', desc: 'รับ SMS' },
+                      { value: 'line', label: 'LINE',  icon: '💬', desc: 'รับผ่าน LINE' },
+                      { value: 'none', label: 'ไม่รับ', icon: '🔕', desc: 'เช็คเอง' },
+                    ].map(opt => (
+                      <button key={opt.value}
+                        onClick={() => setForm(prev => ({ ...prev, notify_channel: opt.value }))}
+                        className="py-3 px-2 rounded-xl border-2 text-center transition-all"
+                        style={form.notify_channel === opt.value
+                          ? { background: '#D64B2A', borderColor: '#D64B2A', color: '#EDE8DF' }
+                          : { background: '#EDE8DF', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                        <div className="text-lg mb-0.5">{opt.icon}</div>
+                        <div className="text-xs font-black uppercase" style={{ fontFamily: 'var(--font-display)', fontSize: '11px' }}>{opt.label}</div>
+                        <div className="text-xs opacity-70" style={{ fontSize: '10px' }}>{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={async () => {
+                    await handleSave()
+                    setEditingProfile(false)
+                  }} disabled={saving}
+                    className="flex-1 py-3 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-50"
+                    style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+                    {saving ? 'กำลังบันทึก...' : '✓ บันทึกข้อมูล'}
+                  </button>
+                  <button onClick={() => setEditingProfile(false)}
+                    className="px-4 py-3 rounded-xl border-2 text-sm transition-all active:scale-95"
+                    style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                    ยกเลิก
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
