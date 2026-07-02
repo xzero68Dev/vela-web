@@ -11,7 +11,8 @@
     "@line/liff": "^2.29.0",
     "next": "14.2.5",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "thai-address-autocomplete-react": "^1.2.2"
   },
   "devDependencies": {
     "@types/node": "^20",
