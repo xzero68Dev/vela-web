@@ -67,6 +67,28 @@ function OrderCompleteContent() {
           </div>
         )}
 
+        {/* QR PromptPay */}
+        <div className="rounded-3xl border-2 overflow-hidden mb-4"
+          style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+          <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
+            <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
+              ชำระเงินผ่าน PromptPay
+            </p>
+          </div>
+          <div className="px-5 py-4 flex flex-col items-center">
+            <img src="/promptpay-qr.jpg" alt="PromptPay QR"
+              className="w-48 h-48 object-contain rounded-2xl mb-3" />
+            <p className="text-xs font-mono text-center" style={{ color: '#8C7B6E' }}>
+              สแกน QR เพื่อโอนเงิน · PromptPay
+            </p>
+            {order?.total > 0 && (
+              <p className="font-black text-xl mt-2" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                ฿{Number(order.total).toLocaleString()}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* PromptPay reminder */}
         <div className="rounded-2xl border-2 px-5 py-4 mb-4"
           style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>

@@ -414,7 +414,21 @@ export default function AccountPage() {
 
                       {/* ปุ่มอัปโหลดสลิป — เฉพาะ order รอชำระและยังไม่มีสลิป */}
                       {o.status === 'รอชำระเงิน' && !o.slip_url && (
-                        <SlipUploadInline orderId={o.order_id} onDone={() => fetchOrders()} />
+                        <div className="mt-3 space-y-3">
+                          {/* QR PromptPay */}
+                          <div className="rounded-2xl border-2 p-3 flex flex-col items-center"
+                            style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                            <p className="text-xs font-mono mb-2" style={{ color: '#C5BAB0' }}>ชำระผ่าน PromptPay</p>
+                            <img src="/promptpay-qr.jpg" alt="PromptPay QR"
+                              className="w-36 h-36 object-contain rounded-xl" />
+                            {o.total > 0 && (
+                              <p className="font-black text-lg mt-2" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                                ฿{Number(o.total).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                          <SlipUploadInline orderId={o.order_id} onDone={() => fetchOrders()} />
+                        </div>
                       )}
                     </div>
                   </div>
