@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
 import LineLoginButton from '@/components/LineLoginButton'
+import AddressList from '@/components/AddressList'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -179,9 +180,21 @@ export default function AccountPage() {
   const [orders,    setOrders]    = useState<any[]>([])
   const [shipments, setShipments] = useState<Record<string, any>>({})
   const [loading,   setLoading]   = useState(false)
-  const [tab,       setTab]       = useState<'orders' | 'profile'>('orders')
+  const [tab,       setTab]       = useState<'orders' | 'profile' | 'addresses'>('orders')
   const [myRank,    setMyRank]    = useState<{ rank: number; points: number } | null>(null)
   const [rankMonth, setRankMonth] = useState('')
+  const [addresses, setAddresses] = useState<any[]>([])
+
+  const SB_URL_ACC = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const SB_KEY_ACC = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+  const fetchAddresses = useCallback(async () => {
+    if (!user?.phone) return
+    const res = await fetch(`${SB_URL_ACC}/rest/v1/addresses?phone=eq.${user.phone}&order=is_default.desc,id.desc`,
+      { headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}` } })
+    const data = await res.json()
+    if (Array.isArray(data)) setAddresses(data)
+  }, [user?.phone])
 
   // Form state
   const [form, setForm] = useState({ phone: '', name: '', address: '', province: '', zip: '', notify_channel: 'sms' })
@@ -236,6 +249,7 @@ export default function AccountPage() {
   }, [user?.phone])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
+  useEffect(() => { fetchAddresses() }, [fetchAddresses])
 
   // โหลด rank ส่วนตัวประจำเดือนนี้
   useEffect(() => {
@@ -335,14 +349,16 @@ export default function AccountPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-5">
-          {(['orders', 'profile'] as const).map(t => (
+        <div className="flex gap-2 mb-5 flex-wrap">
+          {(['orders', 'addresses', 'profile'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className="px-4 py-2 rounded-xl border-2 text-xs font-mono uppercase tracking-wider transition-all"
               style={tab === t
                 ? { background: '#D64B2A', color: '#EDE8DF', borderColor: '#D64B2A' }
                 : { background: 'transparent', color: '#8C7B6E', borderColor: '#D8D0C5' }}>
-              {t === 'orders' ? `ประวัติสั่งซื้อ ${orders.length > 0 ? `(${orders.length})` : ''}` : 'ข้อมูลส่วนตัว'}
+              {t === 'orders'    ? `ประวัติสั่งซื้อ ${orders.length > 0 ? `(${orders.length})` : ''}` 
+               : t === 'addresses' ? `ที่อยู่ (${addresses.length})`
+               : 'ข้อมูลส่วนตัว'}
             </button>
           ))}
         </div>
@@ -451,6 +467,18 @@ export default function AccountPage() {
         )}
 
         {/* Profile */}
+        {tab === 'addresses' && (
+          <div>
+            <AddressList
+              addresses={addresses}
+              phone={user?.phone || ''}
+              customerId={user?.id}
+              mode="manage"
+              onRefresh={fetchAddresses}
+            />
+          </div>
+        )}
+
         {tab === 'profile' && (
           <div className="rounded-2xl border-2 p-5" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
             <h3 className="font-black text-sm uppercase mb-4" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>ข้อมูลส่วนตัว</h3>

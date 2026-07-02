@@ -5,6 +5,8 @@ import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
 import LineLoginButton from '@/components/LineLoginButton'
 import { useAuth } from '@/context/AuthContext'
+import AddressForm from '@/components/AddressForm'
+import AddressList from '@/components/AddressList'
 
 const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
@@ -19,6 +21,33 @@ function CheckoutForm() {
   const [cart,       setCart]       = useState<CartItem[]>([])
   const { user, updateProfile } = useAuth()
   const [form,       setForm]       = useState({ name: '', phone: '', address: '', province: '', zip: '', note: '' })
+  const [addresses,  setAddresses]  = useState<any[]>([])
+  const [selAddrId,  setSelAddrId]  = useState<number | undefined>()
+  const [showNewAddr, setShowNewAddr] = useState(false)
+
+  const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+  // โหลดที่อยู่ที่บันทึกไว้
+  const fetchAddresses = async (phone: string) => {
+    const res = await fetch(`${SB_URL}/rest/v1/addresses?phone=eq.${phone}&order=is_default.desc,id.desc`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+    const data = await res.json()
+    if (Array.isArray(data) && data.length > 0) {
+      setAddresses(data)
+      // เลือก default หรืออันแรก
+      const def = data.find((a: any) => a.is_default) || data[0]
+      setSelAddrId(def.id)
+      setForm(prev => ({
+        ...prev,
+        name:     def.name     || prev.name,
+        phone:    def.phone    || prev.phone,
+        address:  def.full_address || prev.address,
+        province: def.province || prev.province,
+        zip:      def.zip      || prev.zip,
+      }))
+    }
+  }
 
   // Auto-fill จาก LINE user (ดึงข้อมูลทั้งหมดจาก customers table)
   useEffect(() => {
@@ -31,6 +60,9 @@ function CheckoutForm() {
         zip:      prev.zip      || user.zip      || '',
         note:     prev.note,
       }))
+      // โหลดที่อยู่ที่บันทึกไว้
+      const phone = user.phone || ''
+      if (phone) fetchAddresses(phone)
     }
   }, [user?.line_user_id])
   const [loading,    setLoading]    = useState(false)
@@ -276,27 +308,85 @@ function CheckoutForm() {
             <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>ข้อมูลจัดส่ง</p>
           </div>
           <div className="px-5 py-4 space-y-3">
-            {[
-              { key: 'name',     label: 'ชื่อ-นามสกุล',      placeholder: 'สมชาย ใจดี',           type: 'text' },
-              { key: 'phone',    label: 'เบอร์โทรศัพท์',      placeholder: '0812345678',            type: 'tel' },
-              { key: 'address',  label: 'ที่อยู่',             placeholder: 'บ้านเลขที่ ถนน ซอย',   type: 'text' },
-              { key: 'province', label: 'จังหวัด',             placeholder: 'กรุงเทพมหานคร',         type: 'text' },
-              { key: 'zip',      label: 'รหัสไปรษณีย์',       placeholder: '10100',                 type: 'text' },
-              { key: 'note',     label: 'หมายเหตุ (ถ้ามี)',   placeholder: 'เช่น แพ้นม หรืออื่นๆ', type: 'text' },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{f.label}</label>
-                <input type={f.type} placeholder={f.placeholder}
-                  value={(form as any)[f.key]}
-                  onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none transition-all"
-                  style={{
-                    background: '#EDE8DF', color: '#3D1F0F',
-                    borderColor: errors[f.key] ? '#D64B2A' : '#D8D0C5',
-                  }} />
-                {errors[f.key] && <p className="text-xs mt-0.5 font-mono" style={{ color: '#D64B2A' }}>{errors[f.key]}</p>}
-              </div>
-            ))}
+
+            {/* ถ้า login และมีที่อยู่ — แสดง AddressList ให้เลือก */}
+            {user && addresses.length > 0 && !showNewAddr ? (
+              <>
+                <AddressList
+                  addresses={addresses}
+                  selectedId={selAddrId}
+                  phone={user.phone || ''}
+                  customerId={user.id}
+                  mode="select"
+                  onSelect={(addr) => {
+                    setSelAddrId(addr.id)
+                    setForm(prev => ({
+                      ...prev,
+                      name:     addr.name,
+                      phone:    addr.phone,
+                      address:  addr.full_address,
+                      province: addr.province,
+                      zip:      addr.zip || '',
+                    }))
+                  }}
+                  onRefresh={() => { if (user?.phone) fetchAddresses(user.phone) }}
+                />
+                {/* หมายเหตุ */}
+                <div>
+                  <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>หมายเหตุ (ถ้ามี)</label>
+                  <input type="text" placeholder="เช่น แพ้นม หรืออื่นๆ"
+                    value={form.note}
+                    onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none"
+                    style={{ background: '#EDE8DF', color: '#3D1F0F', borderColor: '#D8D0C5' }} />
+                </div>
+              </>
+            ) : (
+              <>
+                {/* AddressForm พร้อม autocomplete */}
+                <AddressForm
+                  initial={{
+                    name:     form.name,
+                    phone:    form.phone,
+                    full_address: form.address,
+                    province: form.province,
+                    zip:      form.zip,
+                  }}
+                  onSave={(data) => {
+                    setForm(prev => ({
+                      ...prev,
+                      name:     data.name,
+                      phone:    data.phone,
+                      address:  data.full_address,
+                      province: data.province,
+                      zip:      data.zip,
+                    }))
+                    setShowNewAddr(false)
+                    // ถ้า login ให้บันทึกลง addresses table ด้วย
+                    if (user?.phone) {
+                      fetch(`${SB_URL}/rest/v1/addresses`, {
+                        method: 'POST',
+                        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                        body: JSON.stringify({ ...data, phone: user.phone, customer_id: user.id }),
+                      }).then(() => { if (user?.phone) fetchAddresses(user.phone) })
+                    }
+                  }}
+                  onCancel={addresses.length > 0 ? () => setShowNewAddr(false) : undefined}
+                />
+                {/* หมายเหตุ */}
+                <div>
+                  <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>หมายเหตุ (ถ้ามี)</label>
+                  <input type="text" placeholder="เช่น แพ้นม หรืออื่นๆ"
+                    value={form.note}
+                    onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none"
+                    style={{ background: '#EDE8DF', color: '#3D1F0F', borderColor: '#D8D0C5' }} />
+                </div>
+              </>
+            )}
+
+            {errors.address  && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาเลือกหรือกรอกที่อยู่จัดส่ง</p>}
+            {errors.province && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาระบุจังหวัด</p>}
           </div>
         </div>
 
