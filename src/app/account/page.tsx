@@ -193,7 +193,37 @@ export default function AccountPage() {
     const res = await fetch(`${SB_URL_ACC}/rest/v1/addresses?phone=eq.${user.phone}&order=is_default.desc,id.desc`,
       { headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}` } })
     const data = await res.json()
-    if (Array.isArray(data)) setAddresses(data)
+    if (Array.isArray(data) && data.length > 0) {
+      setAddresses(data)
+      return
+    }
+    // ถ้าไม่มีที่อยู่ — ดึงจาก order ล่าสุดมาสร้างให้อัตโนมัติ
+    const ordRes = await fetch(
+      `${SB_URL_ACC}/rest/v1/orders?phone=eq.${user.phone}&order=created_at.desc&limit=1&select=customer,phone,full_address,province,zip`,
+      { headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}` } })
+    const orders = await ordRes.json()
+    if (Array.isArray(orders) && orders.length > 0) {
+      const o = orders[0]
+      if (o.full_address && o.province) {
+        await fetch(`${SB_URL_ACC}/rest/v1/addresses`, {
+          method: 'POST',
+          headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            phone:        user.phone,
+            name:         o.customer || user.display_name || '',
+            full_address: o.full_address,
+            province:     o.province,
+            zip:          o.zip || '',
+            is_default:   true,
+          }),
+        })
+        // โหลดใหม่
+        const res2 = await fetch(`${SB_URL_ACC}/rest/v1/addresses?phone=eq.${user.phone}&order=is_default.desc,id.desc`,
+          { headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}` } })
+        const data2 = await res2.json()
+        if (Array.isArray(data2)) setAddresses(data2)
+      }
+    }
   }, [user?.phone])
 
   // Form state
@@ -467,13 +497,46 @@ export default function AccountPage() {
         {/* Profile */}
         {tab === 'addresses' && (
           <div className="space-y-4">
-            <AddressList
-              addresses={addresses}
-              phone={user?.phone || ''}
-              customerId={user?.id}
-              mode="manage"
-              onRefresh={fetchAddresses}
-            />
+
+            {/* ที่อยู่หลัก — แสดงอันเดียว */}
+            {(() => {
+              const defaultAddr = addresses.find(a => a.is_default) || addresses[0]
+              return defaultAddr ? (
+                <div className="rounded-2xl border-2 p-4" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                      style={{ background: '#D64B2A', color: '#EDE8DF' }}>ที่อยู่หลัก</span>
+                  </div>
+                  <p className="font-black text-sm mb-0.5" style={{ color: '#3D1F0F' }}>{defaultAddr.name}</p>
+                  <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{defaultAddr.phone}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: '#8C7B6E' }}>
+                    {[defaultAddr.full_address, defaultAddr.subdistrict, defaultAddr.district, defaultAddr.province, defaultAddr.zip].filter(Boolean).join(' ')}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border-2 p-4 text-center" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                  <p className="text-sm font-mono" style={{ color: '#C5BAB0' }}>ยังไม่มีที่อยู่จัดส่ง</p>
+                </div>
+              )
+            })()}
+
+            {/* จัดการที่อยู่ทั้งหมด */}
+            <div className="rounded-2xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+              <div className="px-4 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
+                <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
+                  ที่อยู่ทั้งหมด ({addresses.length}/3)
+                </p>
+              </div>
+              <div className="p-4">
+                <AddressList
+                  addresses={addresses}
+                  phone={user?.phone || ''}
+                  customerId={user?.id}
+                  mode="manage"
+                  onRefresh={fetchAddresses}
+                />
+              </div>
+            </div>
 
             {/* ช่องทางแจ้งเตือน */}
             <div className="rounded-2xl border-2 p-4" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
