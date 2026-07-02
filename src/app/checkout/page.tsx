@@ -106,8 +106,7 @@ function CheckoutForm() {
       localStorage.removeItem('vela_cart')
       setCart([])
 
-      setOrderId(oid)
-      setSubmitted(true)
+      router.push(`/order-complete?order_id=${oid}`)
     } catch (e: any) {
       alert(e.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
     } finally {
