@@ -484,11 +484,8 @@ export default function AccountPage() {
             <h3 className="font-black text-sm uppercase mb-4" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>ข้อมูลส่วนตัว</h3>
             <div className="space-y-3">
               {[
-                { key: 'name',     label: 'ชื่อ-นามสกุล',  placeholder: 'สมชาย ใจดี',      type: 'text' },
-                { key: 'phone',    label: 'เบอร์โทรศัพท์', placeholder: '0812345678',       type: 'tel'  },
-                { key: 'address',  label: 'ที่อยู่',        placeholder: 'บ้านเลขที่ ถนน ซอย', type: 'text' },
-                { key: 'province', label: 'จังหวัด',        placeholder: 'กรุงเทพมหานคร',    type: 'text' },
-                { key: 'zip',      label: 'รหัสไปรษณีย์',  placeholder: '10100',            type: 'text' },
+                { key: 'name',  label: 'ชื่อ-นามสกุล',  placeholder: 'สมชาย ใจดี',  type: 'text' },
+                { key: 'phone', label: 'เบอร์โทรศัพท์', placeholder: '0812345678', type: 'tel'  },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{f.label}</label>
