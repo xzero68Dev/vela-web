@@ -180,7 +180,7 @@ export default function AccountPage() {
   const [orders,    setOrders]    = useState<any[]>([])
   const [shipments, setShipments] = useState<Record<string, any>>({})
   const [loading,   setLoading]   = useState(false)
-  const [tab,       setTab]       = useState<'orders' | 'addresses'>('orders')
+  const [tab,       setTab]       = useState<'orders' | 'profile'>('orders')
   const [myRank,    setMyRank]    = useState<{ rank: number; points: number } | null>(null)
   const [rankMonth, setRankMonth] = useState('')
   const [addresses, setAddresses] = useState<any[]>([])
@@ -351,7 +351,7 @@ export default function AccountPage() {
             <p className="text-xs font-mono mt-0.5" style={{ color: '#8C7B6E' }}>LINE Member ✓</p>
             {user.phone
               ? <p className="text-sm font-mono mt-1" style={{ color: '#3D1F0F' }}>{user.phone}</p>
-              : <button onClick={() => setTab('addresses')} className="text-xs mt-1" style={{ color: '#D64B2A' }}>+ ใส่เบอร์โทร</button>
+              : <button onClick={() => setTab('profile')} className="text-xs mt-1" style={{ color: '#D64B2A' }}>+ ใส่เบอร์โทร</button>
             }
           </div>
         </div>
@@ -380,13 +380,13 @@ export default function AccountPage() {
 
           {/* Tabs */}
           <div className="flex gap-2 mb-5 flex-wrap">
-            {(['orders', 'addresses'] as const).map(t => (
+            {(['orders', 'profile'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className="px-4 py-2 rounded-xl border-2 text-xs font-mono uppercase tracking-wider transition-all"
                 style={tab === t
                   ? { background: '#D64B2A', color: '#EDE8DF', borderColor: '#D64B2A' }
                   : { background: 'transparent', color: '#8C7B6E', borderColor: '#D8D0C5' }}>
-                {t === 'orders' ? `ประวัติสั่งซื้อ ${orders.length > 0 ? `(${orders.length})` : ''}` : `ที่อยู่ (${addresses.length})`}
+                {t === 'orders' ? `ประวัติสั่งซื้อ ${orders.length > 0 ? `(${orders.length})` : ''}` : 'ข้อมูลส่วนตัว'}
               </button>
           ))}
         </div>
@@ -396,7 +396,7 @@ export default function AccountPage() {
           !user.phone ? (
             <div className="rounded-2xl border-2 px-5 py-10 text-center" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
               <p className="text-sm mb-3" style={{ color: '#8C7B6E' }}>ใส่เบอร์โทรเพื่อดูประวัติสั่งซื้อ</p>
-              <button onClick={() => setTab('addresses')} className="px-5 py-2 rounded-xl font-black uppercase text-xs"
+              <button onClick={() => setTab('profile')} className="px-5 py-2 rounded-xl font-black uppercase text-xs"
                 style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>ใส่เบอร์โทร</button>
             </div>
           ) : loading ? (
@@ -495,7 +495,7 @@ export default function AccountPage() {
         )}
 
         {/* Profile */}
-        {tab === 'addresses' && (
+        {tab === 'profile' && (
           <div className="space-y-4">
 
             {/* ที่อยู่หลัก — แสดงอันเดียว */}
@@ -536,6 +536,21 @@ export default function AccountPage() {
                   onRefresh={fetchAddresses}
                 />
               </div>
+            </div>
+
+            {/* ชื่อที่แสดงใน Ranking */}
+            <div className="rounded-2xl border-2 p-4" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+              <p className="text-xs font-mono uppercase tracking-wider mb-3" style={{ color: '#C5BAB0' }}>ชื่อที่แสดงใน Ranking 🏆</p>
+              <div className="flex gap-2">
+                <input
+                  value={form.name}
+                  onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder={user?.display_name || 'ชื่อที่แสดงในอันดับ'}
+                  className="flex-1 px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none"
+                  style={{ background: '#EDE8DF', borderColor: '#D8D0C5', color: '#3D1F0F' }}
+                />
+              </div>
+              <p className="text-xs mt-2 font-mono" style={{ color: '#C5BAB0' }}>ชื่อนี้จะแสดงในหน้า Leaderboard เท่านั้น ไม่ใช่ชื่อผู้รับพัสดุ</p>
             </div>
 
             {/* ช่องทางแจ้งเตือน */}
