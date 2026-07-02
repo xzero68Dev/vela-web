@@ -309,18 +309,20 @@ function CheckoutForm() {
           </div>
           <div className="px-5 py-4 space-y-3">
 
-            {/* แสดงที่อยู่หลักอันเดียว + ปุ่มเปลี่ยน */}
+            {/* แสดงที่อยู่ที่เลือกอยู่ + ปุ่มเปลี่ยน */}
             {user && addresses.length > 0 && !showNewAddr ? (() => {
-              const defaultAddr = addresses.find(a => a.is_default) || addresses[selAddrId ? addresses.findIndex(a => a.id === selAddrId) : 0] || addresses[0]
+              const shownAddr = addresses.find(a => a.id === selAddrId)
+                ?? addresses.find(a => a.is_default)
+                ?? addresses[0]
               return (
                 <div>
                   <div className="rounded-2xl border-2 p-4 mb-2" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <p className="font-black text-sm mb-0.5" style={{ color: '#3D1F0F' }}>{defaultAddr.name}</p>
-                        <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{defaultAddr.phone}</p>
+                        <p className="font-black text-sm mb-0.5" style={{ color: '#3D1F0F' }}>{shownAddr.name}</p>
+                        <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{shownAddr.phone}</p>
                         <p className="text-xs leading-relaxed" style={{ color: '#8C7B6E' }}>
-                          {[defaultAddr.full_address, defaultAddr.subdistrict, defaultAddr.district, defaultAddr.province, defaultAddr.zip].filter(Boolean).join(' ')}
+                          {[shownAddr.full_address, shownAddr.subdistrict, shownAddr.district, shownAddr.province, shownAddr.zip].filter(Boolean).join(' ')}
                         </p>
                       </div>
                       <button onClick={() => setShowNewAddr(true)}
@@ -341,8 +343,15 @@ function CheckoutForm() {
                       <div key={a.id}
                         onClick={() => {
                           setSelAddrId(a.id)
-                          setForm(prev => ({ ...prev, name: a.name, phone: a.phone, address: a.full_address, province: a.province, zip: a.zip || '' }))
-                          setShowNewAddr(false)
+                          setForm(prev => ({
+                            ...prev,
+                            name:     a.name,
+                            phone:    a.phone,
+                            address:  a.full_address,
+                            province: a.province,
+                            zip:      a.zip || '',
+                          }))
+                          setTimeout(() => setShowNewAddr(false), 50)
                         }}
                         className="rounded-xl border-2 p-3 cursor-pointer transition-all active:scale-98"
                         style={{
