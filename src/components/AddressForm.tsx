@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { CreateInput, Address } from 'thai-address-autocomplete-react'
 
 const InputThaiAddress = CreateInput()
@@ -23,13 +23,16 @@ interface Props {
   loading?:  boolean
 }
 
-const inputStyle = {
+const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 14px', borderRadius: 12,
   border: '2px solid #D8D0C5', background: '#F5F1EB',
   color: '#3D1F0F', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+  boxSizing: 'border-box',
 }
 
-const labelStyle = { fontSize: 12, color: '#8C7B6E', marginBottom: 4, display: 'block' }
+const labelStyle: React.CSSProperties = {
+  fontSize: 12, color: '#8C7B6E', marginBottom: 4, display: 'block'
+}
 
 export default function AddressForm({ initial, onSave, onCancel, loading }: Props) {
   const [form, setForm] = useState<AddressData>({
@@ -65,11 +68,6 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
     onSave(form)
   }
 
-  const acStyle: React.CSSProperties = {
-    ...inputStyle as any,
-    // override styles injected by thai-address-autocomplete-react
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
@@ -77,13 +75,15 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div>
           <label style={labelStyle}>ชื่อผู้รับ *</label>
-          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            placeholder="ชื่อ-นามสกุล" style={inputStyle} />
+          <input value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>เบอร์โทร *</label>
-          <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-            placeholder="0812345678" type="tel" inputMode="numeric" style={inputStyle} />
+          <input value={form.phone}
+            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+            type="tel" inputMode="numeric" style={inputStyle} />
         </div>
       </div>
 
@@ -92,31 +92,29 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
         <label style={labelStyle}>บ้านเลขที่ / หมู่ / ซอย / ถนน *</label>
         <input value={form.full_address}
           onChange={e => setForm(f => ({ ...f, full_address: e.target.value }))}
-          placeholder="เช่น 123 ซ.สุขุมวิท 10 ถ.สุขุมวิท" style={inputStyle} />
+          style={inputStyle} />
       </div>
 
-      {/* ตำบล autocomplete */}
+      {/* ตำบล */}
       <div>
         <label style={labelStyle}>ตำบล / แขวง *</label>
-        <div className="thai-address-wrapper">
+        <div className="thai-addr">
           <InputThaiAddress.District
             value={form.subdistrict}
             onChange={(v: string) => setForm(f => ({ ...f, subdistrict: v }))}
             onSelect={handleSelect}
-            placeholder="พิมพ์ชื่อตำบล/แขวง"
           />
         </div>
       </div>
 
       {/* อำเภอ */}
       <div>
-        <label style={labelStyle}>อำเภอ / เขต *</label>
-        <div className="thai-address-wrapper">
+        <label style={labelStyle}>อำเภอ / เขต</label>
+        <div className="thai-addr">
           <InputThaiAddress.Amphoe
             value={form.district}
             onChange={(v: string) => setForm(f => ({ ...f, district: v }))}
             onSelect={handleSelect}
-            placeholder="พิมพ์ชื่ออำเภอ/เขต"
           />
         </div>
       </div>
@@ -125,23 +123,21 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div>
           <label style={labelStyle}>จังหวัด *</label>
-          <div className="thai-address-wrapper">
+          <div className="thai-addr">
             <InputThaiAddress.Province
               value={form.province}
               onChange={(v: string) => setForm(f => ({ ...f, province: v }))}
               onSelect={handleSelect}
-              placeholder="จังหวัด"
             />
           </div>
         </div>
         <div>
           <label style={labelStyle}>รหัสไปรษณีย์</label>
-          <div className="thai-address-wrapper">
+          <div className="thai-addr">
             <InputThaiAddress.Zipcode
               value={form.zip}
               onChange={(v: string) => setForm(f => ({ ...f, zip: v }))}
               onSelect={handleSelect}
-              placeholder="รหัสไปรษณีย์"
             />
           </div>
         </div>
@@ -154,24 +150,27 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
         <span style={{ fontSize: 13, color: '#8C7B6E' }}>ตั้งเป็นที่อยู่หลัก</span>
       </label>
 
-      {error && <p style={{ color: '#D64B2A', fontSize: 12, fontFamily: 'monospace' }}>{error}</p>}
+      {error && (
+        <p style={{ color: '#D64B2A', fontSize: 12, fontFamily: 'monospace' }}>{error}</p>
+      )}
 
       {/* ปุ่ม */}
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         <button onClick={handleSubmit} disabled={loading}
           style={{
-            flex: 1, padding: '12px', borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: '#D64B2A', color: '#EDE8DF', fontWeight: 900,
-            fontSize: 13, fontFamily: 'var(--font-display)', textTransform: 'uppercase',
-            opacity: loading ? 0.5 : 1,
+            flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: loading ? '#E0D9CE' : '#D64B2A',
+            color: '#EDE8DF', fontWeight: 900, fontSize: 13,
+            fontFamily: 'var(--font-display)', textTransform: 'uppercase',
           }}>
           {loading ? 'กำลังบันทึก...' : '✓ บันทึกที่อยู่'}
         </button>
         {onCancel && (
           <button onClick={onCancel}
             style={{
-              padding: '12px 16px', borderRadius: 12, border: '2px solid #D8D0C5',
-              background: 'transparent', color: '#8C7B6E', cursor: 'pointer', fontSize: 13,
+              padding: '12px 16px', borderRadius: 12,
+              border: '2px solid #D8D0C5', background: 'transparent',
+              color: '#8C7B6E', cursor: 'pointer', fontSize: 13,
             }}>
             ยกเลิก
           </button>
@@ -179,7 +178,7 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
       </div>
 
       <style>{`
-        .thai-address-wrapper input {
+        .thai-addr input {
           width: 100% !important;
           padding: 10px 14px !important;
           border-radius: 12px !important;
@@ -191,20 +190,23 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
           outline: none !important;
           box-sizing: border-box !important;
         }
-        .thai-address-wrapper ul {
+        .thai-addr ul {
           border-radius: 12px !important;
           border: 2px solid #E0D9CE !important;
           background: #F5F1EB !important;
           box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
           z-index: 50 !important;
+          list-style: none !important;
+          margin: 4px 0 0 !important;
+          padding: 4px 0 !important;
         }
-        .thai-address-wrapper li {
+        .thai-addr li {
           padding: 8px 14px !important;
           font-size: 13px !important;
           color: #3D1F0F !important;
           cursor: pointer !important;
         }
-        .thai-address-wrapper li:hover {
+        .thai-addr li:hover {
           background: #EDE8DF !important;
         }
       `}</style>
