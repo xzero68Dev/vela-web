@@ -200,7 +200,6 @@ export default function AccountPage() {
   const [form, setForm] = useState({ phone: '', name: '', address: '', province: '', zip: '', notify_channel: 'sms' })
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
-  const [editingProfile, setEditingProfile] = useState(false)
 
   // sync form กับ user
   useEffect(() => {
@@ -322,7 +321,7 @@ export default function AccountPage() {
             <p className="text-xs font-mono mt-0.5" style={{ color: '#8C7B6E' }}>LINE Member ✓</p>
             {user.phone
               ? <p className="text-sm font-mono mt-1" style={{ color: '#3D1F0F' }}>{user.phone}</p>
-              : <button onClick={() => setTab('profile')} className="text-xs mt-1" style={{ color: '#D64B2A' }}>+ ใส่เบอร์โทร</button>
+              : <button onClick={() => setTab('addresses')} className="text-xs mt-1" style={{ color: '#D64B2A' }}>+ ใส่เบอร์โทร</button>
             }
           </div>
         </div>
@@ -367,7 +366,7 @@ export default function AccountPage() {
           !user.phone ? (
             <div className="rounded-2xl border-2 px-5 py-10 text-center" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
               <p className="text-sm mb-3" style={{ color: '#8C7B6E' }}>ใส่เบอร์โทรเพื่อดูประวัติสั่งซื้อ</p>
-              <button onClick={() => setTab('profile')} className="px-5 py-2 rounded-xl font-black uppercase text-xs"
+              <button onClick={() => setTab('addresses')} className="px-5 py-2 rounded-xl font-black uppercase text-xs"
                 style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>ใส่เบอร์โทร</button>
             </div>
           ) : loading ? (
