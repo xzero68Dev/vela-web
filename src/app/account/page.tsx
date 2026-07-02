@@ -297,7 +297,27 @@ export default function AccountPage() {
       .catch(() => {})
   }, [user?.phone])
 
+  const [nameError, setNameError] = useState('')
+
   const handleSave = async () => {
+    setNameError('')
+    const newName = form.name.trim()
+
+    // เช็คชื่อซ้ำก่อน save (ถ้ามีการเปลี่ยนชื่อ)
+    if (newName && newName !== (user?.name || '').trim()) {
+      const SB_URL_CHK = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SB_KEY_CHK = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const res = await fetch(
+        `${SB_URL_CHK}/rest/v1/customers?name=eq.${encodeURIComponent(newName)}&select=id`,
+        { headers: { apikey: SB_KEY_CHK, Authorization: `Bearer ${SB_KEY_CHK}` } }
+      )
+      const existing = await res.json()
+      if (Array.isArray(existing) && existing.length > 0) {
+        setNameError('ชื่อนี้มีคนใช้แล้ว กรุณาตั้งชื่ออื่นครับ')
+        return
+      }
+    }
+
     setSaving(true)
     await updateProfile(form)
     setSaving(false)
@@ -566,6 +586,9 @@ export default function AccountPage() {
                 />
               </div>
               <p className="text-xs mt-2 font-mono" style={{ color: '#C5BAB0' }}>ชื่อนี้จะแสดงในหน้า Leaderboard เท่านั้น ไม่ใช่ชื่อผู้รับพัสดุ</p>
+              {nameError && (
+                <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>⚠️ {nameError}</p>
+              )}
             </div>
 
             {/* ช่องทางแจ้งเตือน */}
