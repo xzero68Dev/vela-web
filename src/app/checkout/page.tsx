@@ -309,90 +309,93 @@ function CheckoutForm() {
           </div>
           <div className="px-5 py-4 space-y-3">
 
-            {/* ถ้า login และมีที่อยู่ — แสดง AddressList ให้เลือก */}
-            {user && addresses.length > 0 && !showNewAddr ? (
-              <>
-                <AddressList
-                  addresses={addresses}
-                  selectedId={selAddrId}
-                  phone={user.phone || ''}
-                  customerId={user.id}
-                  mode="select"
-                  onSelect={(addr) => {
-                    setSelAddrId(addr.id)
-                    setForm(prev => ({
-                      ...prev,
-                      name:     addr.name,
-                      phone:    addr.phone,
-                      address:  addr.full_address,
-                      province: addr.province,
-                      zip:      addr.zip || '',
-                    }))
-                  }}
-                  onRefresh={() => { if (user?.phone) fetchAddresses(user.phone) }}
-                />
-                {/* หมายเหตุ */}
+            {/* แสดงที่อยู่หลักอันเดียว + ปุ่มเปลี่ยน */}
+            {user && addresses.length > 0 && !showNewAddr ? (() => {
+              const defaultAddr = addresses.find(a => a.is_default) || addresses[selAddrId ? addresses.findIndex(a => a.id === selAddrId) : 0] || addresses[0]
+              return (
                 <div>
-                  <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>หมายเหตุ (ถ้ามี)</label>
-                  <input type="text" placeholder="เช่น แพ้นม หรืออื่นๆ"
-                    value={form.note}
-                    onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none"
-                    style={{ background: '#EDE8DF', color: '#3D1F0F', borderColor: '#D8D0C5' }} />
+                  <div className="rounded-2xl border-2 p-4 mb-2" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="font-black text-sm mb-0.5" style={{ color: '#3D1F0F' }}>{defaultAddr.name}</p>
+                        <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>{defaultAddr.phone}</p>
+                        <p className="text-xs leading-relaxed" style={{ color: '#8C7B6E' }}>
+                          {[defaultAddr.full_address, defaultAddr.subdistrict, defaultAddr.district, defaultAddr.province, defaultAddr.zip].filter(Boolean).join(' ')}
+                        </p>
+                      </div>
+                      <button onClick={() => setShowNewAddr(true)}
+                        className="text-xs px-3 py-1.5 rounded-xl border-2 flex-shrink-0 transition-all active:scale-95"
+                        style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                        เปลี่ยน
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <>
-                <AddressForm
-                  hideButton
-                  initial={{
-                    name:         form.name,
-                    phone:        form.phone,
-                    full_address: form.address,
-                    province:     form.province,
-                    zip:          form.zip,
-                  }}
-                  onChange={(data) => {
-                    setForm(prev => ({
-                      ...prev,
-                      name:     data.name,
-                      phone:    data.phone,
-                      address:  data.full_address,
-                      province: data.province,
-                      zip:      data.zip,
-                    }))
-                  }}
-                  onSave={(data) => {
-                    setForm(prev => ({
-                      ...prev,
-                      name:     data.name,
-                      phone:    data.phone,
-                      address:  data.full_address,
-                      province: data.province,
-                      zip:      data.zip,
-                    }))
-                    setShowNewAddr(false)
-                    if (user?.phone) {
-                      fetch(`${SB_URL}/rest/v1/addresses`, {
-                        method: 'POST',
-                        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-                        body: JSON.stringify({ ...data, phone: user.phone, customer_id: user.id }),
-                      }).then(() => { if (user?.phone) fetchAddresses(user.phone) })
-                    }
-                  }}
-                  onCancel={addresses.length > 0 ? () => setShowNewAddr(false) : undefined}
-                />
-                {/* หมายเหตุ */}
-                <div>
-                  <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>หมายเหตุ (ถ้ามี)</label>
-                  <input type="text" placeholder="เช่น แพ้นม หรืออื่นๆ"
-                    value={form.note}
-                    onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))}
-                    className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none"
-                    style={{ background: '#EDE8DF', color: '#3D1F0F', borderColor: '#D8D0C5' }} />
-                </div>
-              </>
+              )
+            })() : (
+              /* ถ้ายังไม่มีที่อยู่ หรือกดเปลี่ยน — แสดง list ให้เลือก */
+              <div>
+                {addresses.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {addresses.map(a => (
+                      <div key={a.id}
+                        onClick={() => {
+                          setSelAddrId(a.id)
+                          setForm(prev => ({ ...prev, name: a.name, phone: a.phone, address: a.full_address, province: a.province, zip: a.zip || '' }))
+                          setShowNewAddr(false)
+                        }}
+                        className="rounded-xl border-2 p-3 cursor-pointer transition-all active:scale-98"
+                        style={{
+                          background: selAddrId === a.id ? '#FFF5F3' : '#EDE8DF',
+                          borderColor: selAddrId === a.id ? '#D64B2A' : '#D8D0C5',
+                        }}>
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1">
+                            <p className="text-sm font-black" style={{ color: '#3D1F0F' }}>{a.name}
+                              {a.is_default && <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full font-mono" style={{ background: '#D64B2A', color: '#EDE8DF' }}>หลัก</span>}
+                            </p>
+                            <p className="text-xs" style={{ color: '#8C7B6E' }}>{[a.full_address, a.province].filter(Boolean).join(' ')}</p>
+                          </div>
+                          {selAddrId === a.id && <span style={{ color: '#D64B2A' }}>✓</span>}
+                        </div>
+                      </div>
+                    ))}
+                    <button onClick={() => setShowNewAddr(false)}
+                      className="w-full text-xs py-2 rounded-xl border-2 transition-all"
+                      style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                      ยกเลิก
+                    </button>
+                  </div>
+                )}
+                {!addresses.length && (
+                  <AddressForm
+                    hideButton
+                    onChange={(data) => setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, province: data.province, zip: data.zip }))}
+                    onSave={(data) => {
+                      setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, province: data.province, zip: data.zip }))
+                      if (user?.phone) {
+                        fetch(`${SB_URL}/rest/v1/addresses`, {
+                          method: 'POST',
+                          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                          body: JSON.stringify({ ...data, phone: user.phone, customer_id: user.id }),
+                        }).then(() => { if (user?.phone) fetchAddresses(user.phone) })
+                      }
+                    }}
+                  />
+                )}
+              </div>
             )}
+
+            {/* หมายเหตุ */}
+            <div>
+              <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>หมายเหตุ (ถ้ามี)</label>
+              <input type="text" placeholder="เช่น แพ้นม หรืออื่นๆ"
+                value={form.note}
+                onChange={e => setForm(prev => ({ ...prev, note: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none"
+                style={{ background: '#EDE8DF', color: '#3D1F0F', borderColor: '#D8D0C5' }} />
+            </div>
+
 
             {errors.address  && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาเลือกหรือกรอกที่อยู่จัดส่ง</p>}
             {errors.province && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาระบุจังหวัด</p>}
