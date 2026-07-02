@@ -13,7 +13,7 @@ function OrderCompleteContent() {
 
   useEffect(() => {
     if (!orderId) return
-    fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}&select=order_id,customer,sku,total,status`,
+    fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}&select=order_id,customer,phone,sku,qty,total,status,full_address,province,zip`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
       .then(r => r.json())
       .then(data => { if (data?.[0]) setOrder(data[0]) })
@@ -49,8 +49,13 @@ function OrderCompleteContent() {
                 รายการสั่งซื้อ
               </p>
             </div>
-            <div className="px-5 py-4 space-y-2">
-              <p className="text-sm" style={{ color: '#3D1F0F' }}>{order.sku}</p>
+            <div className="px-5 py-4 space-y-3">
+              {/* สินค้า */}
+              <div>
+                <p className="text-xs font-mono mb-1" style={{ color: '#C5BAB0' }}>สินค้า</p>
+                <p className="text-sm" style={{ color: '#3D1F0F' }}>{order.sku}</p>
+              </div>
+              {/* ยอดรวม */}
               {order.total > 0 && (
                 <div className="flex justify-between items-center pt-2 border-t" style={{ borderColor: '#E0D9CE' }}>
                   <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>ยอดรวม</p>
@@ -59,7 +64,18 @@ function OrderCompleteContent() {
                   </p>
                 </div>
               )}
-              <div className="flex justify-between items-center">
+              {/* ที่อยู่จัดส่ง */}
+              {order.full_address && (
+                <div className="pt-2 border-t" style={{ borderColor: '#E0D9CE' }}>
+                  <p className="text-xs font-mono mb-1" style={{ color: '#C5BAB0' }}>จัดส่งไปที่</p>
+                  <p className="text-sm font-black mb-0.5" style={{ color: '#3D1F0F' }}>{order.customer}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: '#8C7B6E' }}>
+                    {[order.full_address, order.province, order.zip].filter(Boolean).join(' ')}
+                  </p>
+                </div>
+              )}
+              {/* Order ID */}
+              <div className="flex justify-between items-center pt-2 border-t" style={{ borderColor: '#E0D9CE' }}>
                 <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>Order ID</p>
                 <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>{order.order_id}</p>
               </div>
@@ -136,7 +152,7 @@ function OrderCompleteContent() {
           <Link href="/account"
             className="block w-full py-3 rounded-2xl font-black uppercase text-sm text-center transition-all active:scale-95"
             style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
-            อัปโหลดสลิป →
+            📎 อัปโหลดสลิปหลังโอนเงิน →
           </Link>
           <Link href="/"
             className="block w-full py-3 rounded-2xl font-black uppercase text-sm text-center border-2 transition-all active:scale-95"
