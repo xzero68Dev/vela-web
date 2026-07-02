@@ -497,9 +497,9 @@ export default function AccountPage() {
               /* View mode */
               <div className="space-y-3">
                 {[
-                  { label: 'ชื่อ-นามสกุล',  value: user?.name || user?.display_name || '-' },
-                  { label: 'เบอร์โทรศัพท์', value: user?.phone || '-' },
-                  { label: 'ช่องทางแจ้งเตือน', value: user?.notify_channel === 'line' ? '💬 LINE' : user?.notify_channel === 'none' ? '🔕 ไม่รับ' : '📱 SMS' },
+                  { label: 'ชื่อ-นามสกุล',       value: user?.name || user?.display_name || '-' },
+                  { label: 'เบอร์โทรศัพท์',      value: user?.phone || '-' },
+                  { label: 'ช่องทางแจ้งเตือน',   value: form.notify_channel === 'line' ? '💬 LINE' : form.notify_channel === 'none' ? '🔕 ไม่รับ' : '📱 SMS' },
                 ].map(f => (
                   <div key={f.label} className="rounded-xl px-4 py-3" style={{ background: '#EDE8DF' }}>
                     <p className="text-xs font-mono mb-0.5" style={{ color: '#C5BAB0' }}>{f.label}</p>
