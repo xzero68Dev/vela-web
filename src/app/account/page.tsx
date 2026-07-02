@@ -181,8 +181,9 @@ export default function AccountPage() {
   const [shipments, setShipments] = useState<Record<string, any>>({})
   const [loading,   setLoading]   = useState(false)
   const [tab,       setTab]       = useState<'orders' | 'profile'>('orders')
-  const [myRank,    setMyRank]    = useState<{ rank: number; points: number } | null>(null)
-  const [rankMonth, setRankMonth] = useState('')
+  const [myRank,      setMyRank]      = useState<{ rank: number; points: number } | null>(null)
+  const [rankMonth,   setRankMonth]   = useState('')
+  const [totalPoints, setTotalPoints] = useState<number | null>(null)
   const [addresses, setAddresses] = useState<any[]>([])
 
   const SB_URL_ACC = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -289,6 +290,9 @@ export default function AccountPage() {
       .then(data => {
         setMyRank(data.me || null)
         setRankMonth(data.month || '')
+        if (typeof data.total_points_all_time === 'number') {
+          setTotalPoints(data.total_points_all_time)
+        }
       })
       .catch(() => {})
   }, [user?.phone])
@@ -357,24 +361,35 @@ export default function AccountPage() {
         </div>
 
         {/* Personal rank card */}
-        {myRank && (
+        {(myRank || totalPoints !== null) && (
           <Link href="/leaderboard"
-            className="block rounded-2xl border-2 px-5 py-3 mb-5 flex items-center justify-between transition-all hover:shadow-sm active:scale-[0.99]"
+            className="block rounded-2xl border-2 px-5 py-4 mb-5 transition-all hover:shadow-sm active:scale-[0.99]"
             style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
-            <div>
-              <p className="text-xs font-mono" style={{ color: '#854F0B' }}>
-                🏆 อันดับของคุณเดือนนี้
-              </p>
-              <p className="font-black text-lg leading-none mt-0.5" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
-                อันดับ #{myRank.rank}
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-mono" style={{ color: '#854F0B' }}>
+                  🏆 อันดับของคุณเดือนนี้
+                </p>
+                <p className="font-black text-lg leading-none mt-0.5" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
+                  {myRank ? `อันดับ #${myRank.rank}` : 'ยังไม่มีอันดับ'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-black text-2xl leading-none" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                  {myRank?.points ?? 0}
+                </p>
+                <p className="text-xs font-mono" style={{ color: '#854F0B' }}>point เดือนนี้</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="font-black text-2xl leading-none" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-                {myRank.points}
-              </p>
-              <p className="text-xs font-mono" style={{ color: '#854F0B' }}>point</p>
-            </div>
+            {/* point สะสมทั้งหมด */}
+            {totalPoints !== null && (
+              <div className="mt-3 pt-3 border-t flex items-center justify-between" style={{ borderColor: '#D4890A30' }}>
+                <p className="text-xs font-mono" style={{ color: '#854F0B' }}>⭐ point สะสมทั้งหมด</p>
+                <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
+                  {totalPoints} point
+                </p>
+              </div>
+            )}
           </Link>
         )}
 
