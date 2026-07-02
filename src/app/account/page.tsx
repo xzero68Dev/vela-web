@@ -149,6 +149,13 @@ function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => 
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ slip_url }),
       })
+      // แจ้ง admin ว่ามีสลิปใหม่
+      const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+      await fetch(`${API}/orders/slip-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, slip_url }),
+      }).catch(() => {}) // ถ้าแจ้งไม่ได้ก็ไม่ block flow หลัก
       onDone()
     } catch (e: any) {
       setError(e.message || 'เกิดข้อผิดพลาด')
@@ -421,6 +428,11 @@ export default function AccountPage() {
                             <p className="text-xs font-mono mb-2" style={{ color: '#C5BAB0' }}>ชำระผ่าน PromptPay</p>
                             <img src="/promptpay-qr.jpg" alt="PromptPay QR"
                               className="w-36 h-36 object-contain rounded-xl" />
+                            <a href="/promptpay-qr.jpg" download="VeLA-PromptPay-QR.jpg"
+                              className="text-xs font-mono px-3 py-1.5 rounded-xl border-2 mt-2 transition-all active:scale-95"
+                              style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
+                              ⬇️ บันทึก QR
+                            </a>
                             {o.total > 0 && (
                               <p className="font-black text-lg mt-2" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
                                 ฿{Number(o.total).toLocaleString()}

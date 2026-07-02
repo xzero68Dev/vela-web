@@ -78,6 +78,11 @@ function OrderCompleteContent() {
           <div className="px-5 py-4 flex flex-col items-center">
             <img src="/promptpay-qr.jpg" alt="PromptPay QR"
               className="w-48 h-48 object-contain rounded-2xl mb-3" />
+            <a href="/promptpay-qr.jpg" download="VeLA-PromptPay-QR.jpg"
+              className="text-xs font-mono px-4 py-2 rounded-xl border-2 transition-all active:scale-95 mb-2"
+              style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
+              ⬇️ บันทึก QR ไว้สแกน
+            </a>
             <p className="text-xs font-mono text-center" style={{ color: '#8C7B6E' }}>
               สแกน QR เพื่อโอนเงิน · PromptPay
             </p>
