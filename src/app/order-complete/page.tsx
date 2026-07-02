@@ -1,20 +1,19 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import VelaBunny from '@/components/VelaBunny'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-export default function OrderCompletePage() {
-  const params   = useSearchParams()
-  const orderId  = params.get('order_id') || ''
+function OrderCompleteContent() {
+  const params  = useSearchParams()
+  const orderId = params.get('order_id') || ''
   const [order, setOrder] = useState<any>(null)
 
   useEffect(() => {
     if (!orderId) return
-    fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}&select=order_id,customer,sku,qty,total,status`,
+    fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}&select=order_id,customer,sku,total,status`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
       .then(r => r.json())
       .then(data => { if (data?.[0]) setOrder(data[0]) })
@@ -51,9 +50,7 @@ export default function OrderCompletePage() {
               </p>
             </div>
             <div className="px-5 py-4 space-y-2">
-              <div className="flex justify-between items-start">
-                <p className="text-sm flex-1 mr-2" style={{ color: '#3D1F0F' }}>{order.sku}</p>
-              </div>
+              <p className="text-sm" style={{ color: '#3D1F0F' }}>{order.sku}</p>
               {order.total > 0 && (
                 <div className="flex justify-between items-center pt-2 border-t" style={{ borderColor: '#E0D9CE' }}>
                   <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>ยอดรวม</p>
@@ -73,7 +70,8 @@ export default function OrderCompletePage() {
         {/* PromptPay reminder */}
         <div className="rounded-2xl border-2 px-5 py-4 mb-4"
           style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
-          <p className="font-black text-sm mb-1" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
+          <p className="font-black text-sm mb-1"
+            style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
             📌 อย่าลืมโอนเงิน
           </p>
           <p className="text-xs leading-relaxed" style={{ color: '#854F0B' }}>
@@ -122,5 +120,17 @@ export default function OrderCompletePage() {
 
       </div>
     </main>
+  )
+}
+
+export default function OrderCompletePage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center" style={{ background: '#EDE8DF' }}>
+        <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>กำลังโหลด...</p>
+      </main>
+    }>
+      <OrderCompleteContent />
+    </Suspense>
   )
 }
