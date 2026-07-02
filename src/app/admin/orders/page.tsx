@@ -34,6 +34,7 @@ export default function AdminOrdersPage() {
   const [confirming, setConfirming] = useState(false)
   const [shipping,   setShipping]   = useState({ tracking: '', carrier: 'POST SABUY' })
   const [addingShip, setAddingShip] = useState(false)
+  const [confirming2, setConfirming2] = useState(false)
   const [updated,    setUpdated]    = useState('')
 
   const fetchOrders = useCallback(async () => {
@@ -89,6 +90,25 @@ export default function AdminOrdersPage() {
       await fetchOrders()
       setSelected(prev => prev ? { ...prev, status: 'จัดส่งแล้ว' } : null)
     } finally { setAddingShip(false) }
+  }
+
+  const confirmDelivered = async (order: Order) => {
+    if (!confirm(`ยืนยันว่าพัสดุของ ${order.customer} ส่งถึงแล้ว?\nระบบจะแจ้ง SMS/LINE ให้ลูกค้าทันที`)) return
+    setConfirming2(true)
+    try {
+      const res = await fetch(`${API}/admin/confirm-delivered?order_id=${encodeURIComponent(order.order_id)}`, {
+        method: 'POST',
+        headers: { 'x-api-key': ADMIN_KEY },
+      })
+      if (!res.ok) {
+        const errText = await res.text()
+        alert(`ยืนยันไม่สำเร็จ: ${errText}`)
+        return
+      }
+      await fetchOrders()
+      setSelected(prev => prev ? { ...prev, status: 'จัดส่งสำเร็จ' } : null)
+      alert('✓ ยืนยันส่งถึงแล้ว และแจ้งลูกค้าเรียบร้อย')
+    } finally { setConfirming2(false) }
   }
 
   const filtered = orders.filter(o =>
@@ -283,6 +303,15 @@ export default function AdminOrdersPage() {
                   className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-50"
                   style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
                   {confirming ? 'กำลังยืนยัน...' : '✓ ยืนยันการชำระเงิน'}
+                </button>
+              )}
+
+              {/* ปุ่มยืนยันส่งถึงแล้ว (กรณีส่งเอง) */}
+              {selected.status === 'จัดส่งแล้ว' && (
+                <button onClick={() => confirmDelivered(selected)} disabled={confirming2}
+                  className="w-full py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
+                  style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
+                  {confirming2 ? 'กำลังยืนยัน...' : '✓ ยืนยันส่งถึงแล้ว (แจ้งลูกค้า)'}
                 </button>
               )}
 
