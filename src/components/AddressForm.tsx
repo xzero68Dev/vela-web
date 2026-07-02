@@ -17,10 +17,12 @@ export interface AddressData {
 }
 
 interface Props {
-  initial?:  Partial<AddressData>
-  onSave:    (data: AddressData) => void
-  onCancel?: () => void
-  loading?:  boolean
+  initial?:    Partial<AddressData>
+  onSave:      (data: AddressData) => void
+  onChange?:   (data: AddressData) => void  // real-time sync ไม่ต้องกดปุ่ม
+  onCancel?:   () => void
+  loading?:    boolean
+  hideButton?: boolean
 }
 
 const inputStyle: React.CSSProperties = {
@@ -34,7 +36,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: 12, color: '#8C7B6E', marginBottom: 4, display: 'block'
 }
 
-export default function AddressForm({ initial, onSave, onCancel, loading }: Props) {
+export default function AddressForm({ initial, onSave, onChange, onCancel, loading, hideButton }: Props) {
   const [form, setForm] = useState<AddressData>({
     name:         initial?.name         || '',
     phone:        initial?.phone        || '',
@@ -48,14 +50,20 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
   })
   const [error, setError] = useState('')
 
+  // sync real-time กลับไปหา parent
+  const update = (patch: Partial<AddressData>) => {
+    const next = { ...form, ...patch }
+    setForm(next)
+    onChange?.(next)
+  }
+
   const handleSelect = (addr: Address) => {
-    setForm(f => ({
-      ...f,
+    update({
       subdistrict: addr.district  || '',
       district:    addr.amphoe    || '',
       province:    addr.province  || '',
       zip:         addr.zipcode   || '',
-    }))
+    })
   }
 
   const handleSubmit = () => {
@@ -76,13 +84,13 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
         <div>
           <label style={labelStyle}>ชื่อผู้รับ *</label>
           <input value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            onChange={e => update({name: e.target.value })}
             style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>เบอร์โทร *</label>
           <input value={form.phone}
-            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+            onChange={e => update({phone: e.target.value })}
             type="tel" inputMode="numeric" style={inputStyle} />
         </div>
       </div>
@@ -91,7 +99,7 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
       <div>
         <label style={labelStyle}>บ้านเลขที่ / หมู่ / ซอย / ถนน *</label>
         <input value={form.full_address}
-          onChange={e => setForm(f => ({ ...f, full_address: e.target.value }))}
+          onChange={e => update({full_address: e.target.value })}
           style={inputStyle} />
       </div>
 
@@ -101,7 +109,7 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
         <div className="thai-addr">
           <InputThaiAddress.District
             value={form.subdistrict}
-            onChange={(v: string) => setForm(f => ({ ...f, subdistrict: v }))}
+            onChange={(v: string) => update({subdistrict: v })}
             onSelect={handleSelect}
           />
         </div>
@@ -113,7 +121,7 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
         <div className="thai-addr">
           <InputThaiAddress.Amphoe
             value={form.district}
-            onChange={(v: string) => setForm(f => ({ ...f, district: v }))}
+            onChange={(v: string) => update({district: v })}
             onSelect={handleSelect}
           />
         </div>
@@ -126,7 +134,7 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
           <div className="thai-addr">
             <InputThaiAddress.Province
               value={form.province}
-              onChange={(v: string) => setForm(f => ({ ...f, province: v }))}
+              onChange={(v: string) => update({province: v })}
               onSelect={handleSelect}
             />
           </div>
@@ -136,7 +144,7 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
           <div className="thai-addr">
             <InputThaiAddress.Zipcode
               value={form.zip}
-              onChange={(v: string) => setForm(f => ({ ...f, zip: v }))}
+              onChange={(v: string) => update({zip: v })}
               onSelect={handleSelect}
             />
           </div>
@@ -146,7 +154,7 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
       {/* ที่อยู่หลัก */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={form.is_default}
-          onChange={e => setForm(f => ({ ...f, is_default: e.target.checked }))} />
+          onChange={e => update({is_default: e.target.checked })} />
         <span style={{ fontSize: 13, color: '#8C7B6E' }}>ตั้งเป็นที่อยู่หลัก</span>
       </label>
 
@@ -154,30 +162,36 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
         <p style={{ color: '#D64B2A', fontSize: 12, fontFamily: 'monospace' }}>{error}</p>
       )}
 
-      {/* ปุ่ม */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <button onClick={handleSubmit} disabled={loading}
-          style={{
-            flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: loading ? '#E0D9CE' : '#D64B2A',
-            color: '#EDE8DF', fontWeight: 900, fontSize: 13,
-            fontFamily: 'var(--font-display)', textTransform: 'uppercase',
-          }}>
-          {loading ? 'กำลังบันทึก...' : '✓ บันทึกที่อยู่'}
-        </button>
-        {onCancel && (
-          <button onClick={onCancel}
+      {/* ปุ่ม — ซ่อนเมื่อใช้ใน checkout */}
+      {!hideButton && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button onClick={handleSubmit} disabled={loading}
             style={{
-              padding: '12px 16px', borderRadius: 12,
-              border: '2px solid #D8D0C5', background: 'transparent',
-              color: '#8C7B6E', cursor: 'pointer', fontSize: 13,
+              flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: loading ? '#E0D9CE' : '#D64B2A',
+              color: '#EDE8DF', fontWeight: 900, fontSize: 13,
+              fontFamily: 'var(--font-display)', textTransform: 'uppercase',
             }}>
-            ยกเลิก
+            {loading ? 'กำลังบันทึก...' : '✓ บันทึกที่อยู่'}
           </button>
-        )}
-      </div>
+          {onCancel && (
+            <button onClick={onCancel}
+              style={{
+                padding: '12px 16px', borderRadius: 12,
+                border: '2px solid #D8D0C5', background: 'transparent',
+                color: '#8C7B6E', cursor: 'pointer', fontSize: 13,
+              }}>
+              ยกเลิก
+            </button>
+          )}
+        </div>
+      )}
 
       <style>{`
+        .thai-addr {
+          position: relative;
+          overflow: visible;
+        }
         .thai-addr input {
           width: 100% !important;
           padding: 10px 14px !important;
@@ -189,22 +203,42 @@ export default function AddressForm({ initial, onSave, onCancel, loading }: Prop
           font-family: inherit !important;
           outline: none !important;
           box-sizing: border-box !important;
+          box-shadow: none !important;
+          -webkit-appearance: none !important;
+        }
+        .thai-addr input:focus {
+          border-color: #D64B2A !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+        .thai-addr > div {
+          width: 100% !important;
+          box-shadow: none !important;
+          border: none !important;
+          background: transparent !important;
         }
         .thai-addr ul {
+          position: absolute !important;
+          top: 100% !important;
+          left: 0 !important;
+          right: 0 !important;
           border-radius: 12px !important;
           border: 2px solid #E0D9CE !important;
           background: #F5F1EB !important;
           box-shadow: 0 4px 16px rgba(0,0,0,0.1) !important;
-          z-index: 50 !important;
+          z-index: 9999 !important;
           list-style: none !important;
           margin: 4px 0 0 !important;
           padding: 4px 0 !important;
+          max-height: 200px !important;
+          overflow-y: auto !important;
         }
         .thai-addr li {
           padding: 8px 14px !important;
           font-size: 13px !important;
           color: #3D1F0F !important;
           cursor: pointer !important;
+          list-style: none !important;
         }
         .thai-addr li:hover {
           background: #EDE8DF !important;

@@ -343,14 +343,24 @@ function CheckoutForm() {
               </>
             ) : (
               <>
-                {/* AddressForm พร้อม autocomplete */}
                 <AddressForm
+                  hideButton
                   initial={{
-                    name:     form.name,
-                    phone:    form.phone,
+                    name:         form.name,
+                    phone:        form.phone,
                     full_address: form.address,
-                    province: form.province,
-                    zip:      form.zip,
+                    province:     form.province,
+                    zip:          form.zip,
+                  }}
+                  onChange={(data) => {
+                    setForm(prev => ({
+                      ...prev,
+                      name:     data.name,
+                      phone:    data.phone,
+                      address:  data.full_address,
+                      province: data.province,
+                      zip:      data.zip,
+                    }))
                   }}
                   onSave={(data) => {
                     setForm(prev => ({
@@ -362,7 +372,6 @@ function CheckoutForm() {
                       zip:      data.zip,
                     }))
                     setShowNewAddr(false)
-                    // ถ้า login ให้บันทึกลง addresses table ด้วย
                     if (user?.phone) {
                       fetch(`${SB_URL}/rest/v1/addresses`, {
                         method: 'POST',
