@@ -1,8 +1,5 @@
 'use client'
-import { useState } from 'react'
-import { CreateInput, Address } from 'thai-address-autocomplete-react'
-
-const InputThaiAddress = CreateInput()
+import { useState, useEffect, useRef } from 'react'
 
 export interface AddressData {
   id?:          number
@@ -19,21 +16,94 @@ export interface AddressData {
 interface Props {
   initial?:    Partial<AddressData>
   onSave:      (data: AddressData) => void
-  onChange?:   (data: AddressData) => void  // real-time sync ไม่ต้องกดปุ่ม
+  onChange?:   (data: AddressData) => void
   onCancel?:   () => void
   loading?:    boolean
   hideButton?: boolean
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 14px', borderRadius: 12,
-  border: '2px solid #D8D0C5', background: '#F5F1EB',
-  color: '#3D1F0F', fontSize: 14, fontFamily: 'inherit', outline: 'none',
-  boxSizing: 'border-box',
+// ดึงข้อมูลจาก library โดยตรง
+type ThaiAddr = { d: string; a: string; p: string; z: string }
+let DB: ThaiAddr[] = []
+async function getDB(): Promise<ThaiAddr[]> {
+  if (DB.length) return DB
+  try {
+    const mod = await import('thai-address-autocomplete-react')
+    // @ts-ignore
+    const raw = mod.DB || mod.default?.DB || []
+    DB = raw
+  } catch {}
+  return DB
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: 12, color: '#8C7B6E', marginBottom: 4, display: 'block'
+const inputCls = "w-full px-4 py-2.5 rounded-xl border-2 text-sm focus:outline-none transition-all"
+const inputStyle = { background: '#F5F1EB', borderColor: '#D8D0C5', color: '#3D1F0F' }
+const labelStyle: React.CSSProperties = { fontSize: 12, color: '#8C7B6E', marginBottom: 4, display: 'block' }
+
+function AutocompleteInput({
+  label, value, onChange, field,
+}: {
+  label: string
+  value: string
+  onChange: (val: string, full?: ThaiAddr) => void
+  field: 'd' | 'a' | 'p' | 'z'
+}) {
+  const [suggestions, setSuggestions] = useState<ThaiAddr[]>([])
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const handleInput = async (v: string) => {
+    onChange(v)
+    if (v.length < 2) { setSuggestions([]); setOpen(false); return }
+    const db = await getDB()
+    const lower = v.toLowerCase()
+    const matches = db.filter(r => r[field]?.toLowerCase().startsWith(lower)).slice(0, 8)
+    setSuggestions(matches)
+    setOpen(matches.length > 0)
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <label style={labelStyle}>{label}</label>
+      <input
+        value={value}
+        onChange={e => handleInput(e.target.value)}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        className={inputCls}
+        style={inputStyle}
+      />
+      {open && (
+        <ul style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999,
+          background: '#F5F1EB', border: '2px solid #E0D9CE', borderRadius: 12,
+          marginTop: 4, padding: '4px 0', maxHeight: 200, overflowY: 'auto',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)', listStyle: 'none',
+        }}>
+          {suggestions.map((s, i) => (
+            <li key={i}
+              onMouseDown={() => { onChange(s[field], s); setOpen(false) }}
+              style={{
+                padding: '8px 14px', fontSize: 13, color: '#3D1F0F',
+                cursor: 'pointer', listStyle: 'none',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#EDE8DF')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              {s.d} › {s.a} › {s.p} ({s.z})
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 export default function AddressForm({ initial, onSave, onChange, onCancel, loading, hideButton }: Props) {
@@ -50,28 +120,22 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
   })
   const [error, setError] = useState('')
 
-  // sync real-time กลับไปหา parent
   const update = (patch: Partial<AddressData>) => {
     const next = { ...form, ...patch }
     setForm(next)
     onChange?.(next)
   }
 
-  const handleSelect = (addr: Address) => {
-    update({
-      subdistrict: addr.district  || '',
-      district:    addr.amphoe    || '',
-      province:    addr.province  || '',
-      zip:         addr.zipcode   || '',
-    })
+  const handleSelect = (full: ThaiAddr) => {
+    update({ subdistrict: full.d, district: full.a, province: full.p, zip: full.z })
   }
 
   const handleSubmit = () => {
     if (!form.name.trim())         { setError('กรุณาใส่ชื่อผู้รับ'); return }
     if (!form.phone.trim())        { setError('กรุณาใส่เบอร์โทร'); return }
     if (!form.full_address.trim()) { setError('กรุณาใส่บ้านเลขที่/ซอย/ถนน'); return }
-    if (!form.subdistrict.trim())  { setError('กรุณาเลือกตำบล/แขวง'); return }
-    if (!form.province.trim())     { setError('กรุณาเลือกจังหวัด'); return }
+    if (!form.subdistrict.trim())  { setError('กรุณาระบุตำบล/แขวง'); return }
+    if (!form.province.trim())     { setError('กรุณาระบุจังหวัด'); return }
     setError('')
     onSave(form)
   }
@@ -84,14 +148,15 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
         <div>
           <label style={labelStyle}>ชื่อผู้รับ *</label>
           <input value={form.name}
-            onChange={e => update({name: e.target.value })}
-            style={inputStyle} />
+            onChange={e => update({ name: e.target.value })}
+            className={inputCls} style={inputStyle} />
         </div>
         <div>
           <label style={labelStyle}>เบอร์โทร *</label>
           <input value={form.phone}
-            onChange={e => update({phone: e.target.value })}
-            type="tel" inputMode="numeric" style={inputStyle} />
+            onChange={e => update({ phone: e.target.value })}
+            type="tel" inputMode="numeric"
+            className={inputCls} style={inputStyle} />
         </div>
       </div>
 
@@ -99,70 +164,51 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
       <div>
         <label style={labelStyle}>บ้านเลขที่ / หมู่ / ซอย / ถนน *</label>
         <input value={form.full_address}
-          onChange={e => update({full_address: e.target.value })}
-          style={inputStyle} />
+          onChange={e => update({ full_address: e.target.value })}
+          className={inputCls} style={inputStyle} />
       </div>
 
       {/* ตำบล */}
-      <div>
-        <label style={labelStyle}>ตำบล / แขวง *</label>
-        <div className="thai-addr">
-          <InputThaiAddress.District
-            value={form.subdistrict}
-            onChange={(v: string) => update({subdistrict: v })}
-            onSelect={handleSelect}
-          />
-        </div>
-      </div>
+      <AutocompleteInput
+        label="ตำบล / แขวง *"
+        value={form.subdistrict}
+        field="d"
+        onChange={(v, full) => full ? handleSelect(full) : update({ subdistrict: v })}
+      />
 
       {/* อำเภอ */}
-      <div>
-        <label style={labelStyle}>อำเภอ / เขต</label>
-        <div className="thai-addr">
-          <InputThaiAddress.Amphoe
-            value={form.district}
-            onChange={(v: string) => update({district: v })}
-            onSelect={handleSelect}
-          />
-        </div>
-      </div>
+      <AutocompleteInput
+        label="อำเภอ / เขต"
+        value={form.district}
+        field="a"
+        onChange={(v, full) => full ? handleSelect(full) : update({ district: v })}
+      />
 
       {/* จังหวัด + รหัสไปรษณีย์ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div>
-          <label style={labelStyle}>จังหวัด *</label>
-          <div className="thai-addr">
-            <InputThaiAddress.Province
-              value={form.province}
-              onChange={(v: string) => update({province: v })}
-              onSelect={handleSelect}
-            />
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>รหัสไปรษณีย์</label>
-          <div className="thai-addr">
-            <InputThaiAddress.Zipcode
-              value={form.zip}
-              onChange={(v: string) => update({zip: v })}
-              onSelect={handleSelect}
-            />
-          </div>
-        </div>
+        <AutocompleteInput
+          label="จังหวัด *"
+          value={form.province}
+          field="p"
+          onChange={(v, full) => full ? handleSelect(full) : update({ province: v })}
+        />
+        <AutocompleteInput
+          label="รหัสไปรษณีย์"
+          value={form.zip}
+          field="z"
+          onChange={(v, full) => full ? handleSelect(full) : update({ zip: v })}
+        />
       </div>
 
       {/* ที่อยู่หลัก */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={form.is_default}
-          onChange={e => update({is_default: e.target.checked })} />
+          onChange={e => update({ is_default: e.target.checked })} />
         <span style={{ fontSize: 13, color: '#8C7B6E' }}>ตั้งเป็นที่อยู่หลัก</span>
       </label>
 
-      {error && (
-        <p style={{ color: '#D64B2A', fontSize: 12, fontFamily: 'monospace' }}>{error}</p>
-      )}
+      {error && <p style={{ color: '#D64B2A', fontSize: 12, fontFamily: 'monospace' }}>{error}</p>}
 
-      {/* ปุ่ม — ซ่อนเมื่อใช้ใน checkout */}
       {!hideButton && (
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <button onClick={handleSubmit} disabled={loading}
@@ -171,6 +217,7 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
               background: loading ? '#E0D9CE' : '#D64B2A',
               color: '#EDE8DF', fontWeight: 900, fontSize: 13,
               fontFamily: 'var(--font-display)', textTransform: 'uppercase',
+              opacity: loading ? 0.6 : 1,
             }}>
             {loading ? 'กำลังบันทึก...' : '✓ บันทึกที่อยู่'}
           </button>
@@ -186,61 +233,6 @@ export default function AddressForm({ initial, onSave, onChange, onCancel, loadi
           )}
         </div>
       )}
-
-      <style>{`
-        .thai-addr,
-        .thai-addr > *,
-        .thai-addr > * > * {
-          box-shadow: none !important;
-          border: none !important;
-          outline: none !important;
-        }
-        .thai-addr input,
-        .thai-addr input:focus,
-        .thai-addr input:active {
-          width: 100% !important;
-          padding: 10px 14px !important;
-          border-radius: 12px !important;
-          border: 2px solid #D8D0C5 !important;
-          background: #F5F1EB !important;
-          color: #3D1F0F !important;
-          font-size: 14px !important;
-          font-family: inherit !important;
-          outline: none !important;
-          box-shadow: none !important;
-          box-sizing: border-box !important;
-          -webkit-appearance: none !important;
-          appearance: none !important;
-        }
-        .thai-addr ul {
-          position: absolute !important;
-          top: 100% !important;
-          left: 0 !important;
-          right: 0 !important;
-          width: 100% !important;
-          border-radius: 12px !important;
-          border: 2px solid #E0D9CE !important;
-          background: #F5F1EB !important;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important;
-          z-index: 9999 !important;
-          list-style: none !important;
-          margin: 4px 0 0 !important;
-          padding: 4px 0 !important;
-          max-height: 200px !important;
-          overflow-y: auto !important;
-        }
-        .thai-addr li {
-          padding: 8px 14px !important;
-          font-size: 13px !important;
-          color: #3D1F0F !important;
-          cursor: pointer !important;
-          list-style: none !important;
-          border: none !important;
-        }
-        .thai-addr li:hover {
-          background: #EDE8DF !important;
-        }
-      `}</style>
     </div>
   )
 }
