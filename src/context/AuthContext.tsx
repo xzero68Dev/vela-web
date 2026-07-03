@@ -179,17 +179,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const liff = (await import('@line/liff')).default
 
       // ใช้ LIFF ID ที่ถูกต้องตาม path ปัจจุบัน
-      const LIFF_IDS: Record<string, string> = {
-        '/account':     '2010290578-fIH4NUCe',
-        '/leaderboard': '2010290578-QJ6pXszj',
-      }
-      const path = window.location.pathname
-      const liffId = LIFF_IDS[path] || '2010290578-odw3e7nF'
+      // เช็คก่อนเลยว่าอยู่ใน LINE browser ไหม (ดู user agent ทันทีไม่ต้อง await)
+      const isLineApp = /Line\//i.test(navigator.userAgent)
 
-      await liff.init({ liffId })
-
-      // ถ้าไม่ได้เปิดใน LINE browser → ใช้ LINE OAuth redirect
-      if (!liff.isInClient()) {
+      if (!isLineApp) {
+        // ไม่ใช่ LINE browser → redirect ทันทีเลย ไม่ต้อง await liff.init()
+        // เพราะบน iOS user gesture หมดอายุระหว่างรอ async
         const CLIENT_ID = '2010290578'
         const REDIRECT_URI = encodeURIComponent(window.location.origin + '/line-callback')
         const STATE = Math.random().toString(36).substring(2)
@@ -199,6 +194,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.href = lineAuthUrl
         return
       }
+
+      // อยู่ใน LINE browser → ใช้ LIFF login
+      const LIFF_IDS: Record<string, string> = {
+        '/account':     '2010290578-fIH4NUCe',
+        '/leaderboard': '2010290578-QJ6pXszj',
+      }
+      const path = window.location.pathname
+      const liffId = LIFF_IDS[path] || '2010290578-odw3e7nF'
+
+      await liff.init({ liffId })
 
       if (!liff.isLoggedIn()) {
         const returnUrl = window.location.href
