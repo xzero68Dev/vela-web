@@ -37,8 +37,25 @@ export default function TrackPage() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
 
+  // detect carrier จาก format เลข tracking
+  const detectCarrier = (b: string): { name: string; url: string } | null => {
+    if (/^(TH|SCPK|SXF)/i.test(b))                return { name: 'Kerry Express',   url: `https://th.kerryexpress.com/th/track/?track=${b}` }
+    if (/^(FLE|FEX)/i.test(b))                     return { name: 'Flash Express',   url: `https://www.flashexpress.co.th/tracking/?se=${b}` }
+    if (/^(TDE|JPT|JTTH)/i.test(b))                return { name: 'J&T Express',    url: `https://www.jtexpress.co.th/trajectoryQuery?waybillno=${b}` }
+    if (/^[A-Z]{2}\d{9}TH$/.test(b))              return { name: 'ไปรษณีย์ไทย',  url: `https://track.thailandpost.co.th/?trackNumber=${b}` }
+    if (/^\d{13}$/.test(b))                        return { name: 'ไปรษณีย์ไทย',  url: `https://track.thailandpost.co.th/?trackNumber=${b}` }
+    if (/^(SCG|SCGL)/i.test(b))                   return { name: 'SCG Express',    url: `https://www.scgexpress.co.th/tracking/TrackingSearch.aspx?txtTrackingNo=${b}` }
+    if (/^(DHL)/i.test(b))                        return { name: 'DHL',            url: `https://www.dhl.com/th-th/home/tracking.html?tracking-id=${b}` }
+    return null
+  }
+
+  const carrier = detectCarrier(barcode)
+  const isThaiPost = !carrier || carrier.name === 'ไปรษณีย์ไทย'
+
   useEffect(() => {
     if (!barcode) return
+    // ถ้าไม่ใช่ไปรษณีย์ไทย ไม่ต้องเรียก API ของเรา
+    if (!isThaiPost) { setLoading(false); return }
     fetch(`${API}/track/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -47,7 +64,7 @@ export default function TrackPage() {
       .then(r => r.json())
       .then(data => {
         const r = data.results?.[0]
-        if (r) setResult(r)
+        if (r && r.status !== 'not_found') setResult(r)
         else setError('ไม่พบข้อมูลพัสดุ')
       })
       .catch(() => setError('เชื่อมต่อไม่ได้ กรุณาลองใหม่'))
@@ -79,11 +96,44 @@ export default function TrackPage() {
               style={{ borderColor: '#E0D9CE', borderTopColor: '#D64B2A' }} />
             <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>กำลังตรวจสอบ...</p>
           </div>
+
+        ) : !isThaiPost && carrier ? (
+          /* ขนส่งที่ไม่ใช่ไปรษณีย์ไทย — แสดงลิงก์ไปเช็คที่เว็บขนส่ง */
+          <div className="space-y-4">
+            <div className="rounded-3xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+              <div className="px-5 py-4 text-center border-b-2" style={{ borderColor: '#E0D9CE' }}>
+                <div className="text-4xl mb-2">📦</div>
+                <p className="font-black text-lg" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
+                  {carrier.name}
+                </p>
+                <p className="font-mono text-sm mt-1" style={{ color: '#8C7B6E' }}>{barcode}</p>
+              </div>
+              <div className="px-5 py-4">
+                <p className="text-xs font-mono text-center mb-4" style={{ color: '#C5BAB0' }}>
+                  กดปุ่มด้านล่างเพื่อตรวจสอบสถานะพัสดุที่เว็บ {carrier.name}
+                </p>
+                <a href={carrier.url} target="_blank" rel="noopener noreferrer"
+                  className="block w-full py-3 rounded-2xl font-black uppercase text-sm text-center transition-all active:scale-95"
+                  style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+                  ตรวจสอบที่ {carrier.name} →
+                </a>
+              </div>
+            </div>
+          </div>
+
         ) : error ? (
           <div className="text-center py-20">
             <VelaBunny size={48} className="mx-auto mb-4 opacity-30" />
             <p className="text-sm" style={{ color: '#8C7B6E' }}>{error}</p>
             <p className="text-xs font-mono mt-2" style={{ color: '#C5BAB0' }}>{barcode}</p>
+            {/* ถ้าไม่เจอในระบบ แต่ detect carrier ได้ → ยังแสดงลิงก์ external ได้ */}
+            {carrier && (
+              <a href={carrier.url} target="_blank" rel="noopener noreferrer"
+                className="inline-block mt-4 px-4 py-2 rounded-xl border-2 text-xs font-mono transition-all"
+                style={{ borderColor: '#D64B2A', color: '#D64B2A' }}>
+                ลองเช็คที่ {carrier.name} →
+              </a>
+            )}
           </div>
         ) : result && (
           <>
