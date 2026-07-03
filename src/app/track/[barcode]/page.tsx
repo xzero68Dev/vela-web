@@ -37,25 +37,20 @@ export default function TrackPage() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
 
-  // detect carrier จาก format เลข tracking
-  const detectCarrier = (b: string): { name: string; url: string } | null => {
-    if (/^(TH|SCPK|SXF)/i.test(b))                return { name: 'Kerry Express',   url: `https://th.kerryexpress.com/th/track/` }
-    if (/^(FLE|FEX)/i.test(b))                     return { name: 'Flash Express',   url: `https://www.flashexpress.co.th/tracking/?se=${b}` }
-    if (/^(TDE|JPT|JTTH)/i.test(b))                return { name: 'J&T Express',    url: `https://www.jtexpress.co.th/trajectoryQuery?waybillno=${b}` }
-    if (/^[A-Z]{2}\d{9}TH$/.test(b))              return { name: 'ไปรษณีย์ไทย',  url: `https://track.thailandpost.co.th/?trackNumber=${b}` }
-    if (/^\d{13}$/.test(b))                        return { name: 'ไปรษณีย์ไทย',  url: `https://track.thailandpost.co.th/?trackNumber=${b}` }
-    if (/^(SCG|SCGL)/i.test(b))                   return { name: 'SCG Express',    url: `https://www.scgexpress.co.th/tracking/TrackingSearch.aspx?txtTrackingNo=${b}` }
-    if (/^(DHL)/i.test(b))                        return { name: 'DHL',            url: `https://www.dhl.com/th-th/home/tracking.html?tracking-id=${b}` }
+  // fallback link สำหรับกรณีที่ backend ไม่มีข้อมูล
+  const detectCarrierLink = (b: string): { name: string; url: string } | null => {
+    if (/^(TH|SCPK|SXF)/i.test(b))   return { name: 'Kerry Express', url: 'https://th.kerryexpress.com/th/track/' }
+    if (/^(FLE|FEX)/i.test(b))        return { name: 'Flash Express', url: `https://www.flashexpress.co.th/tracking/?se=${b}` }
+    if (/^(TDE|JPT|JTTH)/i.test(b))   return { name: 'J&T Express',  url: `https://www.jtexpress.co.th/trajectoryQuery?waybillno=${b}` }
+    if (/^SCG/i.test(b))              return { name: 'SCG Express',  url: `https://www.scgexpress.co.th/tracking/TrackingSearch.aspx?txtTrackingNo=${b}` }
     return null
   }
 
-  const carrier = detectCarrier(barcode)
-  const isThaiPost = !carrier || carrier.name === 'ไปรษณีย์ไทย'
+  const carrierLink = detectCarrierLink(barcode)
 
   useEffect(() => {
     if (!barcode) return
-    // ถ้าไม่ใช่ไปรษณีย์ไทย ไม่ต้องเรียก API ของเรา
-    if (!isThaiPost) { setLoading(false); return }
+    // ส่งทุก barcode ไปที่ backend — backend route ไป eTrackings หรือ Thailand Post เอง
     fetch(`${API}/track/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -64,7 +59,7 @@ export default function TrackPage() {
       .then(r => r.json())
       .then(data => {
         const r = data.results?.[0]
-        if (r && r.status !== 'not_found') setResult(r)
+        if (r && r.status !== 'not_found' && r.status !== 'error') setResult(r)
         else setError('ไม่พบข้อมูลพัสดุ')
       })
       .catch(() => setError('เชื่อมต่อไม่ได้ กรุณาลองใหม่'))
@@ -97,14 +92,14 @@ export default function TrackPage() {
             <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>กำลังตรวจสอบ...</p>
           </div>
 
-        ) : !isThaiPost && carrier ? (
+        ) : false ? /* ไม่ใช้แล้ว */ (
           /* ขนส่งที่ไม่ใช่ไปรษณีย์ไทย */
           <div className="space-y-4">
             <div className="rounded-3xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
               <div className="px-5 py-4 text-center border-b-2" style={{ borderColor: '#E0D9CE' }}>
                 <div className="text-4xl mb-2">📦</div>
                 <p className="font-black text-lg" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
-                  {carrier.name}
+                  {carrierLink?.name}
                 </p>
                 {/* แสดงเลข tracking พร้อมปุ่ม copy */}
                 <div className="flex items-center justify-center gap-2 mt-2">
@@ -121,10 +116,10 @@ export default function TrackPage() {
                 <p className="text-xs font-mono text-center" style={{ color: '#C5BAB0' }}>
                   กด "คัดลอก" แล้วกดปุ่มด้านล่างเพื่อตรวจสอบสถานะ จากนั้นวางเลขพัสดุในช่องค้นหาครับ
                 </p>
-                <a href={carrier.url} target="_blank" rel="noopener noreferrer"
+                <a href={carrierLink?.url || "#"} target="_blank" rel="noopener noreferrer"
                   className="block w-full py-3 rounded-2xl font-black uppercase text-sm text-center transition-all active:scale-95"
                   style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
-                  ไปที่เว็บ {carrier.name} →
+                  ไปที่เว็บ {carrierLink?.name} →
                 </a>
               </div>
             </div>
@@ -136,11 +131,11 @@ export default function TrackPage() {
             <p className="text-sm" style={{ color: '#8C7B6E' }}>{error}</p>
             <p className="text-xs font-mono mt-2" style={{ color: '#C5BAB0' }}>{barcode}</p>
             {/* ถ้าไม่เจอในระบบ แต่ detect carrier ได้ → ยังแสดงลิงก์ external ได้ */}
-            {carrier && (
-              <a href={carrier.url} target="_blank" rel="noopener noreferrer"
+            {carrierLink && (
+              <a href={carrierLink?.url || "#"} target="_blank" rel="noopener noreferrer"
                 className="inline-block mt-4 px-4 py-2 rounded-xl border-2 text-xs font-mono transition-all"
                 style={{ borderColor: '#D64B2A', color: '#D64B2A' }}>
-                ลองเช็คที่ {carrier.name} →
+                ลองเช็คที่ {carrierLink?.name} →
               </a>
             )}
           </div>
