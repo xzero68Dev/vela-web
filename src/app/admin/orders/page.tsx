@@ -123,9 +123,9 @@ export default function AdminOrdersPage() {
   // Filter logic
   const webOrders    = orders.filter(o => o.channel === 'web')
   const shopeeOrders = orders.filter(o => o.channel !== 'web')
-  const postOrders   = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return c.includes('POST') || c.includes('SABUY') })
-  const otherOrders  = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return c && !c.includes('POST') && !c.includes('SABUY') })
-  const manualOrders = shopeeOrders.filter(o => !shipping[o.order_id]?.tracking)
+  const postOrders   = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return shipping[o.order_id]?.tracking && (c.includes('POST') || c.includes('SABUY')) })
+  const otherOrders  = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return shipping[o.order_id]?.tracking && c && !c.includes('POST') && !c.includes('SABUY') })
+  const manualOrders = shopeeOrders.filter(o => !shipping[o.order_id]?.tracking && !['จัดส่งสำเร็จ', 'ตีกลับ'].includes(o.status))
 
   const baseList = tab === 'web' ? webOrders
     : shopeeTab === 'post' ? postOrders
@@ -141,12 +141,12 @@ export default function AdminOrdersPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const webStats = {
-    รอชำระ:     webOrders.filter(o => o.status === 'รอชำระเงิน').length,
-    ชำระแล้ว:   webOrders.filter(o => o.status === 'ชำระแล้ว').length,
-    จัดส่งแล้ว: webOrders.filter(o => o.status === 'จัดส่งแล้ว').length,
-    สำเร็จ:     webOrders.filter(o => o.status === 'จัดส่งสำเร็จ').length,
-  }
+  const webStats = [
+    { label: 'รอชำระ',    value: webOrders.filter(o => o.status === 'รอชำระเงิน').length,   status: 'รอชำระเงิน' },
+    { label: 'ชำระแล้ว',  value: webOrders.filter(o => o.status === 'ชำระแล้ว').length,     status: 'ชำระแล้ว' },
+    { label: 'จัดส่งแล้ว', value: webOrders.filter(o => o.status === 'จัดส่งแล้ว').length, status: 'จัดส่งแล้ว' },
+    { label: 'สำเร็จ',    value: webOrders.filter(o => o.status === 'จัดส่งสำเร็จ').length, status: 'จัดส่งสำเร็จ' },
+  ]
 
   if (!ready) return null
 
@@ -184,12 +184,12 @@ export default function AdminOrdersPage() {
         {/* Web stats */}
         {tab === 'web' && (
           <div className="grid grid-cols-4 gap-2 mb-4">
-            {Object.entries(webStats).map(([k, v]) => (
-              <div key={k} className="rounded-2xl p-3 text-center border-2 cursor-pointer transition-all"
-                onClick={() => setStatusFilter(prev => prev === k && k !== 'ทั้งหมด' ? 'ทั้งหมด' : k)}
-                style={{ background: statusFilter === k ? '#D64B2A10' : '#F5F1EB', borderColor: statusFilter === k ? '#D64B2A' : '#E0D9CE' }}>
-                <p className="text-lg font-black" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>{v}</p>
-                <p className="text-xs font-mono leading-tight" style={{ color: '#8C7B6E' }}>{k}</p>
+            {webStats.map(({ label, value, status }) => (
+              <div key={label} className="rounded-2xl p-3 text-center border-2 cursor-pointer transition-all"
+                onClick={() => setStatusFilter(prev => prev === status ? 'ทั้งหมด' : status)}
+                style={{ background: statusFilter === status ? '#D64B2A10' : '#F5F1EB', borderColor: statusFilter === status ? '#D64B2A' : '#E0D9CE' }}>
+                <p className="text-lg font-black" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>{value}</p>
+                <p className="text-xs font-mono leading-tight" style={{ color: '#8C7B6E' }}>{label}</p>
               </div>
             ))}
           </div>
