@@ -39,7 +39,7 @@ export default function TrackPage() {
 
   // detect carrier จาก format เลข tracking
   const detectCarrier = (b: string): { name: string; url: string } | null => {
-    if (/^(TH|SCPK|SXF)/i.test(b))                return { name: 'Kerry Express',   url: `https://th.kerryexpress.com/th/track/?track=${b}` }
+    if (/^(TH|SCPK|SXF)/i.test(b))                return { name: 'Kerry Express',   url: `https://th.kerryexpress.com/th/track/` }
     if (/^(FLE|FEX)/i.test(b))                     return { name: 'Flash Express',   url: `https://www.flashexpress.co.th/tracking/?se=${b}` }
     if (/^(TDE|JPT|JTTH)/i.test(b))                return { name: 'J&T Express',    url: `https://www.jtexpress.co.th/trajectoryQuery?waybillno=${b}` }
     if (/^[A-Z]{2}\d{9}TH$/.test(b))              return { name: 'ไปรษณีย์ไทย',  url: `https://track.thailandpost.co.th/?trackNumber=${b}` }
@@ -98,7 +98,7 @@ export default function TrackPage() {
           </div>
 
         ) : !isThaiPost && carrier ? (
-          /* ขนส่งที่ไม่ใช่ไปรษณีย์ไทย — แสดงลิงก์ไปเช็คที่เว็บขนส่ง */
+          /* ขนส่งที่ไม่ใช่ไปรษณีย์ไทย */
           <div className="space-y-4">
             <div className="rounded-3xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
               <div className="px-5 py-4 text-center border-b-2" style={{ borderColor: '#E0D9CE' }}>
@@ -106,16 +106,25 @@ export default function TrackPage() {
                 <p className="font-black text-lg" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
                   {carrier.name}
                 </p>
-                <p className="font-mono text-sm mt-1" style={{ color: '#8C7B6E' }}>{barcode}</p>
+                {/* แสดงเลข tracking พร้อมปุ่ม copy */}
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <p className="font-mono text-sm" style={{ color: '#8C7B6E' }}>{barcode}</p>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(barcode); alert('คัดลอกเลขพัสดุแล้ว!') }}
+                    className="text-xs px-2 py-1 rounded-lg border transition-all active:scale-95"
+                    style={{ borderColor: '#D8D0C5', color: '#D64B2A', background: '#FFF5F3' }}>
+                    คัดลอก
+                  </button>
+                </div>
               </div>
-              <div className="px-5 py-4">
-                <p className="text-xs font-mono text-center mb-4" style={{ color: '#C5BAB0' }}>
-                  กดปุ่มด้านล่างเพื่อตรวจสอบสถานะพัสดุที่เว็บ {carrier.name}
+              <div className="px-5 py-4 space-y-3">
+                <p className="text-xs font-mono text-center" style={{ color: '#C5BAB0' }}>
+                  กด "คัดลอก" แล้วกดปุ่มด้านล่างเพื่อตรวจสอบสถานะ จากนั้นวางเลขพัสดุในช่องค้นหาครับ
                 </p>
                 <a href={carrier.url} target="_blank" rel="noopener noreferrer"
                   className="block w-full py-3 rounded-2xl font-black uppercase text-sm text-center transition-all active:scale-95"
                   style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
-                  ตรวจสอบที่ {carrier.name} →
+                  ไปที่เว็บ {carrier.name} →
                 </a>
               </div>
             </div>
