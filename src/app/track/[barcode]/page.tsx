@@ -178,7 +178,7 @@ export default function TrackPage() {
                   <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>ประวัติการจัดส่ง</p>
                 </div>
                 <div className="px-5 py-4 space-y-3">
-                  {[...result.events].reverse().map((e: any, i: number) => (
+                  {result.events.map((e: any, i: number) => (
                     <div key={i} className="flex gap-3 items-start">
                       <div className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
                         style={{ background: i === 0 ? '#D64B2A' : '#D8D0C5' }} />
