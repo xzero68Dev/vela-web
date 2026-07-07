@@ -58,7 +58,7 @@ export default function TrackPage() {
       .then(r => r.json())
       .then(data => {
         const r = data.results?.[0]
-        if (r && r.status !== 'not_found' && r.status !== 'error') setResult(r)
+        if (r && r.status !== 'not_found' && r.status !== 'error' && r.status !== 'unknown') setResult(r)
         else setError('ไม่พบข้อมูลพัสดุ')
       })
       .catch(() => setError('เชื่อมต่อไม่ได้ กรุณาลองใหม่'))
