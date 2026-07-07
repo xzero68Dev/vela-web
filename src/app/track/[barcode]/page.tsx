@@ -37,9 +37,8 @@ export default function TrackPage() {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
 
-  // fallback link สำหรับกรณีที่ backend ไม่มีข้อมูล
   const detectCarrierLink = (b: string): { name: string; url: string } | null => {
-    if (/^(TH|SCPK|SXF)/i.test(b))   return { name: 'Kerry Express', url: 'https://th.kerryexpress.com/th/track/' }
+    if (/^(TH|SCPK|SXF)/i.test(b))   return { name: 'Kerry Express', url: 'https://th.kex-express.com/th/track/' }
     if (/^(FLE|FEX)/i.test(b))        return { name: 'Flash Express', url: `https://www.flashexpress.co.th/tracking/?se=${b}` }
     if (/^(TDE|JPT|JTTH)/i.test(b))   return { name: 'J&T Express',  url: `https://www.jtexpress.co.th/trajectoryQuery?waybillno=${b}` }
     if (/^SCG/i.test(b))              return { name: 'SCG Express',  url: `https://www.scgexpress.co.th/tracking/TrackingSearch.aspx?txtTrackingNo=${b}` }
