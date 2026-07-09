@@ -124,8 +124,13 @@ export default function AdminOrdersPage() {
   const webOrders    = orders.filter(o => o.channel === 'web')
   const shopeeOrders = orders.filter(o => o.channel !== 'web')
   const postOrders   = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return shipping[o.order_id]?.tracking && (c.includes('POST') || c.includes('SABUY')) })
-  const otherOrders  = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return shipping[o.order_id]?.tracking && c && !c.includes('POST') && !c.includes('SABUY') })
-  const manualOrders = shopeeOrders.filter(o => !shipping[o.order_id]?.tracking && !['จัดส่งสำเร็จ', 'ตีกลับ'].includes(o.status))
+  const otherOrders  = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return shipping[o.order_id]?.tracking && c && !c.includes('POST') && !c.includes('SABUY') && c !== 'ส่งเอง' })
+  const manualOrders = shopeeOrders.filter(o => {
+    const ship = shipping[o.order_id]
+    const isSelfDelivery = ship?.carrier === 'ส่งเอง'
+    const noTracking = !ship?.tracking
+    return (noTracking || isSelfDelivery) && !['จัดส่งสำเร็จ', 'ตีกลับ'].includes(o.status)
+  })
 
   const baseList = tab === 'web' ? webOrders
     : shopeeTab === 'post' ? postOrders
