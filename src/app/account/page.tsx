@@ -543,7 +543,7 @@ export default function AccountPage() {
                       )}
 
                       {/* สลิปที่อัปโหลดแล้ว */}
-                      {o.slip_url && (
+                      {o.slip_url && o.status !== 'รอชำระเงิน' && (
                         <div className="mt-2">
                           <a href={o.slip_url} target="_blank" rel="noopener noreferrer">
                             <img src={o.slip_url} alt="slip" className="h-16 w-auto rounded-xl border-2 object-cover"
@@ -553,9 +553,19 @@ export default function AccountPage() {
                         </div>
                       )}
 
-                      {/* ปุ่มอัปโหลดสลิป — เฉพาะ order รอชำระและยังไม่มีสลิป */}
-                      {o.status === 'รอชำระเงิน' && !o.slip_url && (
+                      {/* ปุ่มอัปโหลดสลิป — order รอชำระ (มีหรือไม่มีสลิปก็อัปโหลดใหม่ได้) */}
+                      {o.status === 'รอชำระเงิน' && (
                         <div className="mt-3 space-y-3">
+                          {/* แสดงสลิปเดิมถ้ามี พร้อมปุ่มอัปโหลดใหม่ */}
+                          {o.slip_url && (
+                            <div className="flex items-center gap-2">
+                              <a href={o.slip_url} target="_blank" rel="noopener noreferrer">
+                                <img src={o.slip_url} alt="slip" className="h-12 w-auto rounded-xl border-2 object-cover"
+                                  style={{ borderColor: '#E0D9CE' }} />
+                              </a>
+                              <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>สลิปที่ส่งแล้ว (กดอัปโหลดใหม่ได้ถ้าผิด)</p>
+                            </div>
+                          )}
                           {/* QR PromptPay */}
                           <div className="rounded-2xl border-2 p-3 flex flex-col items-center"
                             style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
