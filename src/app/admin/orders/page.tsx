@@ -253,13 +253,24 @@ export default function AdminOrdersPage() {
               <button key={o.order_id}
                 onClick={() => { setSelected(o); setShipForm({ tracking: '', carrier: 'POST SABUY' }) }}
                 className="w-full text-left rounded-2xl border-2 px-4 py-3 transition-all hover:shadow-sm active:scale-[0.99]"
-                style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                style={{
+                  background: o.slip_url && o.status === 'รอชำระเงิน' ? '#FFF5F3' : '#F5F1EB',
+                  borderColor: o.slip_url && o.status === 'รอชำระเงิน' ? '#D64B2A' : '#E0D9CE',
+                }}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className="font-black text-sm" style={{ color: '#3D1F0F' }}>{o.customer}</p>
                       <Badge status={o.status} />
-                      {o.slip_url && <span className="text-xs" title="มีสลิป">📎</span>}
+                      {o.slip_url && o.status === 'รอชำระเงิน' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                          style={{ background: '#D64B2A', color: '#EDE8DF' }}>
+                          💳 มีสลิป!
+                        </span>
+                      )}
+                      {o.slip_url && o.status !== 'รอชำระเงิน' && (
+                        <span className="text-xs">📎</span>
+                      )}
                     </div>
                     <p className="text-xs font-mono truncate" style={{ color: '#8C7B6E' }}>{o.sku}</p>
                     <p className="text-xs font-mono mt-0.5" style={{ color: '#C5BAB0' }}>
