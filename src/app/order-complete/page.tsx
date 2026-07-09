@@ -40,7 +40,6 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
       const verData = await verRes.json()
       if (verData.verified) {
         setVerified('success')
-        setTimeout(() => onDone(), 2000)
       } else {
         const r: string = verData.reason || ''
         if (r.includes('1014') || r.includes('ไม่ได้โอน')) {
@@ -52,7 +51,6 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
         } else {
           setVerified('pending'); setReason('ทีมงานจะตรวจสอบและยืนยันภายใน 24 ชั่วโมงครับ')
         }
-        onDone()
       }
     } catch (e: any) {
       setError(e.message || 'เกิดข้อผิดพลาด')
