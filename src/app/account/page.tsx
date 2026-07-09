@@ -305,7 +305,7 @@ export default function AccountPage() {
   const fetchOrders = useCallback(async () => {
     if (!user?.phone) return
     setLoading(true)
-    fetch(`${SB_URL}/rest/v1/orders?phone=eq.${user.phone}&order=order_date.desc&limit=20`,
+    fetch(`${SB_URL}/rest/v1/orders?phone=eq.${user.phone}&order=order_date.desc&limit=20&select=order_id,order_date,sku,qty,total,status,province,slip_url,slip_status,paid_at`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
       .then(r => r.json())
       .then(async (data: any[]) => {
@@ -539,6 +539,22 @@ export default function AccountPage() {
                               ดูสถานะ →
                             </Link>
                           )}
+                        </div>
+                      )}
+
+                      {/* สถานะสลิป */}
+                      {o.slip_status === 'rejected' && o.status === 'รอชำระเงิน' && (
+                        <div className="mt-2 rounded-xl px-3 py-2" style={{ background: '#FFF5F3', border: '1px solid #D64B2A' }}>
+                          <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>
+                            ⚠️ สลิปไม่ถูกต้อง กรุณาอัปโหลดสลิปใหม่ครับ
+                          </p>
+                        </div>
+                      )}
+                      {o.slip_status === 'pending' && o.status === 'รอชำระเงิน' && (
+                        <div className="mt-2 rounded-xl px-3 py-2" style={{ background: '#F5E6C0' }}>
+                          <p className="text-xs font-mono" style={{ color: '#854F0B' }}>
+                            ⏳ สลิปอยู่ระหว่างตรวจสอบ
+                          </p>
                         </div>
                       )}
 
