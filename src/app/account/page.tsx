@@ -131,7 +131,8 @@ function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => 
   const API    = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
   const [uploading, setUploading] = useState(false)
   const [error,     setError]     = useState('')
-  const [verified,  setVerified]  = useState<'success' | 'pending' | null>(null)
+  const [verified,  setVerified]  = useState<'success' | 'pending' | 'error' | null>(null)
+  const [reason,    setReason]    = useState('')
 
   const handleUpload = async (e: { target: HTMLInputElement }) => {
     const file = (e.target as HTMLInputElement).files?.[0]
@@ -166,9 +167,18 @@ function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => 
 
       if (verData.verified) {
         setVerified('success')
-        setTimeout(() => onDone(), 2000)  // refresh หลัง 2 วินาที
+        setTimeout(() => onDone(), 2000)
       } else {
-        setVerified('pending')
+        const r: string = verData.reason || ''
+        if (r.includes('1014') || r.includes('ไม่ได้โอน')) {
+          setVerified('error'); setReason('สลิปนี้ไม่ได้โอนเข้าบัญชีร้าน กรุณาตรวจสอบบัญชีปลายทางแล้วอัปโหลดใหม่ครับ')
+        } else if (r.includes('1010') || r.includes('ซ้ำ')) {
+          setVerified('error'); setReason('สลิปนี้เคยใช้ไปแล้ว กรุณาส่งสลิปใบใหม่ครับ')
+        } else if (r.includes('1013') || r.includes('ยอด')) {
+          setVerified('error'); setReason('ยอดเงินในสลิปไม่ตรง กรุณาตรวจสอบแล้วอัปโหลดใหม่ครับ')
+        } else {
+          setVerified('pending'); setReason('ทีมงานจะตรวจสอบและยืนยันภายใน 24 ชั่วโมงครับ')
+        }
         onDone()
       }
     } catch (e: any) {
@@ -187,14 +197,24 @@ function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => 
     </div>
   )
 
-  // แสดง pending state (ต้องรอ admin ตรวจสอบ)
+  if (verified === 'error') return (
+    <div className="mt-3 rounded-2xl border-2 p-4 text-center" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
+      <p className="text-2xl mb-1">⚠️</p>
+      <p className="font-black text-sm mb-1" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>สลิปไม่ถูกต้อง</p>
+      <p className="text-xs font-mono mb-3" style={{ color: '#D64B2A' }}>{reason}</p>
+      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 cursor-pointer text-xs font-mono"
+        style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
+        <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+        {uploading ? '🔄 กำลังตรวจสอบ...' : '📎 อัปโหลดสลิปใหม่'}
+      </label>
+    </div>
+  )
+
   if (verified === 'pending') return (
-    <div className="mt-3 rounded-2xl p-4 text-center" style={{ background: '#F5E6C0', border: '2px solid #D4890A30' }}>
+    <div className="mt-3 rounded-2xl border-2 p-4 text-center" style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
       <p className="text-2xl mb-1">⏳</p>
-      <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
-        ส่งสลิปแล้ว รอทีมงานตรวจสอบ
-      </p>
-      <p className="text-xs font-mono mt-1" style={{ color: '#854F0B' }}>ทีมงานจะยืนยันภายใน 24 ชั่วโมงครับ</p>
+      <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>ส่งสลิปแล้ว รอทีมงานตรวจสอบ</p>
+      <p className="text-xs font-mono mt-1" style={{ color: '#854F0B' }}>{reason || 'ทีมงานจะยืนยันภายใน 24 ชั่วโมงครับ'}</p>
     </div>
   )
 
