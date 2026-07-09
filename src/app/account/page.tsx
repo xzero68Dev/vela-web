@@ -128,14 +128,17 @@ function PhoneLoginForm() {
 function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => void }) {
   const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const API    = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
   const [uploading, setUploading] = useState(false)
   const [error,     setError]     = useState('')
+  const [verified,  setVerified]  = useState<'success' | 'pending' | null>(null)
 
   const handleUpload = async (e: { target: HTMLInputElement }) => {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (!file) return
-    setUploading(true); setError('')
+    setUploading(true); setError(''); setVerified(null)
     try {
+      // อัปโหลดรูปไป Supabase Storage
       const ext  = file.name.split('.').pop()
       const path = `${orderId}-${Date.now()}.${ext}`
       const upRes = await fetch(`${SB_URL}/storage/v1/object/slips/${path}`, {
@@ -145,30 +148,62 @@ function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => 
       })
       if (!upRes.ok) throw new Error('อัปโหลดไม่สำเร็จ')
       const slip_url = `${SB_URL}/storage/v1/object/public/slips/${path}`
+
+      // บันทึก slip_url ลง order
       await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}`, {
         method: 'PATCH',
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ slip_url }),
       })
-      // แจ้ง admin ว่ามีสลิปใหม่
-      const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
-      await fetch(`${API}/orders/slip-notify`, {
+
+      // เช็คสลิปผ่าน SlipOK
+      const verRes = await fetch(`${API}/orders/slip-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: orderId, slip_url }),
-      }).catch(() => {}) // ถ้าแจ้งไม่ได้ก็ไม่ block flow หลัก
-      onDone()
+      })
+      const verData = await verRes.json()
+
+      if (verData.verified) {
+        setVerified('success')
+        setTimeout(() => onDone(), 2000)  // refresh หลัง 2 วินาที
+      } else {
+        setVerified('pending')
+        onDone()
+      }
     } catch (e: any) {
       setError(e.message || 'เกิดข้อผิดพลาด')
     } finally { setUploading(false) }
   }
+
+  // แสดง success state
+  if (verified === 'success') return (
+    <div className="mt-3 rounded-2xl p-4 text-center" style={{ background: '#C5E8D5', border: '2px solid #1A6B3C' }}>
+      <p className="text-2xl mb-1">✅</p>
+      <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#1A6B3C' }}>
+        ยืนยันการชำระเงินสำเร็จ!
+      </p>
+      <p className="text-xs font-mono mt-1" style={{ color: '#1A6B3C' }}>ระบบตรวจสอบยอดเงินเรียบร้อยแล้วครับ</p>
+    </div>
+  )
+
+  // แสดง pending state (ต้องรอ admin ตรวจสอบ)
+  if (verified === 'pending') return (
+    <div className="mt-3 rounded-2xl p-4 text-center" style={{ background: '#F5E6C0', border: '2px solid #D4890A30' }}>
+      <p className="text-2xl mb-1">⏳</p>
+      <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
+        ส่งสลิปแล้ว รอทีมงานตรวจสอบ
+      </p>
+      <p className="text-xs font-mono mt-1" style={{ color: '#854F0B' }}>ทีมงานจะยืนยันภายใน 24 ชั่วโมงครับ</p>
+    </div>
+  )
 
   return (
     <div className="mt-2">
       <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 cursor-pointer text-xs font-mono transition-all active:scale-95"
         style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
         <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
-        {uploading ? 'กำลังอัปโหลด...' : '📎 แนบสลิปการโอน'}
+        {uploading ? '🔄 กำลังตรวจสอบ...' : '📎 แนบสลิปการโอน'}
       </label>
       {error && <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
     </div>

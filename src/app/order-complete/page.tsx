@@ -5,6 +5,89 @@ import Link from 'next/link'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const API    = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+
+function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
+  const [uploading, setUploading] = useState(false)
+  const [verified,  setVerified]  = useState<'success' | 'pending' | null>(null)
+  const [error,     setError]     = useState('')
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true); setError(''); setVerified(null)
+    try {
+      const ext  = file.name.split('.').pop()
+      const path = `${orderId}-${Date.now()}.${ext}`
+      const upRes = await fetch(`${SB_URL}/storage/v1/object/slips/${path}`, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type },
+        body: file,
+      })
+      if (!upRes.ok) throw new Error('อัปโหลดไม่สำเร็จ')
+      const slip_url = `${SB_URL}/storage/v1/object/public/slips/${path}`
+      await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}`, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ slip_url }),
+      })
+      const verRes  = await fetch(`${API}/orders/slip-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, slip_url }),
+      })
+      const verData = await verRes.json()
+      setVerified(verData.verified ? 'success' : 'pending')
+    } catch (e: any) {
+      setError(e.message || 'เกิดข้อผิดพลาด')
+    } finally { setUploading(false) }
+  }
+
+  if (verified === 'success') return (
+    <div className="rounded-3xl p-6 text-center" style={{ background: '#C5E8D5', border: '2px solid #1A6B3C' }}>
+      <p className="text-4xl mb-2">✅</p>
+      <p className="font-black text-xl mb-1" style={{ fontFamily: 'var(--font-display)', color: '#1A6B3C' }}>
+        ชำระเงินสำเร็จ!
+      </p>
+      <p className="text-sm font-mono" style={{ color: '#1A6B3C' }}>
+        ระบบตรวจสอบยอดเงินเรียบร้อยแล้ว ทีมงานจะจัดส่งให้โดยเร็วครับ
+      </p>
+    </div>
+  )
+
+  if (verified === 'pending') return (
+    <div className="rounded-3xl p-6 text-center" style={{ background: '#F5E6C0', border: '2px solid #D4890A30' }}>
+      <p className="text-4xl mb-2">⏳</p>
+      <p className="font-black text-xl mb-1" style={{ fontFamily: 'var(--font-display)', color: '#854F0B' }}>
+        ส่งสลิปแล้ว!
+      </p>
+      <p className="text-sm font-mono" style={{ color: '#854F0B' }}>
+        ทีมงานจะตรวจสอบและยืนยันภายใน 24 ชั่วโมงครับ
+      </p>
+    </div>
+  )
+
+  return (
+    <div className="rounded-3xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+      <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
+        <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
+          ขั้นตอนที่ 2 — แนบสลิปการโอน
+        </p>
+      </div>
+      <div className="px-5 py-4 text-center">
+        <p className="text-xs font-mono mb-4" style={{ color: '#8C7B6E' }}>
+          โอนเงิน ฿{Number(total).toLocaleString()} เรียบร้อยแล้ว? แนบสลิปได้เลยครับ
+        </p>
+        <label className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl cursor-pointer transition-all active:scale-95 font-black uppercase text-sm"
+          style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+          {uploading ? '🔄 กำลังตรวจสอบ...' : '📎 แนบสลิปการโอน'}
+        </label>
+        {error && <p className="text-xs mt-2 font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
+      </div>
+    </div>
+  )
+}
 
 function OrderCompleteContent() {
   const params  = useSearchParams()
@@ -88,7 +171,7 @@ function OrderCompleteContent() {
           style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
           <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
             <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
-              ชำระเงินผ่าน PromptPay
+              ขั้นตอนที่ 1 — โอนเงินผ่าน PromptPay
             </p>
           </div>
           <div className="px-5 py-4 flex flex-col items-center">
@@ -99,9 +182,6 @@ function OrderCompleteContent() {
               style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
               ⬇️ บันทึก QR ไว้สแกน
             </a>
-            <p className="text-xs font-mono text-center" style={{ color: '#8C7B6E' }}>
-              สแกน QR เพื่อโอนเงิน · PromptPay
-            </p>
             {order?.total > 0 && (
               <p className="font-black text-xl mt-2" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
                 ฿{Number(order.total).toLocaleString()}
@@ -109,6 +189,13 @@ function OrderCompleteContent() {
             )}
           </div>
         </div>
+
+        {/* Slip Upload — อัปโหลดสลิปได้เลยหน้านี้ */}
+        {order && (
+          <div className="mb-4">
+            <SlipUpload orderId={orderId} total={order.total || 0} />
+          </div>
+        )}
 
         {/* PromptPay reminder */}
         <div className="rounded-2xl border-2 px-5 py-4 mb-4"
