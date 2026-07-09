@@ -387,11 +387,12 @@ export default function AdminOrdersPage() {
                     className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
                     style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }}>
                     <option value="POST SABUY">POST SABUY</option>
-                    <option value="KERRY">Kerry Express</option>
+                    <option value="KEX">KEX Express</option>
                     <option value="FLASH">Flash Express</option>
                     <option value="J&T">J&T Express</option>
                     <option value="SCG">SCG Express</option>
                     <option value="DHL">DHL</option>
+                    <option value="ส่งเอง">🚚 ส่งเอง</option>
                   </select>
                   <input value={shipForm.tracking}
                     onChange={e => setShipForm(s => ({ ...s, tracking: e.target.value }))}
@@ -399,10 +400,10 @@ export default function AdminOrdersPage() {
                     className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono uppercase"
                     style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
                   <div className="flex gap-2">
-                    <button onClick={() => addShipping(selected)} disabled={acting || !shipForm.tracking.trim()}
+                    <button onClick={() => addShipping(selected)} disabled={acting || (!shipForm.tracking.trim() && shipForm.carrier !== 'ส่งเอง')}
                       className="flex-1 py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
                       style={{ fontFamily: 'var(--font-display)', background: '#1A5C8F', color: '#EDE8DF' }}>
-                      {acting ? 'กำลังบันทึก...' : '🚚 บันทึกการจัดส่ง'}
+                      {acting ? 'กำลังบันทึก...' : shipForm.carrier === 'ส่งเอง' ? '🚚 บันทึกส่งเอง' : '🚚 บันทึกการจัดส่ง'}
                     </button>
                     {/* ส่งเอง/ไม่มีเลข → กดยืนยันส่งสำเร็จได้เลยโดยไม่ต้องใส่เลข */}
                     {selected.channel !== 'web' && !ship?.tracking && (
