@@ -7,6 +7,92 @@ const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const API    = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
+function DynamicQR({ orderId, total }: { orderId: string; total: number }) {
+  const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+  const [qr,      setQr]      = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [paid,    setPaid]    = useState(false)
+
+  useEffect(() => {
+    // โหลด QR สำหรับ order นี้โดยเฉพาะ
+    fetch(`${API}/orders/qr/${orderId}`)
+      .then(r => r.json())
+      .then(d => { if (d.qr_base64) setQr(d.qr_base64) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [orderId])
+
+  useEffect(() => {
+    // Poll สถานะทุก 5 วินาที — ถ้าชำระแล้วให้แสดงสำเร็จทันที
+    const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    const interval = setInterval(async () => {
+      const res = await fetch(
+        `${SB_URL}/rest/v1/orders?order_id=eq.${orderId}&select=status`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+      )
+      const data = await res.json()
+      if (data?.[0]?.status === 'ชำระแล้ว') {
+        setPaid(true)
+        clearInterval(interval)
+      }
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [orderId])
+
+  if (paid) return (
+    <div className="rounded-3xl p-6 text-center" style={{ background: '#C5E8D5', border: '2px solid #1A6B3C' }}>
+      <p className="text-4xl mb-2">✅</p>
+      <p className="font-black text-xl" style={{ fontFamily: 'var(--font-display)', color: '#1A6B3C' }}>
+        ชำระเงินสำเร็จ!
+      </p>
+      <p className="text-sm font-mono mt-1" style={{ color: '#1A6B3C' }}>
+        ระบบยืนยันการชำระเงินอัตโนมัติแล้วครับ
+      </p>
+    </div>
+  )
+
+  return (
+    <div className="rounded-3xl border-2 overflow-hidden mb-4" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+      <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
+        <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
+          สแกนเพื่อชำระเงิน — PromptPay
+        </p>
+      </div>
+      <div className="px-5 py-4 flex flex-col items-center">
+        {loading ? (
+          <div className="w-48 h-48 flex items-center justify-center">
+            <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: '#E0D9CE', borderTopColor: '#D64B2A' }} />
+          </div>
+        ) : qr ? (
+          <>
+            <img src={qr} alt="PromptPay QR" className="w-48 h-48 object-contain rounded-2xl mb-3" />
+            <p className="text-xs font-mono text-center mb-1" style={{ color: '#D64B2A' }}>
+              ⚠️ <strong>สแกน QR เท่านั้น</strong> อย่ากรอกเลขบัญชีเอง
+            </p>
+            <a href={qr} download={`VeLA-QR-${orderId}.png`}
+              className="text-xs font-mono px-4 py-2 rounded-xl border-2 mt-1 transition-all active:scale-95"
+              style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
+              ⬇️ บันทึก QR
+            </a>
+          </>
+        ) : (
+          // Fallback: static QR
+          <img src="/promptpay-qr.jpg" alt="PromptPay QR" className="w-48 h-48 object-contain rounded-2xl" />
+        )}
+        {total > 0 && (
+          <p className="font-black text-2xl mt-3" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+            ฿{Number(total).toLocaleString()}
+          </p>
+        )}
+        <p className="text-xs font-mono mt-1" style={{ color: '#C5BAB0' }}>
+          ระบบจะยืนยันการชำระเงินอัตโนมัติหลังสแกน QR
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
   const [uploading, setUploading] = useState(false)
   const [verified,  setVerified]  = useState<'success' | 'pending' | 'error' | null>(null)
@@ -195,31 +281,12 @@ function OrderCompleteContent() {
           </div>
         )}
 
-        {/* QR PromptPay */}
-        <div className="rounded-3xl border-2 overflow-hidden mb-4"
-          style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
-          <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
-            <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
-              ขั้นตอนที่ 1 — โอนเงินผ่าน PromptPay
-            </p>
-          </div>
-          <div className="px-5 py-4 flex flex-col items-center">
-            <img src="/promptpay-qr.jpg" alt="PromptPay QR"
-              className="w-48 h-48 object-contain rounded-2xl mb-3" />
-            <a href="/promptpay-qr.jpg" download="VeLA-PromptPay-QR.jpg"
-              className="text-xs font-mono px-4 py-2 rounded-xl border-2 transition-all active:scale-95 mb-2"
-              style={{ borderColor: '#D64B2A', color: '#D64B2A', background: '#FFF5F3' }}>
-              ⬇️ บันทึก QR ไว้สแกน
-            </a>
-            {order?.total > 0 && (
-              <p className="font-black text-xl mt-2" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-                ฿{Number(order.total).toLocaleString()}
-              </p>
-            )}
-          </div>
-        </div>
+        {/* Dynamic QR + Auto-confirm */}
+        {order && (
+          <DynamicQR orderId={orderId} total={order.total || 0} />
+        )}
 
-        {/* Slip Upload — อัปโหลดสลิปได้เลยหน้านี้ */}
+        {/* Slip Upload fallback สำหรับกรณีโอนผ่านเลขบัญชี */}
         {order && (
           <div className="mb-4">
             <SlipUpload orderId={orderId} total={order.total || 0} />
