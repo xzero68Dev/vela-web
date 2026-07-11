@@ -18,7 +18,10 @@ type Product = {
   roast: string
   process: string
   price: number
+  price_original: number
+  price_discounted: number
   price_shopee: number
+  discount_pct: number
   stock: number
   active: boolean
   sort_order: number
