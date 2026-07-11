@@ -324,11 +324,14 @@ export default function HomePage() {
   }
 
   const addToCart = (product: Product) => {
+    const cartPrice = firstOrderDiscount
+      ? Math.round(product.price * 0.5)
+      : (product.price_discounted || product.price)
     setCart(prev => {
       const existing = prev.find(i => i.sku === product.sku)
       const newCart: CartItem[] = existing
         ? prev.map(i => i.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
-        : [...prev, { sku: product.sku, qty: 1, price: effectivePrice, name: product.name }]
+        : [...prev, { sku: product.sku, qty: 1, price: cartPrice, name: product.name }]
       localStorage.setItem('vela_cart', JSON.stringify(newCart))
       return newCart
     })
