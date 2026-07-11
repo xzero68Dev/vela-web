@@ -110,22 +110,30 @@ function CheckoutForm() {
       // สร้าง order ID
       const oid = `WEB${Date.now().toString().slice(-8)}`
 
+      // เช็คว่าใช้ส่วนลดครั้งแรกไหม (ดูจาก cart ว่าราคาเป็นราคา 50% ไหม)
+      const regularTotal = cart.reduce((sum, item) => {
+        const p = products?.find((p: any) => p.sku === item.sku)
+        return sum + (p?.price_discounted || p?.price || item.price) * item.qty
+      }, 0)
+      const isFirstOrderDiscount = total < regularTotal * 0.8  // ถ้าราคาต่ำกว่า 80% ของราคาปกติ = ใช้ 50%
+
       // บันทึกลง Supabase ผ่าน backend
       const res = await fetch(`${API}/orders/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          order_id:     oid,
-          customer:     form.name,
-          phone:        form.phone,
-          full_address: form.address,
-          province:     form.province,
-          zip:          form.zip,
-          note:         form.note,
-          items:        cart,
-          total:        total,
-          channel:      'web',
-          status:       'รอชำระเงิน',
+          order_id:             oid,
+          customer:             form.name,
+          phone:                form.phone,
+          full_address:         form.address,
+          province:             form.province,
+          zip:                  form.zip,
+          note:                 form.note,
+          items:                cart,
+          total:                total,
+          channel:              'web',
+          status:               'รอชำระเงิน',
+          first_order_discount: isFirstOrderDiscount,
         })
       })
 

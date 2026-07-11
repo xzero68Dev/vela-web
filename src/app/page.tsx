@@ -72,10 +72,12 @@ const SKU_META: Record<string, { bg: string; accent: string; img: string; dark: 
 
 function getBaseSku(sku: string) { return sku.replace('-200', '') }
 
-function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product) => void }) {
+function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product; onAdd: (p: Product) => void; firstOrderDiscount?: boolean }) {
   const baseSku = getBaseSku(product.sku)
   const meta    = SKU_META[baseSku] || { bg: '#F5F1EB', accent: '#D64B2A', img: '', dark: false }
-
+  const effectivePrice = firstOrderDiscount
+    ? Math.round(product.price * 0.5)
+    : (product.price_discounted || product.price)
   return (
     <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
       style={{ background: meta.bg }}>
@@ -103,9 +105,21 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
           <p className="text-xs font-mono mt-0.5 mb-2" style={{ color: '#8C7B6E' }}>{product.roast}</p>
         )}
         <div className="flex items-center justify-between">
-          <span className="text-xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
-            ฿{product.price}
-          </span>
+          <div>
+            {/* ราคาหลังลด */}
+            <span className="text-xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+              ฿{effectivePrice}
+            </span>
+            {/* ราคาเต็มตัดเส้น */}
+            <span className="text-xs font-mono line-through ml-1.5" style={{ color: '#C5BAB0' }}>
+              ฿{product.price_original || product.price}
+            </span>
+            {/* badge ส่วนลด */}
+            <span className="text-xs font-mono ml-1.5 px-1.5 py-0.5 rounded-lg"
+              style={{ background: '#D64B2A', color: '#EDE8DF' }}>
+              -{firstOrderDiscount ? 50 : (product.discount_pct || 30)}%
+            </span>
+          </div>
           <button onClick={() => onAdd(product)}
             className="text-xs font-black uppercase px-3 py-1.5 rounded-xl transition-all active:scale-95"
             style={{ background: meta.accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
@@ -278,15 +292,26 @@ export default function HomePage() {
     } catch {}
   }, [])
 
+  const [firstOrderDiscount, setFirstOrderDiscount] = useState(false)
+
   useEffect(() => {
-    if (!SB_URL || !SB_KEY) { setLoading(false); return }
-    fetch(`${SB_URL}/rest/v1/products?active=eq.true&order=sort_order`, {
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
-    })
+    fetch(`${API}/products`)
       .then(r => r.json())
-      .then(data => { setProducts(Array.isArray(data) ? data : []); setLoading(false) })
+      .then(data => {
+        setProducts(Array.isArray(data.products) ? data.products : [])
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [])
+
+  // เช็คส่วนลดลูกค้าใหม่เมื่อ login แล้ว
+  useEffect(() => {
+    if (!user?.phone) return
+    fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(user.phone)}`)
+      .then(r => r.json())
+      .then(d => setFirstOrderDiscount(d.eligible === true))
+      .catch(() => {})
+  }, [user?.phone])
 
   const saveCart = (newCart: CartItem[]) => {
     setCart(newCart)
@@ -300,7 +325,7 @@ export default function HomePage() {
       const existing = prev.find(i => i.sku === product.sku)
       const newCart: CartItem[] = existing
         ? prev.map(i => i.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
-        : [...prev, { sku: product.sku, qty: 1, price: product.price, name: product.name }]
+        : [...prev, { sku: product.sku, qty: 1, price: effectivePrice, name: product.name }]
       localStorage.setItem('vela_cart', JSON.stringify(newCart))
       return newCart
     })
@@ -323,7 +348,23 @@ export default function HomePage() {
   return (
     <main style={{ background: '#EDE8DF', minHeight: '100vh' }}>
 
-      {/* Hero */}
+      {/* Banner ส่วนลดพิเศษลูกค้าใหม่ */}
+      {firstOrderDiscount && (
+        <div className="px-4 pt-3">
+          <div className="max-w-2xl mx-auto rounded-2xl px-5 py-3 flex items-center gap-3"
+            style={{ background: '#D64B2A' }}>
+            <span className="text-2xl">🎉</span>
+            <div>
+              <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#EDE8DF' }}>
+                ยินดีต้อนรับ! ส่วนลด 50% สำหรับการสั่งซื้อครั้งแรก
+              </p>
+              <p className="text-xs font-mono" style={{ color: '#F5C5A0' }}>
+                ส่วนลดพิเศษนี้ใช้ได้ครั้งเดียวเท่านั้นครับ
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section className="relative overflow-hidden" style={{ background: '#EDE8DF', position: 'relative' }}>
         <div className="max-w-5xl mx-auto px-5 pt-10 pb-8 flex flex-col items-center text-center">
 
@@ -375,7 +416,7 @@ export default function HomePage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {products
                 .filter(p => !p.sku.includes('-200'))
-                .map(p => <ProductCard key={p.sku} product={p} onAdd={addToCart} />)}
+                .map(p => <ProductCard key={p.sku} product={p} onAdd={addToCart} firstOrderDiscount={firstOrderDiscount} />)}
             </div>
           )}
         </div>
