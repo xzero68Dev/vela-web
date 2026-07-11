@@ -293,13 +293,34 @@ function CheckoutForm() {
           {cart.map(item => (
             <div key={item.sku} className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
               <p className="text-sm" style={{ color: '#3D1F0F' }}>{item.name} × {item.qty}</p>
-              <p className="text-sm font-mono" style={{ color: '#3D1F0F' }}>฿{(item.price * item.qty).toLocaleString()}</p>
+              <p className="text-sm font-mono" style={{ color: '#D64B2A' }}>฿{(item.price * item.qty).toLocaleString()}</p>
             </div>
           ))}
           <div className="px-5 py-3 flex justify-between">
             <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>ค่าส่ง</p>
             <p className="text-sm font-mono" style={{ color: '#1A6B3C' }}>ฟรี 🎉</p>
           </div>
+          {/* แสดง savings */}
+          {(() => {
+            const cartBaseTotal = cart.reduce((s, i) => s + i.price * i.qty, 0)
+            const isFirstOrder  = total > 0 && (total / cartBaseTotal) < 0.7
+            const disc30Total   = Math.round(cartBaseTotal / 0.7 * 0.3)
+            if (isFirstOrder) {
+              const origTotal = Math.round(cartBaseTotal / 0.5)
+              return (
+                <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
+                  <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>🎉 ส่วนลดลูกค้าใหม่ 50%</p>
+                  <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(origTotal - cartBaseTotal).toLocaleString()}</p>
+                </div>
+              )
+            }
+            return (
+              <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
+                <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
+                <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{disc30Total.toLocaleString()}</p>
+              </div>
+            )
+          })()}
           <div className="px-5 py-3 border-t-2 flex justify-between" style={{ borderColor: '#E0D9CE' }}>
             <p className="font-black" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>รวมทั้งหมด</p>
             <p className="font-black text-xl" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
