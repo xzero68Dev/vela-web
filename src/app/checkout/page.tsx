@@ -79,6 +79,8 @@ function CheckoutForm() {
   }, [searchParams])
 
   const total    = cart.reduce((s, i) => s + i.price * i.qty, 0)
+  const firstOrderDiscount = typeof window !== 'undefined'
+    && localStorage.getItem('vela_first_order_discount') === '1'
   const shipping = 0 // ส่งฟรี
 
   const validate = () => {
@@ -112,8 +114,7 @@ function CheckoutForm() {
 
       // เช็คว่าใช้ส่วนลดครั้งแรกไหม — ดูจาก cart item price เทียบกับ total
       // ถ้าราคาใน cart ถูกกว่า 60% ของยอดรวมปกติ (30% discount) = ใช้ first-order 50%
-      const cartBaseTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0)
-      const isFirstOrderDiscount = cartBaseTotal > 0 && (total / cartBaseTotal) < 0.7
+      const isFirstOrderDiscount = firstOrderDiscount
 
       // บันทึกลง Supabase ผ่าน backend
       const res = await fetch(`${API}/orders/create`, {
@@ -302,22 +303,20 @@ function CheckoutForm() {
           </div>
           {/* แสดง savings */}
           {(() => {
-            const cartBaseTotal = cart.reduce((s, i) => s + i.price * i.qty, 0)
-            const isFirstOrder  = total > 0 && (total / cartBaseTotal) < 0.7
-            const disc30Total   = Math.round(cartBaseTotal / 0.7 * 0.3)
-            if (isFirstOrder) {
-              const origTotal = Math.round(cartBaseTotal / 0.5)
+            if (firstOrderDiscount) {
+              const origTotal = Math.round(total / 0.5)
               return (
                 <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
                   <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>🎉 ส่วนลดลูกค้าใหม่ 50%</p>
-                  <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(origTotal - cartBaseTotal).toLocaleString()}</p>
+                  <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(origTotal - total).toLocaleString()}</p>
                 </div>
               )
             }
+            const origTotal = Math.round(total / 0.7)
             return (
               <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
                 <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
-                <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{disc30Total.toLocaleString()}</p>
+                <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(origTotal - total).toLocaleString()}</p>
               </div>
             )
           })()}

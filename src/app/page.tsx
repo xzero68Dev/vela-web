@@ -333,6 +333,7 @@ export default function HomePage() {
         ? prev.map(i => i.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
         : [...prev, { sku: product.sku, qty: 1, price: cartPrice, name: product.name }]
       localStorage.setItem('vela_cart', JSON.stringify(newCart))
+      localStorage.setItem('vela_first_order_discount', firstOrderDiscount ? '1' : '0')
       return newCart
     })
     setShowCart(true)
