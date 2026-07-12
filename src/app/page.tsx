@@ -355,7 +355,9 @@ export default function HomePage() {
   return (
     <main style={{ background: '#EDE8DF', minHeight: '100vh' }}>
 
-      {/* Banner ส่วนลดพิเศษลูกค้าใหม่ */}
+      {/* Hero */}
+        <section className="relative overflow-hidden" style={{ background: '#EDE8DF', position: 'relative' }}>
+          <div className="max-w-5xl mx-auto px-5 pt-10 pb-8 flex flex-col items-center text-center">
 
           {/* Logo */}
           <img src="/logo.png" alt="VeLA Cold Brew" className="h-24 md:h-32 mb-4 object-contain"
