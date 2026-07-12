@@ -79,8 +79,10 @@ function CheckoutForm() {
   }, [searchParams])
 
   const total    = cart.reduce((s, i) => s + i.price * i.qty, 0)
-  const firstOrderDiscount = typeof window !== 'undefined'
-    && localStorage.getItem('vela_first_order_discount') === '1'
+  const [firstOrderDiscount, setFirstOrderDiscount] = useState(false)
+  useEffect(() => {
+    setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1')
+  }, [])
   const shipping = 0 // ส่งฟรี
 
   const validate = () => {
