@@ -80,9 +80,18 @@ function CheckoutForm() {
 
   const total    = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const [firstOrderDiscount, setFirstOrderDiscount] = useState(false)
+
+  // เช็คส่วนลดลูกค้าใหม่จาก backend
   useEffect(() => {
-    setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1')
-  }, [])
+    if (!user?.phone) return
+    fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(user.phone)}`)
+      .then(r => r.json())
+      .then(d => setFirstOrderDiscount(d.eligible === true))
+      .catch(() => {
+        // fallback: ใช้ localStorage
+        setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1')
+      })
+  }, [user?.phone])
   const shipping = 0 // ส่งฟรี
 
   const validate = () => {
@@ -290,6 +299,20 @@ function CheckoutForm() {
 
         {/* Order summary */}
         <div className="rounded-2xl border-2 overflow-hidden mb-6" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+          {/* Banner ส่วนลดลูกค้าใหม่ */}
+          {firstOrderDiscount && (
+            <div className="px-5 py-3 flex items-center gap-3 border-b-2" style={{ background: '#D64B2A', borderColor: '#C04020' }}>
+              <span className="text-xl">🎉</span>
+              <div>
+                <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#EDE8DF' }}>
+                  ส่วนลดพิเศษลูกค้าใหม่ 50%!
+                </p>
+                <p className="text-xs font-mono" style={{ color: '#F5C5A0' }}>
+                  ใช้ได้ครั้งเดียวเท่านั้น
+                </p>
+              </div>
+            </div>
+          )}
           <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
             <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>สรุปคำสั่งซื้อ</p>
           </div>

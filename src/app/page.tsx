@@ -356,24 +356,6 @@ export default function HomePage() {
     <main style={{ background: '#EDE8DF', minHeight: '100vh' }}>
 
       {/* Banner ส่วนลดพิเศษลูกค้าใหม่ */}
-      {firstOrderDiscount && (
-        <div className="px-4 pt-3">
-          <div className="max-w-2xl mx-auto rounded-2xl px-5 py-3 flex items-center gap-3"
-            style={{ background: '#D64B2A' }}>
-            <span className="text-2xl">🎉</span>
-            <div>
-              <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#EDE8DF' }}>
-                ยินดีต้อนรับ! ส่วนลด 50% สำหรับการสั่งซื้อครั้งแรก
-              </p>
-              <p className="text-xs font-mono" style={{ color: '#F5C5A0' }}>
-                ส่วนลดพิเศษนี้ใช้ได้ครั้งเดียวเท่านั้นครับ
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-      <section className="relative overflow-hidden" style={{ background: '#EDE8DF', position: 'relative' }}>
-        <div className="max-w-5xl mx-auto px-5 pt-10 pb-8 flex flex-col items-center text-center">
 
           {/* Logo */}
           <img src="/logo.png" alt="VeLA Cold Brew" className="h-24 md:h-32 mb-4 object-contain"
