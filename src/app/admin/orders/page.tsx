@@ -37,7 +37,7 @@ export default function AdminOrdersPage() {
   const [shipping,  setShipping]  = useState<Record<string, ShipInfo>>({})
   const [loading,   setLoading]   = useState(true)
   const [tab,       setTab]       = useState<'web' | 'shopee'>('web')
-  const [shopeeTab, setShopeeTab] = useState<'post' | 'other' | 'manual'>('post')
+  const [carrierFilter, setCarrierFilter] = useState<'all' | 'post' | 'kex' | 'self'>('all')
   const [selected,  setSelected]  = useState<Order | null>(null)
   const [search,    setSearch]    = useState('')
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด')
@@ -46,6 +46,7 @@ export default function AdminOrdersPage() {
   const [shipForm,  setShipForm]  = useState({ tracking: '', carrier: 'POST SABUY' })
   const [acting,    setActing]    = useState(false)
   const [updated,   setUpdated]   = useState('')
+  const [sendSms,   setSendSms]   = useState(true)
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -54,10 +55,9 @@ export default function AdminOrdersPage() {
         `${SB_URL}/rest/v1/orders?order=${sortBy}.desc&limit=1000&select=order_id,order_date,ship_date,customer,phone,province,full_address,sku,qty,channel,status,slip_url,paid_at,note,total`,
         { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
       )
-      const data = await res.json()
-      const list = Array.isArray(data) ? data : []
+      const list = await res.json()
+      if (!Array.isArray(list)) { setLoading(false); return }
       setOrders(list)
-
       if (list.length) {
         const ids = list.map((o: Order) => o.order_id)
         const sRes = await fetch(
@@ -74,11 +74,8 @@ export default function AdminOrdersPage() {
   }, [sortBy])
 
   useEffect(() => { if (ready) fetchOrders() }, [ready, fetchOrders])
+  useEffect(() => { setPage(1) }, [tab, carrierFilter, search, statusFilter])
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1) }, [tab, shopeeTab, search, statusFilter])
-
-  // Actions
   const confirmPayment = async (o: Order) => {
     setActing(true)
     try {
@@ -92,7 +89,7 @@ export default function AdminOrdersPage() {
   }
 
   const addShipping = async (o: Order) => {
-    if (!shipForm.tracking.trim()) { alert('กรุณาใส่เลข tracking'); return }
+    if (!shipForm.tracking.trim() && shipForm.carrier !== 'ส่งเอง') { alert('กรุณาใส่เลข tracking'); return }
     setActing(true)
     try {
       const res = await fetch(`${API}/admin/add-shipping`, {
@@ -107,11 +104,11 @@ export default function AdminOrdersPage() {
     } finally { setActing(false) }
   }
 
-  const confirmDelivered = async (o: Order) => {
-    if (!confirm(`ยืนยันว่าพัสดุ ${o.customer} ส่งถึงแล้ว?\nระบบจะแจ้ง SMS/LINE ลูกค้าทันที`)) return
+  const confirmDelivered = async (o: Order, notify: boolean) => {
+    if (!confirm(`ยืนยันว่าพัสดุ ${o.customer} ส่งถึงแล้ว?${notify ? '\nระบบจะแจ้ง SMS/LINE ลูกค้าทันที' : '\n(ไม่ส่ง SMS)'}`)) return
     setActing(true)
     try {
-      const res = await fetch(`${API}/admin/confirm-delivered?order_id=${encodeURIComponent(o.order_id)}`, {
+      const res = await fetch(`${API}/admin/confirm-delivered?order_id=${encodeURIComponent(o.order_id)}&notify=${notify}`, {
         method: 'POST', headers: { 'x-api-key': ADMIN_KEY },
       })
       if (!res.ok) { alert(`ยืนยันไม่สำเร็จ: ${await res.text()}`); return }
@@ -120,25 +117,25 @@ export default function AdminOrdersPage() {
     } finally { setActing(false) }
   }
 
-  // Filter logic
+  // carrier detection
+  const getCarrier = (o: Order) => {
+    const c = (shipping[o.order_id]?.carrier || '').toUpperCase()
+    if (c.includes('POST') || c.includes('SABUY')) return 'post'
+    if (c.includes('KEX') || c.includes('KERRY') || c.includes('SXF')) return 'kex'
+    return 'self'
+  }
+
   const webOrders    = orders.filter(o => o.channel === 'web')
   const shopeeOrders = orders.filter(o => o.channel !== 'web')
-  const postOrders   = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return shipping[o.order_id]?.tracking && (c.includes('POST') || c.includes('SABUY')) })
-  const otherOrders  = shopeeOrders.filter(o => { const c = shipping[o.order_id]?.carrier || ''; return shipping[o.order_id]?.tracking && c && !c.includes('POST') && !c.includes('SABUY') && c !== 'ส่งเอง' })
-  const manualOrders = shopeeOrders.filter(o => {
-    const ship = shipping[o.order_id]
-    const isSelfDelivery = ship?.carrier === 'ส่งเอง'
-    const noTracking = !ship?.tracking
-    return (noTracking || isSelfDelivery) && !['จัดส่งสำเร็จ', 'ตีกลับ'].includes(o.status)
-  })
+  const shopeeFiltered = carrierFilter === 'all' ? shopeeOrders
+    : shopeeOrders.filter(o => getCarrier(o) === carrierFilter)
 
-  const baseList = tab === 'web' ? webOrders
-    : shopeeTab === 'post' ? postOrders
-    : shopeeTab === 'other' ? otherOrders
-    : manualOrders
+  const postCount = shopeeOrders.filter(o => getCarrier(o) === 'post').length
+  const kexCount  = shopeeOrders.filter(o => getCarrier(o) === 'kex').length
+  const selfCount = shopeeOrders.filter(o => getCarrier(o) === 'self').length
 
+  const baseList = tab === 'web' ? webOrders : shopeeFiltered
   const statusOptions = ['ทั้งหมด', ...Array.from(new Set(baseList.map(o => o.status)))]
-
   const filtered = baseList
     .filter(o => statusFilter === 'ทั้งหมด' || o.status === statusFilter)
     .filter(o => !search || o.customer?.includes(search) || o.order_id?.includes(search) || o.phone?.includes(search) || o.sku?.includes(search))
@@ -147,14 +144,13 @@ export default function AdminOrdersPage() {
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const webStats = [
-    { label: 'รอชำระ',    value: webOrders.filter(o => o.status === 'รอชำระเงิน').length,   status: 'รอชำระเงิน' },
-    { label: 'ชำระแล้ว',  value: webOrders.filter(o => o.status === 'ชำระแล้ว').length,     status: 'ชำระแล้ว' },
-    { label: 'จัดส่งแล้ว', value: webOrders.filter(o => o.status === 'จัดส่งแล้ว').length, status: 'จัดส่งแล้ว' },
-    { label: 'สำเร็จ',    value: webOrders.filter(o => o.status === 'จัดส่งสำเร็จ').length, status: 'จัดส่งสำเร็จ' },
+    { label: 'รอชำระ',    status: 'รอชำระเงิน',   value: webOrders.filter(o => o.status === 'รอชำระเงิน').length },
+    { label: 'ชำระแล้ว',  status: 'ชำระแล้ว',     value: webOrders.filter(o => o.status === 'ชำระแล้ว').length },
+    { label: 'จัดส่งแล้ว',status: 'จัดส่งแล้ว',   value: webOrders.filter(o => o.status === 'จัดส่งแล้ว').length },
+    { label: 'สำเร็จ',    status: 'จัดส่งสำเร็จ', value: webOrders.filter(o => o.status === 'จัดส่งสำเร็จ').length },
   ]
 
   if (!ready) return null
-
   const ship = selected ? shipping[selected.order_id] : null
 
   return (
@@ -168,16 +164,14 @@ export default function AdminOrdersPage() {
           <div className="flex items-center gap-2">
             {loading && <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: '#D64B2A', borderTopColor: 'transparent' }} />}
             <button onClick={fetchOrders} className="text-xs px-3 py-1.5 rounded-xl border-2 font-mono"
-              style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
-              ↺ {updated}
-            </button>
+              style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>↺ {updated}</button>
           </div>
         </div>
 
         {/* Main tabs */}
         <div className="flex gap-2 mb-4">
           {([['web', `🌐 เว็บ (${webOrders.length})`], ['shopee', `🟠 Shopee (${shopeeOrders.length})`]] as const).map(([t, label]) => (
-            <button key={t} onClick={() => setTab(t)}
+            <button key={t} onClick={() => { setTab(t); setStatusFilter('ทั้งหมด') }}
               className="px-4 py-2 rounded-xl border-2 text-sm font-mono transition-all"
               style={tab === t ? { background: '#D64B2A', borderColor: '#D64B2A', color: '#EDE8DF' }
                               : { background: 'transparent', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
@@ -189,7 +183,7 @@ export default function AdminOrdersPage() {
         {/* Web stats */}
         {tab === 'web' && (
           <div className="grid grid-cols-4 gap-2 mb-4">
-            {webStats.map(({ label, value, status }) => (
+            {webStats.map(({ label, status, value }) => (
               <div key={label} className="rounded-2xl p-3 text-center border-2 cursor-pointer transition-all"
                 onClick={() => setStatusFilter(prev => prev === status ? 'ทั้งหมด' : status)}
                 style={{ background: statusFilter === status ? '#D64B2A10' : '#F5F1EB', borderColor: statusFilter === status ? '#D64B2A' : '#E0D9CE' }}>
@@ -200,25 +194,27 @@ export default function AdminOrdersPage() {
           </div>
         )}
 
-        {/* Shopee sub-tabs */}
+        {/* Shopee carrier filter */}
         {tab === 'shopee' && (
           <div className="flex gap-2 mb-4 flex-wrap">
             {([
-              ['post',   `📮 POST SABUY (${postOrders.length})`],
-              ['other',  `📦 ขนส่งอื่น (${otherOrders.length})`],
-              ['manual', `🚚 ส่งเอง/รอเลข (${manualOrders.length})`],
+              ['all',  `ทั้งหมด (${shopeeOrders.length})`],
+              ['post', `📮 ThaiPost (${postCount})`],
+              ['kex',  `📦 KEX (${kexCount})`],
+              ['self', `🚚 ส่งเอง (${selfCount})`],
             ] as const).map(([t, label]) => (
-              <button key={t} onClick={() => setShopeeTab(t)}
+              <button key={t} onClick={() => { setCarrierFilter(t); setPage(1) }}
                 className="px-3 py-1.5 rounded-xl border-2 text-xs font-mono transition-all"
-                style={shopeeTab === t ? { background: '#3D1F0F', borderColor: '#3D1F0F', color: '#EDE8DF' }
-                                      : { background: 'transparent', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                style={carrierFilter === t
+                  ? { background: '#3D1F0F', borderColor: '#3D1F0F', color: '#EDE8DF' }
+                  : { background: 'transparent', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
                 {label}
               </button>
             ))}
           </div>
         )}
 
-        {/* Filters row */}
+        {/* Filters */}
         <div className="flex gap-2 mb-3">
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหา ชื่อ / Order / เบอร์ / SKU"
@@ -237,7 +233,6 @@ export default function AdminOrdersPage() {
           </select>
         </div>
 
-        {/* Result count */}
         <p className="text-xs font-mono mb-3" style={{ color: '#C5BAB0' }}>
           แสดง {paginated.length} จาก {filtered.length} รายการ · หน้า {page}/{totalPages}
         </p>
@@ -264,23 +259,18 @@ export default function AdminOrdersPage() {
                       <Badge status={o.status} />
                       {o.slip_url && o.status === 'รอชำระเงิน' && (
                         <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                          style={{ background: '#D64B2A', color: '#EDE8DF' }}>
-                          💳 มีสลิป!
-                        </span>
-                      )}
-                      {o.slip_url && o.status !== 'รอชำระเงิน' && (
-                        <span className="text-xs">📎</span>
+                          style={{ background: '#D64B2A', color: '#EDE8DF' }}>💳 มีสลิป!</span>
                       )}
                     </div>
                     <p className="text-xs font-mono truncate" style={{ color: '#8C7B6E' }}>{o.sku}</p>
                     <p className="text-xs font-mono mt-0.5" style={{ color: '#C5BAB0' }}>
                       {o.order_id} · {o.order_date}
                       {s?.tracking && ` · ${s.tracking}`}
+                      {s?.carrier && ` (${s.carrier})`}
                     </p>
                   </div>
                   {o.total ? (
-                    <p className="font-black text-sm flex-shrink-0"
-                      style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                    <p className="font-black text-sm flex-shrink-0" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
                       ฿{Number(o.total).toLocaleString()}
                     </p>
                   ) : null}
@@ -328,7 +318,6 @@ export default function AdminOrdersPage() {
           <div className="w-full max-w-lg rounded-t-3xl overflow-y-auto" style={{ background: '#EDE8DF', maxHeight: '90vh' }}
             onClick={e => e.stopPropagation()}>
 
-            {/* Modal header */}
             <div className="px-5 py-4 border-b-2 flex items-center justify-between sticky top-0 z-10"
               style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
               <div>
@@ -343,15 +332,15 @@ export default function AdminOrdersPage() {
             <div className="px-5 py-4 space-y-4">
 
               {/* Order info */}
-              <div className="rounded-2xl border-2 divide-y-2" style={{ background: '#F5F1EB', borderColor: '#E0D9CE', '--tw-divide-opacity': 1 } as any}>
+              <div className="rounded-2xl border-2 divide-y-2" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
                 {[
-                  { label: 'ลูกค้า',   value: selected.customer },
-                  { label: 'เบอร์',    value: selected.phone },
-                  { label: 'ที่อยู่',  value: [selected.full_address, selected.province].filter(Boolean).join(' ') },
-                  { label: 'สินค้า',   value: selected.sku },
-                  { label: 'วันที่',   value: selected.order_date },
+                  { label: 'ลูกค้า',  value: selected.customer },
+                  { label: 'เบอร์',   value: selected.phone },
+                  { label: 'ที่อยู่', value: [selected.full_address, selected.province].filter(Boolean).join(' ') },
+                  { label: 'สินค้า',  value: selected.sku },
+                  { label: 'วันที่',  value: selected.order_date },
                   ...(selected.note ? [{ label: 'หมายเหตุ', value: selected.note }] : []),
-                  ...(ship?.tracking ? [{ label: 'Tracking', value: `${ship.carrier} · ${ship.tracking}` }] : []),
+                  ...(ship?.tracking ? [{ label: 'Tracking', value: `${ship.carrier || ''} · ${ship.tracking}` }] : []),
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between gap-3 px-4 py-2.5">
                     <p className="text-xs font-mono flex-shrink-0" style={{ color: '#C5BAB0' }}>{label}</p>
@@ -381,7 +370,7 @@ export default function AdminOrdersPage() {
                 <p className="text-xs font-mono text-center" style={{ color: '#C5BAB0' }}>⏳ ยังไม่มีสลิปจากลูกค้า</p>
               ) : null}
 
-              {/* Action: ยืนยันชำระ (web เท่านั้น) */}
+              {/* Action: ยืนยันชำระ */}
               {selected.channel === 'web' && selected.status === 'รอชำระเงิน' && (
                 <button onClick={() => confirmPayment(selected)} disabled={acting}
                   className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
@@ -390,15 +379,13 @@ export default function AdminOrdersPage() {
                 </button>
               )}
 
-              {/* Action: เพิ่ม/อัปเดต tracking */}
+              {/* Action: เพิ่ม tracking */}
               {(
                 (selected.channel === 'web' && selected.status === 'ชำระแล้ว') ||
                 (selected.channel !== 'web' && !ship?.tracking)
               ) && (
                 <div className="rounded-2xl border-2 p-4 space-y-3" style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
-                  <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
-                    {ship?.tracking ? 'อัปเดต Tracking' : 'เพิ่มการจัดส่ง'}
-                  </p>
+                  <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>เพิ่มการจัดส่ง</p>
                   <select value={shipForm.carrier} onChange={e => setShipForm(s => ({ ...s, carrier: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
                     style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }}>
@@ -412,18 +399,17 @@ export default function AdminOrdersPage() {
                   </select>
                   <input value={shipForm.tracking}
                     onChange={e => setShipForm(s => ({ ...s, tracking: e.target.value }))}
-                    placeholder="เลข Tracking"
+                    placeholder={shipForm.carrier === 'ส่งเอง' ? 'เลข Tracking (ถ้ามี)' : 'เลข Tracking'}
                     className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono uppercase"
                     style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
                   <div className="flex gap-2">
                     <button onClick={() => addShipping(selected)} disabled={acting || (!shipForm.tracking.trim() && shipForm.carrier !== 'ส่งเอง')}
                       className="flex-1 py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
                       style={{ fontFamily: 'var(--font-display)', background: '#1A5C8F', color: '#EDE8DF' }}>
-                      {acting ? 'กำลังบันทึก...' : shipForm.carrier === 'ส่งเอง' ? '🚚 บันทึกส่งเอง' : '🚚 บันทึกการจัดส่ง'}
+                      {acting ? 'กำลังบันทึก...' : '🚚 บันทึกการจัดส่ง'}
                     </button>
-                    {/* ส่งเอง/ไม่มีเลข → กดยืนยันส่งสำเร็จได้เลยโดยไม่ต้องใส่เลข */}
                     {selected.channel !== 'web' && !ship?.tracking && (
-                      <button onClick={() => confirmDelivered(selected)} disabled={acting}
+                      <button onClick={() => confirmDelivered(selected, sendSms)} disabled={acting}
                         className="flex-1 py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
                         style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
                         {acting ? '...' : '✓ ส่งถึงแล้ว'}
@@ -433,24 +419,30 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {/* Action: tracking links + ยืนยันส่งสำเร็จ */}
+              {/* Action: ยืนยันส่งสำเร็จ */}
               {selected.status === 'จัดส่งแล้ว' && (
                 <div className="space-y-2">
                   {ship?.tracking && (
                     <a href={
-                      (ship.carrier || '').includes('POST') || (ship.carrier || '').includes('SABUY')
+                      (ship.carrier || '').toUpperCase().includes('POST') || (ship.carrier || '').toUpperCase().includes('SABUY')
                         ? `https://velacoldbrew.com/track/${ship.tracking}`
-                        : 'https://th.kerryexpress.com/th/track/'
+                        : 'https://th.kex-express.com/th/track/'
                     } target="_blank" rel="noopener noreferrer"
-                      className="block w-full py-2.5 rounded-xl text-sm font-mono text-center border-2 transition-all"
+                      className="block w-full py-2.5 rounded-xl text-sm font-mono text-center border-2"
                       style={{ borderColor: '#1A5C8F', color: '#1A5C8F', background: '#F5F1EB' }}>
                       🔍 ดูสถานะ {ship.tracking}
                     </a>
                   )}
-                  <button onClick={() => confirmDelivered(selected)} disabled={acting}
+                  <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
+                    style={{ background: '#F5F1EB' }}>
+                    <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}
+                      className="w-4 h-4" />
+                    <span className="text-xs font-mono" style={{ color: '#3D1F0F' }}>ส่ง SMS/LINE แจ้งลูกค้าด้วย</span>
+                  </label>
+                  <button onClick={() => confirmDelivered(selected, sendSms)} disabled={acting}
                     className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
                     style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
-                    {acting ? 'กำลังยืนยัน...' : '✓ ยืนยันส่งถึงแล้ว (แจ้งลูกค้า)'}
+                    {acting ? 'กำลังยืนยัน...' : `✓ ยืนยันส่งถึงแล้ว${sendSms ? ' (แจ้งลูกค้า)' : ''}`}
                   </button>
                 </div>
               )}
