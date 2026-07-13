@@ -416,6 +416,14 @@ export default function AdminOrdersPage() {
                       </button>
                     )}
                   </div>
+                  {selected.channel !== 'web' && !ship?.tracking && (
+                    <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
+                      style={{ background: '#F5F1EB' }}>
+                      <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}
+                        className="w-4 h-4" />
+                      <span className="text-xs font-mono" style={{ color: '#3D1F0F' }}>ส่ง SMS/LINE แจ้งลูกค้าด้วย</span>
+                    </label>
+                  )}
                 </div>
               )}
 
