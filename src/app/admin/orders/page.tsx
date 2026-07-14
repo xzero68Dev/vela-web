@@ -427,7 +427,7 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {/* Action: ยืนยันส่งสำเร็จ */}
+              {/* Action: ยืนยันส่งสำเร็จ — แสดงสำหรับทุก order ที่ยังไม่ complete */}
               {selected.status === 'จัดส่งแล้ว' && (
                 <div className="space-y-2">
                   {ship?.tracking && (
@@ -441,6 +441,23 @@ export default function AdminOrdersPage() {
                       🔍 ดูสถานะ {ship.tracking}
                     </a>
                   )}
+                  <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
+                    style={{ background: '#F5F1EB' }}>
+                    <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}
+                      className="w-4 h-4" />
+                    <span className="text-xs font-mono" style={{ color: '#3D1F0F' }}>ส่ง SMS/LINE แจ้งลูกค้าด้วย</span>
+                  </label>
+                  <button onClick={() => confirmDelivered(selected, sendSms)} disabled={acting}
+                    className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
+                    style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
+                    {acting ? 'กำลังยืนยัน...' : `✓ ยืนยันส่งถึงแล้ว${sendSms ? ' (แจ้งลูกค้า)' : ''}`}
+                  </button>
+                </div>
+              )}
+
+              {/* Action: ยืนยันส่งสำเร็จสำหรับ Shopee ที่ status ยังไม่ใช่ จัดส่งแล้ว แต่มี tracking แล้ว */}
+              {selected.channel !== 'web' && selected.status !== 'จัดส่งแล้ว' && selected.status !== 'จัดส่งสำเร็จ' && ship?.tracking && (
+                <div className="space-y-2">
                   <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
                     style={{ background: '#F5F1EB' }}>
                     <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}
