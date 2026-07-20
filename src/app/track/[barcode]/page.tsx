@@ -38,7 +38,7 @@ export default function TrackPage() {
   const [error,   setError]   = useState('')
 
   const detectCarrierLink = (b: string): { name: string; url: string } | null => {
-    if (/^(TH|SCPK|SXF)/i.test(b))   return { name: 'Kerry Express', url: 'https://th.kex-express.com/th/track/' }
+    if (/^(TH|SCPK|SXF)/i.test(b))   return { name: 'KEX Express', url: 'https://th.kex-express.com/th/track/' }
     if (/^(FLE|FEX)/i.test(b))        return { name: 'Flash Express', url: `https://www.flashexpress.co.th/tracking/?se=${b}` }
     if (/^(TDE|JPT|JTTH)/i.test(b))   return { name: 'J&T Express',  url: `https://www.jtexpress.co.th/trajectoryQuery?waybillno=${b}` }
     if (/^SCG/i.test(b))              return { name: 'SCG Express',  url: `https://www.scgexpress.co.th/tracking/TrackingSearch.aspx?txtTrackingNo=${b}` }
@@ -177,7 +177,7 @@ export default function TrackPage() {
                   <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>ประวัติการจัดส่ง</p>
                 </div>
                 <div className="px-5 py-4 space-y-3">
-                  {result.events.map((e: any, i: number) => (
+                  {[...result.events].reverse().map((e: any, i: number) => (
                     <div key={i} className="flex gap-3 items-start">
                       <div className="mt-1.5 w-2 h-2 rounded-full flex-shrink-0"
                         style={{ background: i === 0 ? '#D64B2A' : '#D8D0C5' }} />
