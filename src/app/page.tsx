@@ -85,6 +85,14 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
     <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
       style={{ background: meta.bg }}>
 
+      {/* Tag ลูกค้าใหม่ -50% — โชว์เฉพาะคนมีสิทธิ์ (ราคายังปกติ, ส่วนลดจริงคิดตอน checkout) */}
+      {firstOrderDiscount && (
+        <div className="absolute top-2 left-2 z-10 px-2 py-1 rounded-lg text-xs font-black uppercase shadow-md"
+          style={{ background: '#D64B2A', color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
+          ลูกค้าใหม่ -50%
+        </div>
+      )}
+
       {/* Product image — full frame */}
       <Link href={`/product/${baseSku}`} className="block">
         <div className="aspect-square overflow-hidden">
