@@ -107,28 +107,28 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
         {product.roast && (
           <p className="text-xs font-mono mt-0.5 mb-2" style={{ color: '#8C7B6E' }}>{product.roast}</p>
         )}
-        <div className="flex items-center justify-between">
-          <div>
-            {/* ราคาหลังลด */}
-            <span className="text-xl font-black" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-              ฿{effectivePrice}
-            </span>
-            {/* ราคาเต็มตัดเส้น */}
-            <span className="text-xs font-mono line-through ml-1.5" style={{ color: '#C5BAB0' }}>
-              ฿{product.price_original || product.price}
-            </span>
-            {/* badge ส่วนลด */}
-            <span className="text-xs font-mono ml-1.5 px-1.5 py-0.5 rounded-lg"
-              style={{ background: '#D64B2A', color: '#EDE8DF' }}>
-              -{product.discount_pct || 30}%
-            </span>
-          </div>
-          <button onClick={() => onAdd(product)}
-            className="text-xs font-black uppercase px-3 py-1.5 rounded-xl transition-all active:scale-95"
-            style={{ background: meta.accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
-            + ตะกร้า
-          </button>
+        {/* แถวราคา — wrap ได้ ไม่เบียดปุ่ม */}
+        <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5 mb-2.5">
+          {/* ราคาหลังลด */}
+          <span className="text-xl font-black leading-none" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+            ฿{effectivePrice}
+          </span>
+          {/* ราคาเต็มตัดเส้น */}
+          <span className="text-xs font-mono line-through" style={{ color: '#C5BAB0' }}>
+            ฿{product.price_original || product.price}
+          </span>
+          {/* badge ส่วนลด */}
+          <span className="text-xs font-mono px-1.5 py-0.5 rounded-lg"
+            style={{ background: '#D64B2A', color: '#EDE8DF' }}>
+            -{product.discount_pct || 30}%
+          </span>
         </div>
+        {/* ปุ่มเพิ่มตะกร้า — เต็มความกว้าง ได้สัดส่วนทุกขนาดจอ */}
+        <button onClick={() => onAdd(product)}
+          className="w-full text-sm font-black uppercase py-2 rounded-xl transition-all active:scale-95 whitespace-nowrap"
+          style={{ background: meta.accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
+          + ตะกร้า
+        </button>
       </div>
     </div>
   )
