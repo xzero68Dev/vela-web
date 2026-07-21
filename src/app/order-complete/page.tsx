@@ -2,6 +2,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { fbTrack } from '@/lib/fbpixel'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -132,6 +133,24 @@ function OrderCompleteContent() {
       .then(data => { if (data?.[0]) setOrder(data[0]) })
       .catch(() => {})
   }, [orderId])
+
+  // FB Pixel: Purchase — ยิงเมื่อโหลด order สำเร็จ กันยิงซ้ำตอน refresh ด้วย localStorage
+  useEffect(() => {
+    if (!order || !orderId) return
+    try {
+      const KEY = 'vela_purchase_fired'
+      const fired: string[] = JSON.parse(localStorage.getItem(KEY) || '[]')
+      if (fired.includes(orderId)) return
+      fbTrack('Purchase', {
+        content_name: order.sku,
+        content_type: 'product',
+        num_items:    order.qty || undefined,
+        value:        Number(order.total) || 0,
+        currency:     'THB',
+      })
+      localStorage.setItem(KEY, JSON.stringify([...fired, orderId].slice(-50)))
+    } catch {}
+  }, [order, orderId])
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-5"

@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
 import { useAuth } from '@/context/AuthContext'
+import { fbTrack } from '@/lib/fbpixel'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -133,6 +134,15 @@ export default function ProductPage() {
     localStorage.setItem('vela_cart', JSON.stringify(cart))
     setCartCount(cart.reduce((s: number, i: any) => s + i.qty, 0))
     setCartTotal(cart.reduce((s: number, i: any) => s + i.price * i.qty, 0))
+    // FB Pixel: AddToCart
+    fbTrack('AddToCart', {
+      content_ids:  [current.sku],
+      content_name: current.name,
+      content_type: 'product',
+      contents:     [{ id: current.sku, quantity: qty }],
+      value:        price * qty,
+      currency:     'THB',
+    })
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
@@ -144,6 +154,19 @@ export default function ProductPage() {
   const discPct    = firstOrderDiscount ? 50 : (current?.discount_pct || 0)
   const textColor  = isDark ? '#EDE8DF' : '#3D1F0F'
   const mutedColor = isDark ? '#8C7B6E' : '#8C7B6E'
+
+  // FB Pixel: ViewContent — ยิงเมื่อเปิดดูรายละเอียดสินค้า
+  useEffect(() => {
+    if (!current) return
+    fbTrack('ViewContent', {
+      content_ids:  [current.sku],
+      content_name: current.name,
+      content_type: 'product',
+      value:        price,
+      currency:     'THB',
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.sku, sizeOption])
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#EDE8DF' }}>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
@@ -7,6 +7,8 @@ import LineLoginButton from '@/components/LineLoginButton'
 import { useAuth } from '@/context/AuthContext'
 import AddressForm from '@/components/AddressForm'
 import AddressList from '@/components/AddressList'
+import { getUtm } from '@/lib/utm'
+import { fbTrack } from '@/lib/fbpixel'
 
 const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
@@ -78,6 +80,21 @@ function CheckoutForm() {
     } catch {}
   }, [searchParams])
 
+  // FB Pixel: InitiateCheckout — ยิงครั้งเดียวเมื่อเข้าหน้า checkout พร้อมสินค้าในตะกร้า
+  const icFired = useRef(false)
+  useEffect(() => {
+    if (icFired.current || cart.length === 0) return
+    icFired.current = true
+    fbTrack('InitiateCheckout', {
+      content_ids: cart.map(i => i.sku),
+      contents:    cart.map(i => ({ id: i.sku, quantity: i.qty })),
+      content_type: 'product',
+      num_items:   cart.reduce((s, i) => s + i.qty, 0),
+      value:       cart.reduce((s, i) => s + i.price * i.qty, 0),
+      currency:    'THB',
+    })
+  }, [cart])
+
   const total    = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const [firstOrderDiscount, setFirstOrderDiscount] = useState(false)
 
@@ -144,6 +161,7 @@ function CheckoutForm() {
           channel:              'web',
           status:               'รอชำระเงิน',
           first_order_discount: isFirstOrderDiscount,
+          ...getUtm(),  // utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer, landing_page
         })
       })
 

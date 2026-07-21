@@ -1,5 +1,6 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { captureUtm } from '@/lib/utm'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -63,6 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // โหลด user จาก localStorage ตอนเริ่ม + ฟัง storage event จากหน้าอื่น (เช่น line-callback)
   useEffect(() => {
+    // เก็บ UTM parameters จาก URL ตอนลูกค้าเข้าเว็บ (ทำงานทุกหน้า เพราะ AuthProvider ครอบทั้งแอป)
+    captureUtm()
     try {
       const saved = localStorage.getItem('vela_user')
       if (saved) setUser(JSON.parse(saved))

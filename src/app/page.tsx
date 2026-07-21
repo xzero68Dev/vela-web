@@ -4,6 +4,7 @@ import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
 import LineLoginButton from '@/components/LineLoginButton'
 import { useAuth } from '@/context/AuthContext'
+import { fbTrack } from '@/lib/fbpixel'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -327,6 +328,15 @@ export default function HomePage() {
     const cartPrice = firstOrderDiscount
       ? Math.round(product.price * 0.5)
       : (product.price_discounted || product.price)
+    // FB Pixel: AddToCart
+    fbTrack('AddToCart', {
+      content_ids:  [product.sku],
+      content_name: product.name,
+      content_type: 'product',
+      contents:     [{ id: product.sku, quantity: 1 }],
+      value:        cartPrice,
+      currency:     'THB',
+    })
     setCart(prev => {
       const existing = prev.find(i => i.sku === product.sku)
       const newCart: CartItem[] = existing
