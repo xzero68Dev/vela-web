@@ -414,7 +414,7 @@ export default function HomePage() {
       </section>
 
       {/* Promo banner — ลูกค้าใหม่ลด 50% (โฆษณา landing) */}
-      <section className="px-5 -mt-2 mb-2">
+      <section className="px-5 pt-2 mb-4">
         <div className="max-w-5xl mx-auto">
           <div className="rounded-2xl px-5 py-3 text-center border-2"
             style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
