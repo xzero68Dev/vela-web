@@ -85,17 +85,16 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
     <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
       style={{ background: meta.bg }}>
 
-      {/* Tag ลูกค้าใหม่ -50% — โชว์เฉพาะคนมีสิทธิ์ (ราคายังปกติ, ส่วนลดจริงคิดตอน checkout) */}
-      {firstOrderDiscount && (
-        <div className="absolute top-2 left-2 z-10 px-2 py-1 rounded-lg text-xs font-black uppercase shadow-md"
-          style={{ background: '#D64B2A', color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
-          ลูกค้าใหม่ -50%
-        </div>
-      )}
-
       {/* Product image — full frame */}
       <Link href={`/product/${baseSku}`} className="block">
-        <div className="aspect-square overflow-hidden">
+        <div className="relative aspect-square overflow-hidden">
+          {/* Tag ลูกค้าใหม่ -50% — มุมขวาล่างของรูป (โชว์เฉพาะคนมีสิทธิ์, ราคายังปกติ) */}
+          {firstOrderDiscount && (
+            <div className="absolute bottom-2 right-2 z-10 px-2 py-1 rounded-lg text-xs font-black uppercase shadow-md"
+              style={{ background: '#D64B2A', color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
+              ลูกค้าใหม่ -50%
+            </div>
+          )}
           {meta.img
             ? <img src={meta.img} alt={product.name}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -416,7 +415,7 @@ export default function HomePage() {
 
       {/* Promo banner — ลูกค้าใหม่ลด 50% (โฆษณา landing) */}
       <section className="px-5 -mt-2 mb-2">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="rounded-2xl px-5 py-3 text-center border-2"
             style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
             <p className="font-black text-sm md:text-base uppercase leading-tight"
