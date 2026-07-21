@@ -373,6 +373,13 @@ function CheckoutForm() {
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{discount.toLocaleString()}</p>
             </div>
           )}
+          {/* ส่วนลด 30% ปกติ — โชว์ให้ลูกค้าที่ไม่ได้ใช้สิทธิ์ลูกค้าใหม่ (ราคาลด 30% ฝังในราคาอยู่แล้ว) */}
+          {!(firstOrderDiscount && discount > 0) && subtotal > 0 && (
+            <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
+              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
+              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(Math.round(subtotal / 0.7) - subtotal).toLocaleString()}</p>
+            </div>
+          )}
           <div className="px-5 py-3 flex justify-between">
             <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>ค่าส่ง</p>
             <p className="text-sm font-mono" style={{ color: '#1A6B3C' }}>ฟรี 🎉</p>
