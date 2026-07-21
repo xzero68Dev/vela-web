@@ -9,6 +9,7 @@ import AddressForm from '@/components/AddressForm'
 import AddressList from '@/components/AddressList'
 import { getUtm } from '@/lib/utm'
 import { fbTrack } from '@/lib/fbpixel'
+import { firstOrderDiscountAmount, FIRST_ORDER_CAP } from '@/lib/promo'
 
 const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
@@ -95,7 +96,7 @@ function CheckoutForm() {
     })
   }, [cart])
 
-  const total    = cart.reduce((s, i) => s + i.price * i.qty, 0)
+  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const [firstOrderDiscount, setFirstOrderDiscount] = useState(false)
 
   // เช็คส่วนลดลูกค้าใหม่จาก backend
@@ -110,6 +111,10 @@ function CheckoutForm() {
       })
   }, [user?.phone])
   const shipping = 0 // ส่งฟรี
+
+  // ส่วนลดลูกค้าใหม่: 50% ของบิล เพดาน ฿130 (คิดระดับบิล ไม่ใช่รายชิ้น)
+  const discount = firstOrderDiscount ? firstOrderDiscountAmount(subtotal) : 0
+  const total    = subtotal - discount
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -157,7 +162,8 @@ function CheckoutForm() {
           zip:                  form.zip,
           note:                 form.note,
           items:                cart,
-          total:                total,
+          subtotal:             subtotal,   // ยอดก่อนหักส่วนลดลูกค้าใหม่
+          total:                total,      // ยอดหลังหัก (backend จะคำนวณซ้ำเป็นตัวจริง)
           channel:              'web',
           status:               'รอชำระเงิน',
           first_order_discount: isFirstOrderDiscount,
@@ -169,6 +175,17 @@ function CheckoutForm() {
 
       // เก็บยอดรวมไว้ก่อนเคลียร์ตะกร้า (เพราะ total คำนวณจาก cart สดๆ — เคลียร์แล้ว total จะกลายเป็น 0)
       setPaidTotal(total)
+
+      // ส่งข้อมูลสินค้า+ยอดจ่ายจริงไปหน้า order-complete เพื่อยิง Purchase pixel ให้แม่น (content_ids + value หลังลด)
+      try {
+        sessionStorage.setItem('vela_last_purchase', JSON.stringify({
+          order_id:    oid,
+          value:       total,
+          content_ids: cart.map(i => i.sku),
+          contents:    cart.map(i => ({ id: i.sku, quantity: i.qty })),
+          num_items:   cart.reduce((s, i) => s + i.qty, 0),
+        }))
+      } catch {}
 
       // เคลียร์ตะกร้าทิ้ง — ทั้ง localStorage (ที่หน้าแรก/หน้าสินค้าใช้เป็นค่าจริง) และ state ปัจจุบัน
       localStorage.removeItem('vela_cart')
@@ -323,10 +340,10 @@ function CheckoutForm() {
               <span className="text-xl">🎉</span>
               <div>
                 <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#EDE8DF' }}>
-                  ส่วนลดพิเศษลูกค้าใหม่ 50%!
+                  ส่วนลดพิเศษลูกค้าใหม่ 50% (สูงสุด ฿{FIRST_ORDER_CAP})!
                 </p>
                 <p className="text-xs font-mono" style={{ color: '#F5C5A0' }}>
-                  ใช้ได้ครั้งเดียวเท่านั้น
+                  ออเดอร์แรกเท่านั้น · 1 สิทธิ์/เบอร์
                 </p>
               </div>
             </div>
@@ -340,29 +357,26 @@ function CheckoutForm() {
               <p className="text-sm font-mono" style={{ color: '#D64B2A' }}>฿{(item.price * item.qty).toLocaleString()}</p>
             </div>
           ))}
+          {/* รวมสินค้า (ก่อนหักส่วนลดลูกค้าใหม่) — แสดงเมื่อมีส่วนลด เพื่อให้เห็นก่อน/หลังชัด */}
+          {firstOrderDiscount && discount > 0 && (
+            <div className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
+              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>รวมสินค้า</p>
+              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>฿{subtotal.toLocaleString()}</p>
+            </div>
+          )}
+          {/* ส่วนลดลูกค้าใหม่ 50% เพดาน ฿130 */}
+          {firstOrderDiscount && discount > 0 && (
+            <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
+              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>
+                🎉 ส่วนลดลูกค้าใหม่ 50%{discount >= FIRST_ORDER_CAP ? ` (สูงสุด ฿${FIRST_ORDER_CAP})` : ''}
+              </p>
+              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{discount.toLocaleString()}</p>
+            </div>
+          )}
           <div className="px-5 py-3 flex justify-between">
             <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>ค่าส่ง</p>
             <p className="text-sm font-mono" style={{ color: '#1A6B3C' }}>ฟรี 🎉</p>
           </div>
-          {/* แสดง savings */}
-          {(() => {
-            if (firstOrderDiscount) {
-              const origTotal = Math.round(total / 0.5)
-              return (
-                <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
-                  <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>🎉 ส่วนลดลูกค้าใหม่ 50%</p>
-                  <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(origTotal - total).toLocaleString()}</p>
-                </div>
-              )
-            }
-            const origTotal = Math.round(total / 0.7)
-            return (
-              <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
-                <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
-                <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(origTotal - total).toLocaleString()}</p>
-              </div>
-            )
-          })()}
           <div className="px-5 py-3 border-t-2 flex justify-between" style={{ borderColor: '#E0D9CE' }}>
             <p className="font-black" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>รวมทั้งหมด</p>
             <p className="font-black text-xl" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>

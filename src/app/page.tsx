@@ -79,9 +79,8 @@ function getBaseSku(sku: string) { return sku.replace('-200', '') }
 function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product; onAdd: (p: Product) => void; firstOrderDiscount?: boolean }) {
   const baseSku = getBaseSku(product.sku)
   const meta    = SKU_META[baseSku] || { bg: '#F5F1EB', accent: '#D64B2A', img: '', dark: false }
-  const effectivePrice = firstOrderDiscount
-    ? Math.round(product.price * 0.5)
-    : (product.price_discounted || product.price)
+  // แสดงราคาปกติ (หลังลด 30%) เสมอ — ส่วนลดลูกค้าใหม่ 50% (เพดาน ฿130) คิดระดับบิลตอน checkout
+  const effectivePrice = product.price_discounted || product.price
   return (
     <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
       style={{ background: meta.bg }}>
@@ -121,7 +120,7 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
             {/* badge ส่วนลด */}
             <span className="text-xs font-mono ml-1.5 px-1.5 py-0.5 rounded-lg"
               style={{ background: '#D64B2A', color: '#EDE8DF' }}>
-              -{firstOrderDiscount ? 50 : (product.discount_pct || 30)}%
+              -{product.discount_pct || 30}%
             </span>
           </div>
           <button onClick={() => onAdd(product)}
@@ -325,9 +324,8 @@ export default function HomePage() {
   }
 
   const addToCart = (product: Product) => {
-    const cartPrice = firstOrderDiscount
-      ? Math.round(product.price * 0.5)
-      : (product.price_discounted || product.price)
+    // เก็บราคาปกติ (หลังลด 30%) — ส่วนลดลูกค้าใหม่ 50% เพดาน ฿130 คิดระดับบิลตอน checkout
+    const cartPrice = product.price_discounted || product.price
     // FB Pixel: AddToCart
     fbTrack('AddToCart', {
       content_ids:  [product.sku],
@@ -405,6 +403,22 @@ export default function HomePage() {
               Cold Brew
             </span>
           </p>
+        </div>
+      </section>
+
+      {/* Promo banner — ลูกค้าใหม่ลด 50% (โฆษณา landing) */}
+      <section className="px-5 -mt-2 mb-2">
+        <div className="max-w-2xl mx-auto">
+          <div className="rounded-2xl px-5 py-3 text-center border-2"
+            style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
+            <p className="font-black text-sm md:text-base uppercase leading-tight"
+              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+              🎉 ลูกค้าใหม่! ออเดอร์แรกลด 50% สูงสุด ฿130
+            </p>
+            <p className="text-xs font-mono mt-0.5" style={{ color: '#8C7B6E' }}>
+              ลดอัตโนมัติตอนสั่งซื้อ · 1 สิทธิ์/เบอร์
+            </p>
+          </div>
         </div>
       </section>
 

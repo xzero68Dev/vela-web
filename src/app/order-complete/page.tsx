@@ -135,19 +135,38 @@ function OrderCompleteContent() {
   }, [orderId])
 
   // FB Pixel: Purchase — ยิงเมื่อโหลด order สำเร็จ กันยิงซ้ำตอน refresh ด้วย localStorage
+  // ใช้ข้อมูลจาก checkout (sessionStorage) ถ้ามี → ได้ content_ids + value (หลังหักส่วนลด) แม่นยำ
   useEffect(() => {
     if (!order || !orderId) return
     try {
       const KEY = 'vela_purchase_fired'
       const fired: string[] = JSON.parse(localStorage.getItem(KEY) || '[]')
       if (fired.includes(orderId)) return
-      fbTrack('Purchase', {
+
+      let payload: Record<string, unknown> = {
         content_name: order.sku,
         content_type: 'product',
         num_items:    order.qty || undefined,
         value:        Number(order.total) || 0,
         currency:     'THB',
-      })
+      }
+      try {
+        const raw = sessionStorage.getItem('vela_last_purchase')
+        const lp  = raw ? JSON.parse(raw) : null
+        if (lp && lp.order_id === orderId) {
+          payload = {
+            content_ids:  lp.content_ids,
+            contents:     lp.contents,
+            content_type: 'product',
+            content_name: order.sku,
+            num_items:    lp.num_items,
+            value:        Number(lp.value) || Number(order.total) || 0,
+            currency:     'THB',
+          }
+        }
+      } catch {}
+
+      fbTrack('Purchase', payload)
       localStorage.setItem(KEY, JSON.stringify([...fired, orderId].slice(-50)))
     } catch {}
   }, [order, orderId])

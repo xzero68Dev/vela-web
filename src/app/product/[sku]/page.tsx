@@ -147,11 +147,10 @@ export default function ProductPage() {
     setTimeout(() => setAdded(false), 2000)
   }
 
-  const price      = firstOrderDiscount
-    ? Math.round((current?.price || 0) * 0.5)
-    : (current?.price_discounted || current?.price || 0)
+  // ราคาปกติ (หลังลด 30%) — ส่วนลดลูกค้าใหม่ 50% เพดาน ฿130 คิดระดับบิลตอน checkout
+  const price      = current?.price_discounted || current?.price || 0
   const origPrice  = current?.price_original || current?.price || 0
-  const discPct    = firstOrderDiscount ? 50 : (current?.discount_pct || 0)
+  const discPct    = current?.discount_pct || 0
   const textColor  = isDark ? '#EDE8DF' : '#3D1F0F'
   const mutedColor = isDark ? '#8C7B6E' : '#8C7B6E'
 
