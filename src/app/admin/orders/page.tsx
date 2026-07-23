@@ -44,7 +44,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด')
   const [sortBy,    setSortBy]    = useState<'created_at' | 'order_date'>('created_at')
   const [page,      setPage]      = useState(1)
-  const [shipForm,  setShipForm]  = useState({ tracking: '', carrier: 'POST SABUY' })
+  const [shipForm,  setShipForm]  = useState({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' })
   const [acting,    setActing]    = useState(false)
   const [updated,   setUpdated]   = useState('')
   const [sendSms,   setSendSms]   = useState(true)
@@ -96,10 +96,16 @@ export default function AdminOrdersPage() {
       const res = await fetch(`${API}/admin/add-shipping`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
-        body: JSON.stringify({ order_id: o.order_id, tracking: shipForm.tracking.trim().toUpperCase(), carrier: shipForm.carrier }),
+        body: JSON.stringify({
+          order_id: o.order_id,
+          tracking: shipForm.tracking.trim().toUpperCase(),
+          carrier:  shipForm.carrier,
+          shipping_cost: shipForm.cost.trim() ? Number(shipForm.cost) : undefined,
+          weight_g:      shipForm.weight.trim() ? Number(shipForm.weight) : undefined,
+        }),
       })
       if (!res.ok) { alert(`เพิ่มการจัดส่งไม่สำเร็จ: ${await res.text()}`); return }
-      setShipForm({ tracking: '', carrier: 'POST SABUY' })
+      setShipForm({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' })
       await fetchOrders()
       setSelected(prev => prev ? { ...prev, status: 'จัดส่งแล้ว' } : null)
     } finally { setActing(false) }
@@ -429,6 +435,18 @@ export default function AdminOrdersPage() {
                     placeholder={shipForm.carrier === 'ส่งเอง' ? 'เลข Tracking (ถ้ามี)' : 'เลข Tracking'}
                     className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono uppercase"
                     style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+                  <div className="flex gap-2">
+                    <input value={shipForm.cost} inputMode="decimal"
+                      onChange={e => setShipForm(s => ({ ...s, cost: e.target.value.replace(/[^\d.]/g, '') }))}
+                      placeholder="ค่าส่งจริง ฿ (ต้นทุน)"
+                      className="flex-1 px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
+                      style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+                    <input value={shipForm.weight} inputMode="numeric"
+                      onChange={e => setShipForm(s => ({ ...s, weight: e.target.value.replace(/\D/g, '') }))}
+                      placeholder="น้ำหนัก (g)"
+                      className="w-28 px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
+                      style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => addShipping(selected)} disabled={acting || (!shipForm.tracking.trim() && shipForm.carrier !== 'ส่งเอง')}
                       className="flex-1 py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
