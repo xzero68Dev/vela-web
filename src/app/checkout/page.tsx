@@ -17,6 +17,33 @@ const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 type CartItem = { sku: string; qty: number; price: number; name: string }
 
+// โลโก้ขนส่ง (inline SVG — ไม่ต้องพึ่งไฟล์ภายนอก)
+function ThaiPostLogo() {
+  return (
+    <svg width="46" height="30" viewBox="0 0 46 30" aria-label="ไปรษณีย์ไทย">
+      <polygon points="3,4 43,11 21,17" fill="#1D2C5B" />
+      <polygon points="43,11 21,17 27,27" fill="#EE3124" />
+      <polygon points="21,17 27,27 12,20" fill="#A7ADB8" />
+    </svg>
+  )
+}
+function KexLogo() {
+  return (
+    <svg width="52" height="26" viewBox="0 0 64 32" aria-label="KEX">
+      <rect x="1" y="1" width="62" height="30" rx="8" fill="#F58220" />
+      <rect x="6" y="6" width="52" height="20" rx="5" fill="none" stroke="#FFFFFF" strokeWidth="2.5" />
+      <text x="32" y="22" textAnchor="middle" fill="#FFFFFF" fontSize="15" fontWeight="800"
+        fontFamily="Arial, sans-serif" letterSpacing="1">KEX</text>
+    </svg>
+  )
+}
+
+type CarrierId = 'thailand_post' | 'kex'
+const CARRIERS: { id: CarrierId; name: string; sub: string; logo: React.ReactNode }[] = [
+  { id: 'thailand_post', name: 'ไปรษณีย์ไทย EMS', sub: 'ส่งด่วน EMS ทั่วไทย', logo: <ThaiPostLogo /> },
+  { id: 'kex',           name: 'KEX Express',      sub: 'Kerry Express',       logo: <KexLogo /> },
+]
+
 function CheckoutForm() {
   const searchParams = useSearchParams()
   const router       = useRouter()
@@ -98,6 +125,7 @@ function CheckoutForm() {
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const [firstOrderDiscount, setFirstOrderDiscount] = useState(false)
+  const [carrier, setCarrier] = useState<CarrierId>('thailand_post')  // ขนส่งที่ลูกค้าเลือก
 
   // เช็คส่วนลดลูกค้าใหม่จาก backend
   useEffect(() => {
@@ -167,6 +195,7 @@ function CheckoutForm() {
           channel:              'web',
           status:               'รอชำระเงิน',
           first_order_discount: isFirstOrderDiscount,
+          preferred_carrier:    carrier,   // ขนส่งที่ลูกค้าเลือก
           ...getUtm(),  // utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer, landing_page
         })
       })
@@ -498,6 +527,30 @@ function CheckoutForm() {
 
             {errors.address  && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาเลือกหรือกรอกที่อยู่จัดส่ง</p>}
             {errors.province && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาระบุจังหวัด</p>}
+          </div>
+        </div>
+
+        {/* เลือกขนส่ง */}
+        <div className="rounded-2xl border-2 overflow-hidden mb-6" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+          <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
+            <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>เลือกขนส่ง</p>
+          </div>
+          <div className="px-5 py-4 grid grid-cols-2 gap-3">
+            {CARRIERS.map(c => (
+              <button key={c.id} type="button" onClick={() => setCarrier(c.id)}
+                className="rounded-2xl border-2 p-3 flex flex-col items-center gap-2 transition-all active:scale-95"
+                style={{
+                  background:  carrier === c.id ? '#FFF5F3' : '#EDE8DF',
+                  borderColor: carrier === c.id ? '#D64B2A' : '#D8D0C5',
+                }}>
+                <div className="h-8 flex items-center justify-center">{c.logo}</div>
+                <span className="text-sm font-black text-center leading-tight" style={{ color: '#3D1F0F' }}>{c.name}</span>
+                <span className="text-xs font-mono text-center" style={{ color: '#8C7B6E' }}>{c.sub}</span>
+                <span className="text-xs font-mono" style={{ color: carrier === c.id ? '#D64B2A' : '#C5BAB0' }}>
+                  {carrier === c.id ? '✓ เลือกอยู่' : 'แตะเพื่อเลือก'}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
