@@ -16,6 +16,7 @@ export default function AdminNav() {
   const navItems = [
     { href: '/admin',          label: 'สถานะพัสดุ' },
     { href: '/admin/orders',   label: 'Orders' },
+    { href: '/admin/accounting', label: 'บัญชี' },
     { href: '/admin/upload',   label: 'Import Excel' },
     { href: '/admin/products', label: 'สินค้า' },
   ]
