@@ -9,7 +9,7 @@ const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onre
 const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
 
 type Acc = {
-  order_id: string; order_date: string; customer: string
+  order_id: string; order_date: string; customer: string; status?: string
   revenue?: number; shopee_fee?: number; shipping?: number
   coffee_cost?: number; packaging?: number; other?: number; net_profit?: number
 }
@@ -21,7 +21,6 @@ const baht = (v: any) => `฿${n(v).toLocaleString(undefined, { maximumFractionD
 export default function AdminAccountingPage() {
   const ready = useAdminAuth()
   const [rows,    setRows]    = useState<Acc[]>([])
-  const [status,  setStatus]  = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [month,   setMonth]   = useState('')          // '' = ทั้งหมด, หรือ 'YYYY-MM'
   const [paidOnly, setPaidOnly] = useState(true)
@@ -43,19 +42,11 @@ export default function AdminAccountingPage() {
   useEffect(() => {
     if (!ready) return
     ;(async () => {
+      setLoading(true)
       try {
-        const accRes = await fetch(
-          `${SB_URL}/rest/v1/accounting?order_id=like.WEB*&select=order_id,order_date,customer,revenue,shopee_fee,shipping,coffee_cost,packaging,other,net_profit&order=order_date.desc&limit=2000`,
-          { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-        const acc = await accRes.json()
-        setRows(Array.isArray(acc) ? acc : [])
-        const ordRes = await fetch(
-          `${SB_URL}/rest/v1/orders?order_id=like.WEB*&select=order_id,status&limit=2000`,
-          { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-        const ord = await ordRes.json()
-        const map: Record<string, string> = {}
-        if (Array.isArray(ord)) ord.forEach((o: any) => { map[o.order_id] = o.status })
-        setStatus(map)
+        const res = await fetch(`${API}/admin/web-accounting`, { headers: { 'x-api-key': ADMIN_KEY } })
+        const data = await res.json().catch(() => ({}))
+        setRows(Array.isArray(data.rows) ? data.rows : [])
       } catch {}
       finally { setLoading(false) }
     })()
@@ -69,9 +60,9 @@ export default function AdminAccountingPage() {
 
   const filtered = useMemo(() => rows.filter(r => {
     if (month && String(r.order_date).slice(0, 7) !== month) return false
-    if (paidOnly && !PAID.has(status[r.order_id])) return false
+    if (paidOnly && !PAID.has(r.status || '')) return false
     return true
-  }), [rows, month, paidOnly, status])
+  }), [rows, month, paidOnly])
 
   const sum = useMemo(() => {
     const t = { orders: filtered.length, revenue: 0, coffee: 0, packaging: 0, shipping: 0, net: 0 }
@@ -155,8 +146,8 @@ export default function AdminAccountingPage() {
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{r.order_date}</td>
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{r.order_id}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{r.customer}</td>
-                      <td className="px-3 py-2 font-mono whitespace-nowrap" style={{ color: PAID.has(status[r.order_id]) ? '#1A6B3C' : '#C5BAB0' }}>
-                        {status[r.order_id] || '-'}
+                      <td className="px-3 py-2 font-mono whitespace-nowrap" style={{ color: PAID.has(r.status || '') ? '#1A6B3C' : '#C5BAB0' }}>
+                        {r.status || '-'}
                       </td>
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{baht(r.revenue)}</td>
                       <td className="px-3 py-2 font-mono whitespace-nowrap" style={{ color: '#8C7B6E' }}>{baht(r.coffee_cost)}</td>
