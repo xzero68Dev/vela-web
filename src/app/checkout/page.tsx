@@ -196,6 +196,7 @@ function CheckoutForm() {
           status:               'รอชำระเงิน',
           first_order_discount: isFirstOrderDiscount,
           preferred_carrier:    carrier,   // ขนส่งที่ลูกค้าเลือก
+          line_user_id:         user?.line_user_id || undefined,  // ส่งแจ้งเตือนรับออเดอร์ทาง LINE
           ...getUtm(),  // utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer, landing_page
         })
       })
