@@ -15,6 +15,7 @@ type Order = {
   full_address: string; sku: string; qty: number
   channel: string; status: string
   slip_url?: string; paid_at?: string; note?: string; total?: number
+  preferred_carrier?: string
 }
 type ShipInfo = { tracking?: string; carrier?: string }
 
@@ -52,7 +53,7 @@ export default function AdminOrdersPage() {
     setLoading(true)
     try {
       const res = await fetch(
-        `${SB_URL}/rest/v1/orders?order=${sortBy}.desc&limit=1000&select=order_id,order_date,ship_date,customer,phone,province,full_address,sku,qty,channel,status,slip_url,paid_at,note,total`,
+        `${SB_URL}/rest/v1/orders?order=${sortBy}.desc&limit=1000&select=order_id,order_date,ship_date,customer,phone,province,full_address,sku,qty,channel,status,slip_url,paid_at,note,total,preferred_carrier`,
         { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
       )
       const list = await res.json()
@@ -339,6 +340,7 @@ export default function AdminOrdersPage() {
                   { label: 'ที่อยู่', value: [selected.full_address, selected.province].filter(Boolean).join(' ') },
                   { label: 'สินค้า',  value: selected.sku },
                   { label: 'วันที่',  value: selected.order_date },
+                  ...(selected.preferred_carrier ? [{ label: 'ขนส่งที่ลูกค้าเลือก', value: selected.preferred_carrier === 'kex' ? 'KEX Express' : 'ไปรษณีย์ไทย EMS' }] : []),
                   ...(selected.note ? [{ label: 'หมายเหตุ', value: selected.note }] : []),
                   ...(ship?.tracking ? [{ label: 'Tracking', value: `${ship.carrier || ''} · ${ship.tracking}` }] : []),
                 ].map(({ label, value }) => (
