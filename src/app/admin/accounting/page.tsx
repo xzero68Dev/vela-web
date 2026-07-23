@@ -5,6 +5,8 @@ import AdminNav from '@/components/AdminNav'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
 
 type Acc = {
   order_id: string; order_date: string; customer: string
@@ -23,6 +25,20 @@ export default function AdminAccountingPage() {
   const [loading, setLoading] = useState(true)
   const [month,   setMonth]   = useState('')          // '' = ทั้งหมด, หรือ 'YYYY-MM'
   const [paidOnly, setPaidOnly] = useState(true)
+  const [tick,    setTick]    = useState(0)
+  const [busy,    setBusy]    = useState(false)
+
+  const backfill = async () => {
+    if (!confirm('คำนวณต้นทุน/กำไรย้อนหลังให้ออเดอร์เว็บที่ยังไม่มี?\n(ออเดอร์ที่คำนวณไว้แล้วจะไม่ถูกแตะ)')) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${API}/admin/backfill-web-accounting`, { method: 'POST', headers: { 'x-api-key': ADMIN_KEY } })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { alert('ทำย้อนหลังไม่สำเร็จ'); return }
+      alert(`เสร็จ — คำนวณย้อนหลัง ${data.count ?? 0} ออเดอร์`)
+      setTick(t => t + 1)
+    } finally { setBusy(false) }
+  }
 
   useEffect(() => {
     if (!ready) return
@@ -43,7 +59,7 @@ export default function AdminAccountingPage() {
       } catch {}
       finally { setLoading(false) }
     })()
-  }, [ready])
+  }, [ready, tick])
 
   const months = useMemo(() => {
     const s = new Set<string>()
@@ -93,6 +109,11 @@ export default function AdminAccountingPage() {
             style={paidOnly ? { background: '#D64B2A', borderColor: '#D64B2A', color: '#EDE8DF' }
                             : { background: 'transparent', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
             {paidOnly ? '✓ เฉพาะชำระแล้ว' : 'รวมค้างชำระ'}
+          </button>
+          <button onClick={backfill} disabled={busy}
+            className="px-3 py-1.5 rounded-xl border-2 text-sm font-mono transition-all disabled:opacity-50"
+            style={{ background: '#F5F1EB', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+            {busy ? 'กำลังคำนวณ...' : '🧮 คำนวณต้นทุน/กำไรย้อนหลัง'}
           </button>
         </div>
 
