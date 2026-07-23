@@ -278,7 +278,7 @@ export default function AdminOrdersPage() {
             const s = shipping[o.order_id]
             return (
               <button key={o.order_id}
-                onClick={() => { setSelected(o); setShipForm({ tracking: '', carrier: 'POST SABUY' }) }}
+                onClick={() => { setSelected(o); setShipForm({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' }) }}
                 className="w-full text-left rounded-2xl border-2 px-4 py-3 transition-all hover:shadow-sm active:scale-[0.99]"
                 style={{
                   background: o.slip_url && o.status === 'รอชำระเงิน' ? '#FFF5F3' : '#F5F1EB',
