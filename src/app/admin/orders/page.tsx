@@ -118,6 +118,20 @@ export default function AdminOrdersPage() {
     } finally { setActing(false) }
   }
 
+  const syncStatus = async () => {
+    if (!confirm('Sync สถานะออเดอร์ให้ตรงกับพัสดุที่ส่งถึงแล้ว?\n(ออเดอร์ที่พัสดุ delivered แล้วจะอัปเดตเป็น "จัดส่งสำเร็จ")')) return
+    setActing(true)
+    try {
+      const res = await fetch(`${API}/admin/sync-order-status`, {
+        method: 'POST', headers: { 'x-api-key': ADMIN_KEY },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { alert('Sync ไม่สำเร็จ'); return }
+      await fetchOrders()
+      alert(`Sync เสร็จ — อัปเดต ${data.count ?? 0} ออเดอร์`)
+    } finally { setActing(false) }
+  }
+
   // carrier detection
   const getCarrier = (o: Order) => {
     const c = (shipping[o.order_id]?.carrier || '').toUpperCase()
@@ -192,6 +206,17 @@ export default function AdminOrdersPage() {
                 <p className="text-xs font-mono leading-tight" style={{ color: '#8C7B6E' }}>{label}</p>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ปุ่ม sync สถานะ (web) */}
+        {tab === 'web' && (
+          <div className="mb-4">
+            <button onClick={syncStatus} disabled={acting}
+              className="text-xs font-mono px-3 py-2 rounded-xl border-2 transition-all active:scale-95 disabled:opacity-50"
+              style={{ borderColor: '#D8D0C5', color: '#8C7B6E', background: '#F5F1EB' }}>
+              🔄 Sync สถานะจากพัสดุ
+            </button>
           </div>
         )}
 
