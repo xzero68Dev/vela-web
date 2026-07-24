@@ -192,9 +192,9 @@ function ContactSection() {
   const CONTACTS = [
     { name: 'LINE', href: 'https://lin.ee/rdPxbQ8', bg: '#06C755',
       icon: (<svg width="22" height="22" viewBox="0 0 40 40" fill="none"><path d="M20 4C11.163 4 4 10.268 4 18c0 5.946 3.917 11.11 9.8 13.687.43.186.36.501.27.699l-.87 3.247c-.1.383.35.695.711.505C18.447 33.993 28 27.9 28 27.9c.695 0 8-.895 8-9.9C36 10.268 28.837 4 20 4z" fill="#fff"/></svg>) },
-    { name: 'Facebook', href: '#', bg: '#1877F2',
+    { name: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61568850250186', bg: '#1877F2',
       icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg>) },
-    { name: 'TikTok', href: '#', bg: '#000000',
+    { name: 'TikTok', href: 'https://www.tiktok.com/@velacoldbrew', bg: '#000000',
       icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M16.6 5.82a4.28 4.28 0 0 1-1.06-2.82h-3.2v12.9a2.59 2.59 0 1 1-2.6-2.6c.27 0 .53.05.78.12v-3.3a5.9 5.9 0 0 0-.78-.05 5.88 5.88 0 1 0 5.88 5.88V9.9a7.5 7.5 0 0 0 4.38 1.4V8.1a4.28 4.28 0 0 1-3.4-2.28z"/></svg>) },
   ]
   return (
