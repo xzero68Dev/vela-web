@@ -187,6 +187,37 @@ function LeaderboardTeaser() {
   )
 }
 
+// ช่องทางการติดต่อร้าน (LINE / Facebook / TikTok)
+function ContactSection() {
+  const CONTACTS = [
+    { name: 'LINE', href: 'https://lin.ee/rdPxbQ8', bg: '#06C755',
+      icon: (<svg width="22" height="22" viewBox="0 0 40 40" fill="none"><path d="M20 4C11.163 4 4 10.268 4 18c0 5.946 3.917 11.11 9.8 13.687.43.186.36.501.27.699l-.87 3.247c-.1.383.35.695.711.505C18.447 33.993 28 27.9 28 27.9c.695 0 8-.895 8-9.9C36 10.268 28.837 4 20 4z" fill="#fff"/></svg>) },
+    { name: 'Facebook', href: '#', bg: '#1877F2',
+      icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg>) },
+    { name: 'TikTok', href: '#', bg: '#000000',
+      icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M16.6 5.82a4.28 4.28 0 0 1-1.06-2.82h-3.2v12.9a2.59 2.59 0 1 1-2.6-2.6c.27 0 .53.05.78.12v-3.3a5.9 5.9 0 0 0-.78-.05 5.88 5.88 0 1 0 5.88 5.88V9.9a7.5 7.5 0 0 0 4.38 1.4V8.1a4.28 4.28 0 0 1-3.4-2.28z"/></svg>) },
+  ]
+  return (
+    <section className="py-10 px-5">
+      <div className="max-w-2xl mx-auto text-center">
+        <h2 className="text-2xl font-black uppercase mb-1" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+          ช่องทางการติดต่อ
+        </h2>
+        <p className="text-sm mb-5" style={{ color: '#8C7B6E' }}>ติดตามข่าวสาร โปรโมชั่น และสอบถามได้ที่</p>
+        <div className="flex items-center justify-center gap-3 flex-wrap">
+          {CONTACTS.map(c => (
+            <a key={c.name} href={c.href} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 hover:opacity-90"
+              style={{ background: c.bg, color: '#fff', fontFamily: 'var(--font-display)' }}>
+              {c.icon}{c.name}
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // Tracking section
 function TrackingSection() {
   const [input,   setInput]   = useState('')
@@ -194,12 +225,13 @@ function TrackingSection() {
   const [results, setResults] = useState<any[]>([])
   const [error,   setError]   = useState('')
 
+  // รับทุกขนส่ง: ไปรษณีย์ไทย JM…TH / EMS …TH, Flash TH…C, KEX SXF…, J&T ฯลฯ
   const parseInput = (raw: string) =>
-    raw.split(/[\n,\s]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z]{2}\d{6,}TH$/i.test(s))
+    raw.split(/[\n,\s]+/).map(s => s.trim().toUpperCase()).filter(s => /^[A-Z0-9]{8,}$/.test(s))
 
   const handleTrack = async () => {
     const barcodes = parseInput(input)
-    if (!barcodes.length) { setError('กรุณาใส่เลข tracking รูปแบบ JMxxxxxxxxTH'); return }
+    if (!barcodes.length) { setError('กรุณาใส่เลขพัสดุให้ถูกต้อง'); return }
     setError(''); setLoading(true); setResults([])
     try {
       const res  = await fetch(`${API}/track/bulk`, {
@@ -224,12 +256,12 @@ function TrackingSection() {
           style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
           ติดตามพัสดุ
         </h2>
-        <p className="text-center text-sm mb-6" style={{ color: '#8C7B6E' }}>ใส่เลข tracking เพื่อตรวจสอบสถานะ</p>
+        <p className="text-center text-sm mb-6" style={{ color: '#8C7B6E' }}>ใส่เลขพัสดุเพื่อตรวจสอบสถานะ (ไปรษณีย์ไทย · Flash · KEX)</p>
 
         <div className="rounded-2xl border-2 p-5" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
           <textarea value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleTrack())}
-            placeholder={'JM123456789TH\nJM987654321TH'} rows={2}
+            placeholder={'เช่น TH17018Z9BAF4A หรือ JM123456789TH'} rows={2}
             className="w-full rounded-xl px-4 py-3 text-sm font-mono resize-none focus:outline-none border-2 transition-all"
             style={{ background: '#EDE8DF', color: '#3D1F0F', borderColor: '#D8D0C5' }} />
           {error && <p className="text-xs mt-1 font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
@@ -447,35 +479,11 @@ export default function HomePage() {
       {/* Leaderboard teaser */}
       <LeaderboardTeaser />
 
-      {/* LINE Banner */}
-      <section className="py-8 px-5">
-        <div className="max-w-2xl mx-auto">
-          <div className="rounded-3xl overflow-hidden border-2 flex flex-col md:flex-row items-center gap-5 px-6 py-5"
-            style={{ background: '#06C755', borderColor: '#05A847' }}>
-            <div className="flex-1 text-center md:text-left">
-              <p className="font-black text-xl uppercase leading-tight mb-1"
-                style={{ fontFamily: 'var(--font-display)', color: '#FFFFFF' }}>
-                แอด LINE รับโปรพิเศษ
-              </p>
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                ข่าวสาร สินค้าใหม่ และโปรโมชั่นเฉพาะสมาชิก LINE
-              </p>
-            </div>
-            <a href="https://lin.ee/rdPxbQ8" target="_blank" rel="noopener noreferrer"
-              className="flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 hover:opacity-90"
-              style={{ background: '#FFFFFF', color: '#06C755', fontFamily: 'var(--font-display)' }}>
-              <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
-                <path d="M20 4C11.163 4 4 10.268 4 18c0 5.946 3.917 11.11 9.8 13.687.43.186.36.501.27.699l-.87 3.247c-.1.383.35.695.711.505C18.447 33.993 28 27.9 28 27.9c.695 0 8-.895 8-9.9C36 10.268 28.837 4 20 4z" fill="#06C755"/>
-                <path d="M16.5 22h-2.25v-6H16.5v6zm5.25 0h-2.25v-3.5L17.25 22H15v-6h2.25v3.5L19.5 16H21.75v6zm4.5 0H23v-6h3.25v1.5H25v1h1.75v1.5H25V22z" fill="white"/>
-              </svg>
-              เพิ่มเพื่อน
-            </a>
-          </div>
-        </div>
-      </section>
-
       {/* Tracking */}
       <TrackingSection />
+
+      {/* ช่องทางการติดต่อร้าน */}
+      <ContactSection />
 
       {/* Footer */}
       <footer className="py-8 text-center text-xs font-mono" style={{ color: '#C5BAB0', background: '#EDE8DF' }}>
