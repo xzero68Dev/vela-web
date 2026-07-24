@@ -19,6 +19,13 @@ type Order = {
 }
 type ShipInfo = { tracking?: string; carrier?: string }
 
+const CARRIER_CHIP: Record<string, { label: string; bg: string; fg: string }> = {
+  flash: { label: '⚡ Flash',    bg: '#FEF3C7', fg: '#B45309' },
+  post:  { label: '📮 ไปรษณีย์', bg: '#FEE2E2', fg: '#B91C1C' },
+  kex:   { label: '📦 KEX',      bg: '#FFEDD5', fg: '#C2410C' },
+  self:  { label: '🚚 ส่งเอง',   bg: '#E2E8F0', fg: '#475569' },
+}
+
 const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
   'รอชำระเงิน':   { bg: '#F5E6C0', text: '#854F0B' },
   'ชำระแล้ว':     { bg: '#C5E8D5', text: '#1A6B3C' },
@@ -38,7 +45,7 @@ export default function AdminOrdersPage() {
   const [shipping,  setShipping]  = useState<Record<string, ShipInfo>>({})
   const [loading,   setLoading]   = useState(true)
   const [tab,       setTab]       = useState<'web' | 'shopee'>('web')
-  const [carrierFilter, setCarrierFilter] = useState<'all' | 'post' | 'kex' | 'self'>('all')
+  const [carrierFilter, setCarrierFilter] = useState<'all' | 'flash' | 'post' | 'kex' | 'self'>('all')
   const [selected,  setSelected]  = useState<Order | null>(null)
   const [search,    setSearch]    = useState('')
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด')
@@ -138,11 +145,13 @@ export default function AdminOrdersPage() {
     } finally { setActing(false) }
   }
 
-  // carrier detection
+  // carrier detection — อิงชื่อ carrier + เลข tracking (Flash = TH, KEX = SXF, POST = JM)
   const getCarrier = (o: Order) => {
     const c = (shipping[o.order_id]?.carrier || '').toUpperCase()
-    if (c.includes('POST') || c.includes('SABUY')) return 'post'
-    if (c.includes('KEX') || c.includes('KERRY') || c.includes('SXF')) return 'kex'
+    const t = (shipping[o.order_id]?.tracking || '').toUpperCase()
+    if (c.includes('FLASH') || t.startsWith('TH')) return 'flash'
+    if (c.includes('POST') || c.includes('SABUY') || t.startsWith('JM')) return 'post'
+    if (c.includes('KEX') || c.includes('KERRY') || t.startsWith('SXF')) return 'kex'
     return 'self'
   }
 
@@ -151,9 +160,10 @@ export default function AdminOrdersPage() {
   const shopeeFiltered = carrierFilter === 'all' ? shopeeOrders
     : shopeeOrders.filter(o => getCarrier(o) === carrierFilter)
 
-  const postCount = shopeeOrders.filter(o => getCarrier(o) === 'post').length
-  const kexCount  = shopeeOrders.filter(o => getCarrier(o) === 'kex').length
-  const selfCount = shopeeOrders.filter(o => getCarrier(o) === 'self').length
+  const flashCount = shopeeOrders.filter(o => getCarrier(o) === 'flash').length
+  const postCount  = shopeeOrders.filter(o => getCarrier(o) === 'post').length
+  const kexCount   = shopeeOrders.filter(o => getCarrier(o) === 'kex').length
+  const selfCount  = shopeeOrders.filter(o => getCarrier(o) === 'self').length
 
   const baseList = tab === 'web' ? webOrders : shopeeFiltered
   const statusOptions = ['ทั้งหมด', ...Array.from(new Set(baseList.map(o => o.status)))]
@@ -230,10 +240,11 @@ export default function AdminOrdersPage() {
         {tab === 'shopee' && (
           <div className="flex gap-2 mb-4 flex-wrap">
             {([
-              ['all',  `ทั้งหมด (${shopeeOrders.length})`],
-              ['post', `📮 ThaiPost (${postCount})`],
-              ['kex',  `📦 KEX (${kexCount})`],
-              ['self', `🚚 ส่งเอง (${selfCount})`],
+              ['all',   `ทั้งหมด (${shopeeOrders.length})`],
+              ['flash', `⚡ Flash (${flashCount})`],
+              ['post',  `📮 ThaiPost (${postCount})`],
+              ['kex',   `📦 KEX (${kexCount})`],
+              ['self',  `🚚 ส่งเอง (${selfCount})`],
             ] as const).map(([t, label]) => (
               <button key={t} onClick={() => { setCarrierFilter(t); setPage(1) }}
                 className="px-3 py-1.5 rounded-xl border-2 text-xs font-mono transition-all"
@@ -289,6 +300,13 @@ export default function AdminOrdersPage() {
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className="font-black text-sm" style={{ color: '#3D1F0F' }}>{o.customer}</p>
                       <Badge status={o.status} />
+                      {(s?.carrier || s?.tracking) && (() => {
+                        const chip = CARRIER_CHIP[getCarrier(o)]
+                        return (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                            style={{ background: chip.bg, color: chip.fg }}>{chip.label}</span>
+                        )
+                      })()}
                       {o.slip_url && o.status === 'รอชำระเงิน' && (
                         <span className="text-xs px-2 py-0.5 rounded-full font-mono"
                           style={{ background: '#D64B2A', color: '#EDE8DF' }}>💳 มีสลิป!</span>
@@ -367,7 +385,7 @@ export default function AdminOrdersPage() {
               <div className="rounded-2xl border-2 divide-y-2" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
                 {[
                   { label: 'ลูกค้า',  value: selected.customer },
-                  { label: 'เบอร์',   value: selected.phone },
+                  { label: 'เบอร์',   value: (!selected.phone || selected.phone.trim() === '-') ? 'ซ่อนโดย Shopee (Flash)' : selected.phone },
                   { label: 'ที่อยู่', value: [selected.full_address, selected.province].filter(Boolean).join(' ') },
                   { label: 'สินค้า',  value: selected.sku },
                   { label: 'วันที่',  value: selected.order_date },
@@ -477,9 +495,11 @@ export default function AdminOrdersPage() {
                 <div className="space-y-2">
                   {ship?.tracking && (
                     <a href={
-                      (ship.carrier || '').toUpperCase().includes('POST') || (ship.carrier || '').toUpperCase().includes('SABUY')
-                        ? `https://velacoldbrew.com/track/${ship.tracking}`
-                        : 'https://th.kex-express.com/th/track/'
+                      (ship.tracking || '').toUpperCase().startsWith('TH')
+                        ? `https://www.flashexpress.com/tracking/?se=${ship.tracking}`
+                        : (ship.tracking || '').toUpperCase().startsWith('SXF')
+                        ? 'https://th.kex-express.com/th/track/'
+                        : `https://velacoldbrew.com/track/${ship.tracking}`
                     } target="_blank" rel="noopener noreferrer"
                       className="block w-full py-2.5 rounded-xl text-sm font-mono text-center border-2"
                       style={{ borderColor: '#1A5C8F', color: '#1A5C8F', background: '#F5F1EB' }}>
