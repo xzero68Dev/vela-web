@@ -50,7 +50,7 @@ function CheckoutForm() {
 
   const [cart,       setCart]       = useState<CartItem[]>([])
   const { user, updateProfile } = useAuth()
-  const [form,       setForm]       = useState({ name: '', phone: '', address: '', province: '', zip: '', note: '' })
+  const [form,       setForm]       = useState({ name: '', phone: '', address: '', subdistrict: '', district: '', province: '', zip: '', note: '' })
   const [addresses,  setAddresses]  = useState<any[]>([])
   const [selAddrId,  setSelAddrId]  = useState<number | undefined>()
   const [showNewAddr, setShowNewAddr] = useState(false)
@@ -70,11 +70,13 @@ function CheckoutForm() {
       setSelAddrId(def.id)
       setForm(prev => ({
         ...prev,
-        name:     def.name     || prev.name,
-        phone:    def.phone    || prev.phone,
-        address:  def.full_address || prev.address,
-        province: def.province || prev.province,
-        zip:      def.zip      || prev.zip,
+        name:        def.name        || prev.name,
+        phone:       def.phone       || prev.phone,
+        address:     def.full_address || prev.address,
+        subdistrict: def.subdistrict || prev.subdistrict,
+        district:    def.district    || prev.district,
+        province:    def.province    || prev.province,
+        zip:         def.zip         || prev.zip,
       }))
     }
   }
@@ -83,12 +85,14 @@ function CheckoutForm() {
   useEffect(() => {
     if (user) {
       setForm(prev => ({
-        name:     prev.name     || user.name     || user.display_name || '',
-        phone:    prev.phone    || user.phone    || '',
-        address:  prev.address  || user.address  || '',
-        province: prev.province || user.province || '',
-        zip:      prev.zip      || user.zip      || '',
-        note:     prev.note,
+        name:        prev.name        || user.name     || user.display_name || '',
+        phone:       prev.phone       || user.phone    || '',
+        address:     prev.address     || user.address  || '',
+        subdistrict: prev.subdistrict || '',
+        district:    prev.district    || '',
+        province:    prev.province    || user.province || '',
+        zip:         prev.zip         || user.zip      || '',
+        note:        prev.note,
       }))
       // โหลดที่อยู่ที่บันทึกไว้
       const phone = user.phone || ''
@@ -144,13 +148,28 @@ function CheckoutForm() {
   const discount = firstOrderDiscount ? firstOrderDiscountAmount(subtotal) : 0
   const total    = subtotal - discount
 
+  // ประกอบที่อยู่เต็มให้สมบูรณ์สำหรับพิมพ์ label (บ้านเลขที่ + ตำบล/แขวง + อำเภอ/เขต)
+  const composeFullAddress = () => {
+    const isBkk = form.province.includes('กรุงเทพ')
+    const subLabel = isBkk ? 'แขวง' : 'ต.'
+    const disLabel = isBkk ? 'เขต' : 'อ.'
+    return [
+      form.address.trim(),
+      form.subdistrict.trim() ? `${subLabel}${form.subdistrict.trim()}` : '',
+      form.district.trim()    ? `${disLabel}${form.district.trim()}`    : '',
+    ].filter(Boolean).join(' ')
+  }
+
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.name.trim())     e.name     = 'กรุณาใส่ชื่อ'
-    if (!form.phone.trim() || form.phone.length < 9) e.phone = 'กรุณาใส่เบอร์โทรที่ถูกต้อง'
-    if (!form.address.trim())  e.address  = 'กรุณาใส่ที่อยู่'
-    if (!form.province.trim()) e.province = 'กรุณาใส่จังหวัด'
-    if (!form.zip.trim())      e.zip      = 'กรุณาใส่รหัสไปรษณีย์'
+    const digits = form.phone.replace(/\D/g, '')
+    if (!form.name.trim())         e.name        = 'กรุณาใส่ชื่อผู้รับ'
+    if (digits.length < 9 || digits.length > 10) e.phone = 'กรุณาใส่เบอร์โทรให้ครบ (9–10 หลัก)'
+    if (!form.address.trim())      e.address     = 'กรุณาใส่บ้านเลขที่/ซอย/ถนน'
+    if (!form.subdistrict.trim())  e.subdistrict = 'กรุณาระบุตำบล/แขวง'
+    if (!form.district.trim())     e.district    = 'กรุณาระบุอำเภอ/เขต'
+    if (!form.province.trim())     e.province    = 'กรุณาระบุจังหวัด'
+    if (!/^\d{5}$/.test(form.zip.trim())) e.zip   = 'กรุณาใส่รหัสไปรษณีย์ 5 หลัก'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -159,12 +178,14 @@ function CheckoutForm() {
     if (!validate()) return
     setLoading(true)
     try {
+      const fullAddress = composeFullAddress()  // บ้านเลขที่ + ตำบล/แขวง + อำเภอ/เขต
+
       // บันทึกที่อยู่ลง customers ถ้า login LINE แล้ว
       if (user) {
         await updateProfile({
           name:     form.name,
           phone:    form.phone,
-          address:  form.address,
+          address:  fullAddress,
           province: form.province,
           zip:      form.zip,
         })
@@ -185,7 +206,7 @@ function CheckoutForm() {
           order_id:             oid,
           customer:             form.name,
           phone:                form.phone,
-          full_address:         form.address,
+          full_address:         fullAddress,
           province:             form.province,
           zip:                  form.zip,
           note:                 form.note,
@@ -445,6 +466,11 @@ function CheckoutForm() {
                         <p className="text-xs leading-relaxed" style={{ color: '#8C7B6E' }}>
                           {[shownAddr.full_address, shownAddr.subdistrict, shownAddr.district, shownAddr.province, shownAddr.zip].filter(Boolean).join(' ')}
                         </p>
+                        {(!shownAddr.subdistrict || !shownAddr.district || !/^\d{5}$/.test(String(shownAddr.zip || ''))) && (
+                          <p className="text-xs font-mono mt-2" style={{ color: '#D64B2A' }}>
+                            ⚠ ที่อยู่นี้ข้อมูลไม่ครบ (ตำบล/อำเภอ/รหัสไปรษณีย์) — กด "เปลี่ยน" เพื่อกรอกให้ครบก่อนสั่ง
+                          </p>
+                        )}
                       </div>
                       <button onClick={() => setShowNewAddr(true)}
                         className="text-xs px-3 py-1.5 rounded-xl border-2 flex-shrink-0 transition-all active:scale-95"
@@ -466,11 +492,13 @@ function CheckoutForm() {
                           setSelAddrId(a.id)
                           setForm(prev => ({
                             ...prev,
-                            name:     a.name,
-                            phone:    a.phone,
-                            address:  a.full_address,
-                            province: a.province,
-                            zip:      a.zip || '',
+                            name:        a.name,
+                            phone:       a.phone,
+                            address:     a.full_address,
+                            subdistrict: a.subdistrict || '',
+                            district:    a.district    || '',
+                            province:    a.province,
+                            zip:         a.zip || '',
                           }))
                           setTimeout(() => setShowNewAddr(false), 50)
                         }}
@@ -497,12 +525,13 @@ function CheckoutForm() {
                     </button>
                   </div>
                 )}
-                {!addresses.length && (
+                {(!addresses.length || showNewAddr) && (
                   <AddressForm
                     hideButton
-                    onChange={(data) => setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, province: data.province, zip: data.zip }))}
+                    initial={{ name: form.name, phone: form.phone, full_address: form.address, subdistrict: form.subdistrict, district: form.district, province: form.province, zip: form.zip }}
+                    onChange={(data) => setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip }))}
                     onSave={(data) => {
-                      setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, province: data.province, zip: data.zip }))
+                      setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip }))
                       if (user?.phone) {
                         fetch(`${SB_URL}/rest/v1/addresses`, {
                           method: 'POST',
@@ -527,8 +556,16 @@ function CheckoutForm() {
             </div>
 
 
-            {errors.address  && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาเลือกหรือกรอกที่อยู่จัดส่ง</p>}
-            {errors.province && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>กรุณาระบุจังหวัด</p>}
+            {Object.keys(errors).length > 0 && (
+              <div className="rounded-xl border-2 px-4 py-3 space-y-1" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
+                <p className="text-xs font-black" style={{ color: '#D64B2A' }}>กรุณากรอกข้อมูลจัดส่งให้ครบ</p>
+                {['name', 'phone', 'address', 'subdistrict', 'district', 'province', 'zip']
+                  .filter(k => errors[k])
+                  .map(k => (
+                    <p key={k} className="text-xs font-mono" style={{ color: '#D64B2A' }}>• {errors[k]}</p>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
 
