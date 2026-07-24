@@ -47,7 +47,8 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
         if (r.includes('1014') || r.includes('ไม่ได้โอน')) {
           setVerified('error'); setReason('สลิปนี้ไม่ได้โอนเข้าบัญชีร้าน กรุณาตรวจสอบบัญชีปลายทางแล้วอัปโหลดใหม่ครับ')
         } else if (r.includes('1010') || r.includes('ซ้ำ')) {
-          setVerified('error'); setReason('สลิปนี้เคยใช้ไปแล้ว กรุณาส่งสลิปใบใหม่ครับ')
+          // สลิปซ้ำมักเกิดจากอัปโหลด/กดซ้ำ ไม่ใช่ลูกค้าโกง → ไม่ขึ้น error น่ากลัว ให้ทีมงานตรวจ
+          setVerified('pending'); setReason('ได้รับสลิปแล้ว ทีมงานกำลังตรวจสอบยอดและจะยืนยันให้เร็วที่สุดครับ')
         } else if (r.includes('1013') || r.includes('ยอด')) {
           setVerified('error'); setReason('ยอดเงินในสลิปไม่ตรง กรุณาตรวจสอบแล้วอัปโหลดใหม่ครับ')
         } else {
