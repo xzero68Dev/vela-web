@@ -38,8 +38,9 @@ export default function TrackPage() {
   const [error,   setError]   = useState('')
 
   const detectCarrierLink = (b: string): { name: string; url: string } | null => {
-    if (/^(TH|SCPK|SXF)/i.test(b))   return { name: 'KEX Express', url: 'https://th.kex-express.com/th/track/' }
-    if (/^(FLE|FEX)/i.test(b))        return { name: 'Flash Express', url: `https://www.flashexpress.co.th/tracking/?se=${b}` }
+    if (/^TH/i.test(b))               return { name: 'Flash Express', url: `https://www.flashexpress.com/fle/tracking?se=${b}` }
+    if (/^(SXF|SCPK)/i.test(b))        return { name: 'KEX Express', url: 'https://th.kex-express.com/th/track/' }
+    if (/^(FLE|FEX)/i.test(b))         return { name: 'Flash Express', url: `https://www.flashexpress.com/fle/tracking?se=${b}` }
     if (/^(TDE|JPT|JTTH)/i.test(b))   return { name: 'J&T Express',  url: `https://www.jtexpress.co.th/trajectoryQuery?waybillno=${b}` }
     if (/^SCG/i.test(b))              return { name: 'SCG Express',  url: `https://www.scgexpress.co.th/tracking/TrackingSearch.aspx?txtTrackingNo=${b}` }
     return null
@@ -169,6 +170,27 @@ export default function TrackPage() {
                 <p className="font-mono font-bold" style={{ color: '#3D1F0F' }}>{barcode}</p>
               </div>
             </div>
+
+            {/* หลักฐานการจัดส่ง (proof of delivery) — เฉพาะตอนส่งถึงแล้ว + มีรูป · ซ่อนอัตโนมัติถ้ารูปเสีย */}
+            {result.status === 'delivered' && result.pod_image && (
+              <div data-pod className="rounded-3xl border-2 overflow-hidden mb-4" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
+                  <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>หลักฐานการจัดส่ง</p>
+                </div>
+                <div className="p-4">
+                  <a href={result.pod_image} target="_blank" rel="noopener noreferrer">
+                    <img src={result.pod_thumb || result.pod_image} alt="หลักฐานการจัดส่ง"
+                      className="w-full rounded-2xl object-cover" style={{ maxHeight: 360 }}
+                      onError={e => { const c = (e.currentTarget.closest('[data-pod]') as HTMLElement | null); if (c) c.style.display = 'none' }} />
+                  </a>
+                  {result.signer && (
+                    <p className="text-xs font-mono mt-2 text-center" style={{ color: '#8C7B6E' }}>
+                      เซ็นรับโดย: {result.signer}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Timeline */}
             {result.events && result.events.length > 0 && (
