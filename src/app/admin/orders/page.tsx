@@ -96,6 +96,23 @@ export default function AdminOrdersPage() {
     } finally { setActing(false) }
   }
 
+  const sendPaymentSms = async (o: Order) => {
+    const ph = (o.phone || '').trim()
+    if (!ph || ph === '-' || ph.length < 9) { alert('ออเดอร์นี้ไม่มีเบอร์โทรที่ส่ง SMS ได้'); return }
+    if (!confirm(`ส่ง SMS แจ้งชำระเงินไปที่ ${ph}?\n(มีค่าส่ง SMS ต่อครั้ง)`)) return
+    setActing(true)
+    try {
+      const res  = await fetch(`${API}/admin/send-payment-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        body: JSON.stringify({ order_id: o.order_id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { alert(`ส่ง SMS ไม่สำเร็จ: ${data.detail || 'error'}`); return }
+      alert(`✅ ส่ง SMS แจ้งชำระเงินไปที่ ${data.phone || ph} แล้ว`)
+    } finally { setActing(false) }
+  }
+
   const addShipping = async (o: Order) => {
     if (!shipForm.tracking.trim() && shipForm.carrier !== 'ส่งเอง') { alert('กรุณาใส่เลข tracking'); return }
     setActing(true)
@@ -421,13 +438,20 @@ export default function AdminOrdersPage() {
                 <p className="text-xs font-mono text-center" style={{ color: '#C5BAB0' }}>⏳ ยังไม่มีสลิปจากลูกค้า</p>
               ) : null}
 
-              {/* Action: ยืนยันชำระ */}
+              {/* Action: ยืนยันชำระ + ส่ง SMS แจ้งชำระเงิน */}
               {selected.channel === 'web' && selected.status === 'รอชำระเงิน' && (
-                <button onClick={() => confirmPayment(selected)} disabled={acting}
-                  className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
-                  style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
-                  {acting ? 'กำลังยืนยัน...' : '✓ ยืนยันการชำระเงิน'}
-                </button>
+                <div className="space-y-2">
+                  <button onClick={() => confirmPayment(selected)} disabled={acting}
+                    className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
+                    style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
+                    {acting ? 'กำลังยืนยัน...' : '✓ ยืนยันการชำระเงิน'}
+                  </button>
+                  <button onClick={() => sendPaymentSms(selected)} disabled={acting}
+                    className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40 border-2"
+                    style={{ fontFamily: 'var(--font-display)', borderColor: '#1A5C8F', color: '#1A5C8F', background: '#F5F1EB' }}>
+                    📩 ส่ง SMS แจ้งชำระเงิน
+                  </button>
+                </div>
               )}
 
               {/* Action: เพิ่ม tracking */}
