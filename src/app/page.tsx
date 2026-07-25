@@ -445,18 +445,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Promo banner — ลูกค้าใหม่ลด 50% (โฆษณา landing) */}
+      {/* Promo banner — ลูกค้าใหม่ลด 50% (ต้อง login ถึงได้สิทธิ์) */}
       <section className="px-5 pt-2 mb-4">
         <div className="max-w-5xl mx-auto">
-          <div className="rounded-2xl px-5 py-3 text-center border-2"
+          <div className="rounded-2xl px-5 py-3 border-2"
             style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
-            <p className="font-black text-sm md:text-base uppercase leading-tight"
+            <p className="font-black text-sm md:text-base uppercase leading-tight text-center"
               style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
               🎉 ลูกค้าใหม่! ออเดอร์แรกลด 50% สูงสุด ฿130
             </p>
-            <p className="text-xs font-mono mt-0.5" style={{ color: '#8C7B6E' }}>
-              ลดอัตโนมัติตอนสั่งซื้อ · 1 สิทธิ์/เบอร์
-            </p>
+            {!user ? (
+              <div className="mt-2 flex flex-col items-center gap-2">
+                <p className="text-xs font-mono text-center" style={{ color: '#8C7B6E' }}>
+                  👉 เข้าสู่ระบบก่อนสั่งซื้อเพื่อรับสิทธิ์ 50% — ถ้าไม่ล็อกอินจะได้ส่วนลดปกติเท่านั้น
+                </p>
+                <LineLoginButton />
+              </div>
+            ) : (
+              <p className="text-xs font-mono mt-0.5 text-center" style={{ color: '#8C7B6E' }}>
+                {firstOrderDiscount ? '✓ คุณได้รับสิทธิ์ลูกค้าใหม่ 50% แล้ว — ลดตอนสั่งซื้อ' : 'ลดอัตโนมัติตอนสั่งซื้อ · 1 สิทธิ์/เบอร์'}
+              </p>
+            )}
           </div>
         </div>
       </section>

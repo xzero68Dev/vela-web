@@ -29,11 +29,16 @@ function Label({ order, ship }: { order: any; ship?: any }) {
   const fullAddr = [order.full_address, order.province, order.zip].filter(Boolean).join(' ')
   return (
     <div className="sheet">
-      {/* ผู้ส่ง = โลโก้ */}
+      {/* ผู้ส่ง = โลโก้ + QR LINE ร้าน */}
       <div className="from">
-        <img src="/logo.png" alt="VeLA Cold Brew"
+        <img className="flogo" src="/logo.png" alt="VeLA Cold Brew"
           onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
-        <div className="fmeta"><b>{SHOP.name}</b><br />โทร {SHOP.phone}</div>
+        <div className="fmeta"><b>{SHOP.name}</b><br /><span className="fnote">มีปัญหาทักไลน์ร้าน 👉</span></div>
+        <div className="fqr">
+          <img src="/line-qr.png" alt="LINE ร้าน"
+            onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+          <div className="fqr-cap">LINE ร้าน</div>
+        </div>
       </div>
 
       {/* ผู้รับ */}
@@ -122,8 +127,12 @@ function LabelsInner() {
           border:1px solid #000;
         }
         .from { display:flex; align-items:center; gap:8px; border-bottom:2px solid #000; padding-bottom:5px; }
-        .from img { height:12mm; width:auto; max-width:44mm; object-fit:contain; }
-        .fmeta { font-size:12px; line-height:1.3; color:#000; }
+        .flogo { height:12mm; width:auto; max-width:34mm; object-fit:contain; }
+        .fmeta { flex:1; font-size:12px; line-height:1.3; color:#000; }
+        .fnote { font-size:10px; color:#555; }
+        .fqr { text-align:center; flex-shrink:0; }
+        .fqr img { height:15mm; width:15mm; object-fit:contain; display:block; }
+        .fqr-cap { font-size:8px; color:#333; margin-top:1px; }
         .lbl { font-size:10px; color:#555; text-transform:uppercase; letter-spacing:.5px; }
         .to { padding:6px 0; border-bottom:1px dashed #666; }
         .to-name { font-size:22px; font-weight:800; line-height:1.15; }
