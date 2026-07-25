@@ -69,7 +69,7 @@ export default function CustomersPage() {
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#3B2B23' }}>จัดการลูกค้า</h2>
         <p style={{ fontSize: 13, color: '#8C7B6E' }}>
-          ตั้ง % ส่วนลด VIP ต่อคน — ระบบจะคิดส่วนลดที่มากกว่าเทียบกับโปรลูกค้าใหม่ (เพดาน ฿130)
+          ตั้ง % ส่วนลด VIP ต่อคน (ไม่มีเพดาน) — ระบบเลือกส่วนลดที่มากกว่าเทียบกับโปรลูกค้าใหม่ 50%
         </p>
       </div>
 

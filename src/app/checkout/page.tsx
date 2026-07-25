@@ -421,7 +421,7 @@ function CheckoutForm() {
               <span className="text-xl">👑</span>
               <div>
                 <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#FFF6DA' }}>
-                  ส่วนลดลูกค้า VIP {vipPct}% (สูงสุด ฿{FIRST_ORDER_CAP})!
+                  ส่วนลดลูกค้า VIP {vipPct}%!
                 </p>
                 <p className="text-xs font-mono" style={{ color: '#F3E1A8' }}>
                   ขอบคุณที่อุดหนุนเสมอนะคะ 🐰
@@ -450,7 +450,7 @@ function CheckoutForm() {
             <div className="px-5 py-2 flex justify-between" style={{ background: best.kind === 'vip' ? '#FFFBEA' : '#FFF5F3' }}>
               <p className="text-xs font-mono" style={{ color: best.kind === 'vip' ? '#B8860B' : '#D64B2A' }}>
                 {best.kind === 'vip'
-                  ? <>👑 ส่วนลดลูกค้า VIP {vipPct}%{discount >= FIRST_ORDER_CAP ? ` (สูงสุด ฿${FIRST_ORDER_CAP})` : ''}</>
+                  ? <>👑 ส่วนลดลูกค้า VIP {vipPct}%</>
                   : <>🎉 ส่วนลดลูกค้าใหม่ 50%{discount >= FIRST_ORDER_CAP ? ` (สูงสุด ฿${FIRST_ORDER_CAP})` : ''}</>}
               </p>
               <p className="text-xs font-mono" style={{ color: best.kind === 'vip' ? '#B8860B' : '#D64B2A' }}>-฿{discount.toLocaleString()}</p>

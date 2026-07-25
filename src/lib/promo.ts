@@ -11,12 +11,10 @@ export function firstOrderDiscountAmount(subtotal: number): number {
   return Math.min(Math.round(subtotal * FIRST_ORDER_PCT), FIRST_ORDER_CAP)
 }
 
-// ── ส่วนลดลูกค้า VIP: % ต่อคน เพดานเท่าโปรลูกค้าใหม่ (฿130) ──
-export const VIP_CAP = FIRST_ORDER_CAP
-
+// ── ส่วนลดลูกค้า VIP: % ต่อคน ไม่มีเพดาน (ลดเต็ม % ทุกบิล) ──
 export function vipDiscountAmount(subtotal: number, pct: number): number {
   if (!subtotal || subtotal <= 0 || !pct || pct <= 0) return 0
-  return Math.min(Math.round(subtotal * pct / 100), VIP_CAP)
+  return Math.round(subtotal * pct / 100)
 }
 
 // เลือกส่วนลดที่มากกว่าระหว่างโปรลูกค้าใหม่กับ VIP (ไม่ซ้อน) — ตรงกับ backend
