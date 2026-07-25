@@ -9,7 +9,7 @@ import AddressForm from '@/components/AddressForm'
 import AddressList from '@/components/AddressList'
 import { getUtm } from '@/lib/utm'
 import { fbTrack } from '@/lib/fbpixel'
-import { firstOrderDiscountAmount, FIRST_ORDER_CAP } from '@/lib/promo'
+import { firstOrderDiscountAmount, FIRST_ORDER_CAP, bestDiscount } from '@/lib/promo'
 
 const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
@@ -129,14 +129,15 @@ function CheckoutForm() {
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const [firstOrderDiscount, setFirstOrderDiscount] = useState(false)
+  const [vipPct, setVipPct] = useState(0)   // ส่วนลด VIP ต่อคน (ตั้งในหน้าจัดการลูกค้า)
   const [carrier, setCarrier] = useState<CarrierId>('thailand_post')  // ขนส่งที่ลูกค้าเลือก
 
-  // เช็คส่วนลดลูกค้าใหม่จาก backend
+  // เช็คส่วนลดลูกค้าใหม่ + VIP จาก backend
   useEffect(() => {
     if (!user?.phone) return
     fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(user.phone)}`)
       .then(r => r.json())
-      .then(d => setFirstOrderDiscount(d.eligible === true))
+      .then(d => { setFirstOrderDiscount(d.eligible === true); setVipPct(d.vip_discount_pct || 0) })
       .catch(() => {
         // fallback: ใช้ localStorage
         setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1')
@@ -144,8 +145,9 @@ function CheckoutForm() {
   }, [user?.phone])
   const shipping = 0 // ส่งฟรี
 
-  // ส่วนลดลูกค้าใหม่: 50% ของบิล เพดาน ฿130 (คิดระดับบิล ไม่ใช่รายชิ้น)
-  const discount = firstOrderDiscount ? firstOrderDiscountAmount(subtotal) : 0
+  // ส่วนลด: เลือกอันที่มากกว่าระหว่างโปรลูกค้าใหม่ (50% เพดาน ฿130) กับ VIP% (เพดาน ฿130) — ไม่ซ้อน
+  const best     = bestDiscount(subtotal, firstOrderDiscount, vipPct)
+  const discount = best.amount
   const total    = subtotal - discount
 
   // ประกอบที่อยู่เต็มให้สมบูรณ์สำหรับพิมพ์ label (บ้านเลขที่ + ตำบล/แขวง + อำเภอ/เขต)
@@ -400,7 +402,7 @@ function CheckoutForm() {
         {/* Order summary */}
         <div className="rounded-2xl border-2 overflow-hidden mb-6" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
           {/* Banner ส่วนลดลูกค้าใหม่ */}
-          {firstOrderDiscount && (
+          {best.kind === 'first' && discount > 0 && (
             <div className="px-5 py-3 flex items-center gap-3 border-b-2" style={{ background: '#D64B2A', borderColor: '#C04020' }}>
               <span className="text-xl">🎉</span>
               <div>
@@ -409,6 +411,20 @@ function CheckoutForm() {
                 </p>
                 <p className="text-xs font-mono" style={{ color: '#F5C5A0' }}>
                   ออเดอร์แรกเท่านั้น · 1 สิทธิ์/เบอร์
+                </p>
+              </div>
+            </div>
+          )}
+          {/* Banner ลูกค้า VIP */}
+          {best.kind === 'vip' && discount > 0 && (
+            <div className="px-5 py-3 flex items-center gap-3 border-b-2" style={{ background: '#B8860B', borderColor: '#9C7009' }}>
+              <span className="text-xl">👑</span>
+              <div>
+                <p className="font-black text-sm" style={{ fontFamily: 'var(--font-display)', color: '#FFF6DA' }}>
+                  ส่วนลดลูกค้า VIP {vipPct}% (สูงสุด ฿{FIRST_ORDER_CAP})!
+                </p>
+                <p className="text-xs font-mono" style={{ color: '#F3E1A8' }}>
+                  ขอบคุณที่อุดหนุนเสมอนะคะ 🐰
                 </p>
               </div>
             </div>
@@ -422,24 +438,26 @@ function CheckoutForm() {
               <p className="text-sm font-mono" style={{ color: '#D64B2A' }}>฿{(item.price * item.qty).toLocaleString()}</p>
             </div>
           ))}
-          {/* รวมสินค้า (ก่อนหักส่วนลดลูกค้าใหม่) — แสดงเมื่อมีส่วนลด เพื่อให้เห็นก่อน/หลังชัด */}
-          {firstOrderDiscount && discount > 0 && (
+          {/* รวมสินค้า (ก่อนหักส่วนลด) — แสดงเมื่อมีส่วนลด เพื่อให้เห็นก่อน/หลังชัด */}
+          {discount > 0 && (
             <div className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
               <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>รวมสินค้า</p>
               <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>฿{subtotal.toLocaleString()}</p>
             </div>
           )}
-          {/* ส่วนลดลูกค้าใหม่ 50% เพดาน ฿130 */}
-          {firstOrderDiscount && discount > 0 && (
-            <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
-              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>
-                🎉 ส่วนลดลูกค้าใหม่ 50%{discount >= FIRST_ORDER_CAP ? ` (สูงสุด ฿${FIRST_ORDER_CAP})` : ''}
+          {/* บรรทัดส่วนลดจริง: ลูกค้าใหม่ 50% หรือ VIP% (เพดาน ฿130) */}
+          {discount > 0 && (
+            <div className="px-5 py-2 flex justify-between" style={{ background: best.kind === 'vip' ? '#FFFBEA' : '#FFF5F3' }}>
+              <p className="text-xs font-mono" style={{ color: best.kind === 'vip' ? '#B8860B' : '#D64B2A' }}>
+                {best.kind === 'vip'
+                  ? <>👑 ส่วนลดลูกค้า VIP {vipPct}%{discount >= FIRST_ORDER_CAP ? ` (สูงสุด ฿${FIRST_ORDER_CAP})` : ''}</>
+                  : <>🎉 ส่วนลดลูกค้าใหม่ 50%{discount >= FIRST_ORDER_CAP ? ` (สูงสุด ฿${FIRST_ORDER_CAP})` : ''}</>}
               </p>
-              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{discount.toLocaleString()}</p>
+              <p className="text-xs font-mono" style={{ color: best.kind === 'vip' ? '#B8860B' : '#D64B2A' }}>-฿{discount.toLocaleString()}</p>
             </div>
           )}
-          {/* ส่วนลด 30% ปกติ — โชว์ให้ลูกค้าที่ไม่ได้ใช้สิทธิ์ลูกค้าใหม่ (ราคาลด 30% ฝังในราคาอยู่แล้ว) */}
-          {!(firstOrderDiscount && discount > 0) && subtotal > 0 && (
+          {/* ส่วนลด 30% ปกติ — โชว์ให้ลูกค้าที่ไม่ได้ใช้สิทธิ์พิเศษ (ราคาลด 30% ฝังในราคาอยู่แล้ว) */}
+          {discount === 0 && subtotal > 0 && (
             <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(Math.round(subtotal / 0.7) - subtotal).toLocaleString()}</p>
