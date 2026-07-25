@@ -373,14 +373,27 @@ function CheckoutForm() {
           </Link>
         </div>
 
-        {/* LINE Login shortcut */}
+        {/* Login เพื่อรับส่วนลดลูกค้าใหม่ 50% */}
         {!user && (
-          <div className="rounded-2xl border-2 px-5 py-4 mb-4 flex items-center justify-between" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
-            <div>
-              <p className="text-sm font-medium" style={{ color: '#3D1F0F' }}>Login ด้วย LINE</p>
-              <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>กรอกข้อมูลได้เร็วขึ้น + ดูประวัติสั่งซื้อ</p>
+          <div className="rounded-2xl border-2 px-5 py-4 mb-4" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl leading-none">🎉</span>
+              <div className="flex-1">
+                <p className="font-black text-base leading-tight" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+                  เข้าสู่ระบบ รับส่วนลดลูกค้าใหม่ 50%!
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#8C7B6E' }}>
+                  {firstOrderDiscountAmount(subtotal) > 0
+                    ? <>ออเดอร์นี้ลดเพิ่มได้อีก <b style={{ color: '#D64B2A' }}>฿{firstOrderDiscountAmount(subtotal).toLocaleString()}</b> · </>
+                    : null}
+                  สูงสุด ฿{FIRST_ORDER_CAP} · ออเดอร์แรกเท่านั้น
+                </p>
+              </div>
             </div>
             <LineLoginButton onDone={() => {}} />
+            <p className="text-xs font-mono mt-2 text-center" style={{ color: '#C5BAB0' }}>
+              เข้าสู่ระบบด้วย LINE เพื่อรับสิทธิ์ · ถ้าไม่ล็อกอินจะได้ส่วนลดปกติเท่านั้น
+            </p>
           </div>
         )}
 
@@ -430,6 +443,14 @@ function CheckoutForm() {
             <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(Math.round(subtotal / 0.7) - subtotal).toLocaleString()}</p>
+            </div>
+          )}
+          {/* ชวน login รับ 50% — เฉพาะยังไม่ล็อกอิน */}
+          {!user && subtotal > 0 && firstOrderDiscountAmount(subtotal) > 0 && (
+            <div className="px-5 py-2 border-t border-dashed" style={{ background: '#FFF9F0', borderColor: '#F0C890' }}>
+              <p className="text-xs font-mono text-center" style={{ color: '#D64B2A' }}>
+                👆 เข้าสู่ระบบ รับส่วนลดลูกค้าใหม่ 50% — ลดเพิ่มอีก ฿{firstOrderDiscountAmount(subtotal).toLocaleString()}
+              </p>
             </div>
           )}
           <div className="px-5 py-3 flex justify-between">
