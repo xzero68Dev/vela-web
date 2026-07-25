@@ -302,9 +302,30 @@ export default function AdminOrdersPage() {
           </select>
         </div>
 
-        <p className="text-xs font-mono mb-3" style={{ color: '#C5BAB0' }}>
-          แสดง {paginated.length} จาก {filtered.length} รายการ · หน้า {page}/{totalPages}
-        </p>
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>
+            แสดง {paginated.length} จาก {filtered.length} รายการ · หน้า {page}/{totalPages}
+          </p>
+          {(() => {
+            const webIds = filtered.filter(o => o.channel === 'web').map(o => o.order_id)
+            if (!webIds.length) return null
+            const allOn = webIds.every(id => printSel.has(id))
+            return (
+              <button onClick={() => setPrintSel(prev => {
+                const n = new Set(prev)
+                if (allOn) webIds.forEach(id => n.delete(id))
+                else webIds.forEach(id => n.add(id))
+                return n
+              })}
+                className="text-xs font-mono px-3 py-1.5 rounded-lg border-2 flex-shrink-0 transition-all"
+                style={allOn
+                  ? { background: '#3D1F0F', borderColor: '#3D1F0F', color: '#EDE8DF' }
+                  : { background: 'transparent', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                {allOn ? '☑' : '☐'} เลือกทั้งหมด ({webIds.length})
+              </button>
+            )
+          })()}
+        </div>
 
         {/* แถบพิมพ์ใบแปะหน้าหลายออเดอร์ */}
         {printSel.size > 0 && (
