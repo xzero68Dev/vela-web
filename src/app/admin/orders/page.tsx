@@ -11,7 +11,7 @@ const PAGE_SIZE = 20
 
 type Order = {
   order_id: string; order_date: string; ship_date?: string
-  customer: string; phone: string; province: string
+  customer: string; phone: string; province: string; zip?: string
   full_address: string; sku: string; qty: number
   channel: string; status: string
   slip_url?: string; paid_at?: string; note?: string; total?: number
@@ -61,7 +61,7 @@ export default function AdminOrdersPage() {
     setLoading(true)
     try {
       const res = await fetch(
-        `${SB_URL}/rest/v1/orders?order=${sortBy}.desc&limit=1000&select=order_id,order_date,ship_date,customer,phone,province,full_address,sku,qty,channel,status,slip_url,paid_at,note,total,preferred_carrier`,
+        `${SB_URL}/rest/v1/orders?order=${sortBy}.desc&limit=1000&select=order_id,order_date,ship_date,customer,phone,province,zip,full_address,sku,qty,channel,status,slip_url,paid_at,note,total,preferred_carrier`,
         { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
       )
       const list = await res.json()
@@ -459,7 +459,7 @@ export default function AdminOrdersPage() {
                 {[
                   { label: 'ลูกค้า',  value: selected.customer },
                   { label: 'เบอร์',   value: (!selected.phone || selected.phone.trim() === '-') ? 'ซ่อนโดย Shopee (Flash)' : selected.phone },
-                  { label: 'ที่อยู่', value: [selected.full_address, selected.province].filter(Boolean).join(' ') },
+                  { label: 'ที่อยู่', value: [selected.full_address, selected.province, selected.zip].filter(Boolean).join(' ') },
                   { label: 'สินค้า',  value: selected.sku },
                   { label: 'วันที่',  value: selected.order_date },
                   ...(selected.preferred_carrier ? [{ label: 'ขนส่งที่ลูกค้าเลือก', value: selected.preferred_carrier === 'kex' ? 'KEX Express' : 'ไปรษณีย์ไทย EMS' }] : []),
