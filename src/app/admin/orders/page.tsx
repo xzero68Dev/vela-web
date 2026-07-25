@@ -53,6 +53,7 @@ export default function AdminOrdersPage() {
   const [page,      setPage]      = useState(1)
   const [shipForm,  setShipForm]  = useState({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' })
   const [acting,    setActing]    = useState(false)
+  const [printSel,  setPrintSel]  = useState<Set<string>>(new Set())
   const [updated,   setUpdated]   = useState('')
   const [sendSms,   setSendSms]   = useState(true)
 
@@ -111,6 +112,14 @@ export default function AdminOrdersPage() {
       if (!res.ok) { alert(`ส่ง SMS ไม่สำเร็จ: ${data.detail || 'error'}`); return }
       alert(`✅ ส่ง SMS แจ้งชำระเงินไปที่ ${data.phone || ph} แล้ว`)
     } finally { setActing(false) }
+  }
+
+  const togglePrint = (id: string) => setPrintSel(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n
+  })
+  const printSelected = () => {
+    if (!printSel.size) return
+    window.open(`/admin/labels/print?ids=${Array.from(printSel).join(',')}`, '_blank')
   }
 
   const addShipping = async (o: Order) => {
@@ -297,6 +306,22 @@ export default function AdminOrdersPage() {
           แสดง {paginated.length} จาก {filtered.length} รายการ · หน้า {page}/{totalPages}
         </p>
 
+        {/* แถบพิมพ์ใบแปะหน้าหลายออเดอร์ */}
+        {printSel.size > 0 && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl border-2 flex-wrap"
+            style={{ background: '#F5E6C0', borderColor: '#D4890A55' }}>
+            <span className="text-xs font-mono font-bold" style={{ color: '#854F0B' }}>เลือกพิมพ์ {printSel.size} ออเดอร์</span>
+            <button onClick={printSelected}
+              className="px-3 py-1.5 rounded-lg text-xs font-black uppercase" style={{ background: '#D64B2A', color: '#fff' }}>
+              🖨️ พิมพ์ใบแปะหน้า
+            </button>
+            <button onClick={() => setPrintSel(new Set())}
+              className="px-3 py-1.5 rounded-lg text-xs font-mono border-2" style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+              ล้าง
+            </button>
+          </div>
+        )}
+
         {/* Order list */}
         <div className="space-y-2 mb-4">
           {paginated.length === 0 && !loading && (
@@ -304,10 +329,19 @@ export default function AdminOrdersPage() {
           )}
           {paginated.map(o => {
             const s = shipping[o.order_id]
+            const picked = printSel.has(o.order_id)
             return (
-              <button key={o.order_id}
+              <div key={o.order_id} className="flex items-stretch gap-2">
+               {o.channel === 'web' && (
+                 <button onClick={() => togglePrint(o.order_id)} title="เลือกพิมพ์ใบแปะหน้า"
+                   className="flex-shrink-0 w-9 rounded-2xl border-2 flex items-center justify-center text-sm font-black transition-all"
+                   style={{ borderColor: picked ? '#3D1F0F' : '#E0D9CE', background: picked ? '#3D1F0F' : '#F5F1EB', color: picked ? '#EDE8DF' : '#C5BAB0' }}>
+                   {picked ? '✓' : '☐'}
+                 </button>
+               )}
+               <button
                 onClick={() => { setSelected(o); setShipForm({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' }) }}
-                className="w-full text-left rounded-2xl border-2 px-4 py-3 transition-all hover:shadow-sm active:scale-[0.99]"
+                className="flex-1 min-w-0 text-left rounded-2xl border-2 px-4 py-3 transition-all hover:shadow-sm active:scale-[0.99]"
                 style={{
                   background: o.slip_url && o.status === 'รอชำระเงิน' ? '#FFF5F3' : '#F5F1EB',
                   borderColor: o.slip_url && o.status === 'รอชำระเงิน' ? '#D64B2A' : '#E0D9CE',
@@ -342,7 +376,8 @@ export default function AdminOrdersPage() {
                     </p>
                   ) : null}
                 </div>
-              </button>
+               </button>
+              </div>
             )
           })}
         </div>
@@ -427,7 +462,7 @@ export default function AdminOrdersPage() {
 
               {/* พิมพ์ใบแปะหน้า/ใบแพ็ค (เฉพาะออเดอร์เว็บ) */}
               {selected.channel === 'web' && (
-                <button onClick={() => window.open(`/admin/label/${selected.order_id}`, '_blank')}
+                <button onClick={() => window.open(`/admin/labels/print?ids=${selected.order_id}`, '_blank')}
                   className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 border-2"
                   style={{ fontFamily: 'var(--font-display)', borderColor: '#3D1F0F', color: '#3D1F0F', background: '#F5F1EB' }}>
                   🖨️ พิมพ์ใบแปะหน้า (มีรายการแพ็ค)
