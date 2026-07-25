@@ -425,6 +425,15 @@ export default function AdminOrdersPage() {
                 ) : null}
               </div>
 
+              {/* พิมพ์ใบแปะหน้า/ใบแพ็ค (เฉพาะออเดอร์เว็บ) */}
+              {selected.channel === 'web' && (
+                <button onClick={() => window.open(`/admin/label/${selected.order_id}`, '_blank')}
+                  className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 border-2"
+                  style={{ fontFamily: 'var(--font-display)', borderColor: '#3D1F0F', color: '#3D1F0F', background: '#F5F1EB' }}>
+                  🖨️ พิมพ์ใบแปะหน้า (มีรายการแพ็ค)
+                </button>
+              )}
+
               {/* Slip */}
               {selected.slip_url ? (
                 <div>
