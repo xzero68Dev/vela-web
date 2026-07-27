@@ -5,6 +5,7 @@ import Link from 'next/link'
 import VelaBunny from '@/components/VelaBunny'
 import LineLoginButton from '@/components/LineLoginButton'
 import AddressList from '@/components/AddressList'
+import { firePurchaseOnce, isPaidStatus } from '@/lib/fbpixel'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -338,6 +339,20 @@ export default function AccountPage() {
   useEffect(() => { fetchOrders() }, [fetchOrders])
   useEffect(() => { fetchAddresses() }, [fetchAddresses])
 
+  // ISSUE 0: ยิง Purchase สำหรับออเดอร์ที่ "จ่ายสำเร็จแล้ว" เท่านั้น (ครอบคลุมเคส admin กดยืนยันเอง
+  // ที่ลูกค้าไม่ได้อยู่หน้าอัปสลิป) — dedup ด้วย order_id กันยิงซ้ำ
+  useEffect(() => {
+    orders.forEach(o => {
+      if (isPaidStatus(o.status)) {
+        firePurchaseOnce(o.order_id, {
+          content_name: o.sku, content_type: 'product',
+          num_items: o.qty || undefined,
+          value: Number(o.total) || 0, currency: 'THB',
+        })
+      }
+    })
+  }, [orders])
+
   // โหลด rank ส่วนตัวประจำเดือนนี้
   useEffect(() => {
     if (!user?.phone) return
@@ -543,11 +558,11 @@ export default function AccountPage() {
                         </div>
                       )}
 
-                      {/* สถานะสลิป */}
-                      {o.slip_status === 'rejected' && o.status === 'รอชำระเงิน' && (
-                        <div className="mt-2 rounded-xl px-3 py-2" style={{ background: '#FFF5F3', border: '1px solid #D64B2A' }}>
-                          <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>
-                            ⚠️ สลิปไม่ถูกต้อง กรุณาอัปโหลดสลิปใหม่ครับ
+                      {/* สถานะสลิป — pending_review = ระบบตรวจอัตโนมัติไม่ผ่าน แต่ทีมงานกำลังตรวจให้ (ไม่สื่อว่าโกง) */}
+                      {(o.slip_status === 'pending_review' || o.slip_status === 'rejected') && o.status === 'รอชำระเงิน' && (
+                        <div className="mt-2 rounded-xl px-3 py-2" style={{ background: '#F5E6C0' }}>
+                          <p className="text-xs font-mono" style={{ color: '#854F0B' }}>
+                            ⏳ ได้รับสลิปแล้ว ทีมงานกำลังตรวจสอบยอดและจะยืนยันให้เร็วที่สุดครับ
                           </p>
                         </div>
                       )}

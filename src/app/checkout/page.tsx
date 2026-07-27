@@ -133,16 +133,21 @@ function CheckoutForm() {
   const [carrier, setCarrier] = useState<CarrierId>('thailand_post')  // ขนส่งที่ลูกค้าเลือก
 
   // เช็คส่วนลดลูกค้าใหม่ + VIP จาก backend
+  // นโยบายใหม่ (27/07): guest ได้ส่วนลดด้วย — เช็คจาก "เบอร์ที่กรอกในฟอร์ม" ถ้ายังไม่ล็อกอิน
+  const eligPhone = (user?.phone || form.phone || '').replace(/\D/g, '')
   useEffect(() => {
-    if (!user?.phone) return
-    fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(user.phone)}`)
-      .then(r => r.json())
-      .then(d => { setFirstOrderDiscount(d.eligible === true); setVipPct(d.vip_discount_pct || 0) })
-      .catch(() => {
-        // fallback: ใช้ localStorage
-        setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1')
-      })
-  }, [user?.phone])
+    if (eligPhone.length < 9 || eligPhone.length > 10) {
+      setFirstOrderDiscount(false); setVipPct(0)
+      return
+    }
+    const t = setTimeout(() => {
+      fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(eligPhone)}`)
+        .then(r => r.json())
+        .then(d => { setFirstOrderDiscount(d.eligible === true); setVipPct(d.vip_discount_pct || 0) })
+        .catch(() => setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1'))
+    }, 450)   // debounce ระหว่างพิมพ์เบอร์
+    return () => clearTimeout(t)
+  }, [eligPhone])
   const shipping = 0 // ส่งฟรี
 
   // ส่วนลด: เลือกอันที่มากกว่าระหว่างโปรลูกค้าใหม่ (50% เพดาน ฿130) กับ VIP% (เพดาน ฿130) — ไม่ซ้อน
@@ -375,26 +380,25 @@ function CheckoutForm() {
           </Link>
         </div>
 
-        {/* Login เพื่อรับส่วนลดลูกค้าใหม่ 50% */}
+        {/* ลูกค้าใหม่รับส่วนลด 50% อัตโนมัติ — ไม่ต้องล็อกอิน (ผูกเบอร์ที่กรอก) */}
         {!user && (
           <div className="rounded-2xl border-2 px-5 py-4 mb-4" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
             <div className="flex items-start gap-3 mb-3">
               <span className="text-2xl leading-none">🎉</span>
               <div className="flex-1">
                 <p className="font-black text-base leading-tight" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-                  เข้าสู่ระบบ รับส่วนลดลูกค้าใหม่ 50%!
+                  {firstOrderDiscount ? 'ยินดีด้วย! คุณได้ส่วนลดลูกค้าใหม่ 50%' : 'ลูกค้าใหม่รับส่วนลด 50% อัตโนมัติ'}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: '#8C7B6E' }}>
-                  {firstOrderDiscountAmount(subtotal) > 0
-                    ? <>ออเดอร์นี้ลดเพิ่มได้อีก <b style={{ color: '#D64B2A' }}>฿{firstOrderDiscountAmount(subtotal).toLocaleString()}</b> · </>
-                    : null}
-                  สูงสุด ฿{FIRST_ORDER_CAP} · ออเดอร์แรกเท่านั้น
+                  {firstOrderDiscount && firstOrderDiscountAmount(subtotal) > 0
+                    ? <>ลดในออเดอร์นี้ <b style={{ color: '#D64B2A' }}>฿{firstOrderDiscountAmount(subtotal).toLocaleString()}</b> · สูงสุด ฿{FIRST_ORDER_CAP}</>
+                    : <>กรอกเบอร์โทรด้านล่าง ระบบจะลดให้อัตโนมัติ · สูงสุด ฿{FIRST_ORDER_CAP} · ออเดอร์แรกเท่านั้น</>}
                 </p>
               </div>
             </div>
             <LineLoginButton onDone={() => {}} />
             <p className="text-xs font-mono mt-2 text-center" style={{ color: '#C5BAB0' }}>
-              เข้าสู่ระบบด้วย LINE เพื่อรับสิทธิ์ · ถ้าไม่ล็อกอินจะได้ส่วนลดปกติเท่านั้น
+              ล็อกอิน LINE ไว้เช็คพัสดุ/สะสมแต้มได้ (ไม่บังคับ — กรอกเบอร์ก็รับส่วนลดได้เลย)
             </p>
           </div>
         )}
@@ -463,11 +467,11 @@ function CheckoutForm() {
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(Math.round(subtotal / 0.7) - subtotal).toLocaleString()}</p>
             </div>
           )}
-          {/* ชวน login รับ 50% — เฉพาะยังไม่ล็อกอิน */}
-          {!user && subtotal > 0 && firstOrderDiscountAmount(subtotal) > 0 && (
+          {/* ชวนกรอกเบอร์รับ 50% — เฉพาะ guest ที่ยังไม่ได้ปลดสิทธิ์ */}
+          {!user && !firstOrderDiscount && subtotal > 0 && firstOrderDiscountAmount(subtotal) > 0 && (
             <div className="px-5 py-2 border-t border-dashed" style={{ background: '#FFF9F0', borderColor: '#F0C890' }}>
               <p className="text-xs font-mono text-center" style={{ color: '#D64B2A' }}>
-                👆 เข้าสู่ระบบ รับส่วนลดลูกค้าใหม่ 50% — ลดเพิ่มอีก ฿{firstOrderDiscountAmount(subtotal).toLocaleString()}
+                👆 กรอกเบอร์โทรด้านล่าง รับส่วนลดลูกค้าใหม่ 50% อัตโนมัติ — ลดอีก ฿{firstOrderDiscountAmount(subtotal).toLocaleString()}
               </p>
             </div>
           )}

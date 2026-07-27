@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { fbTrack } from '@/lib/fbpixel'
+import { fbTrack, fbTrackCustom, firePurchaseOnce, isPaidStatus } from '@/lib/fbpixel'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -42,6 +42,17 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
       const verData = await verRes.json()
       if (verData.verified) {
         setVerified('success')
+        // ISSUE 0: จ่ายสำเร็จจริง (สลิป verified) → ยิง Purchase ตรงนี้ (dedup ด้วย order_id)
+        try {
+          let payload: Record<string, unknown> = { value: Number(total) || 0, currency: 'THB', content_type: 'product' }
+          const raw = sessionStorage.getItem('vela_last_purchase')
+          const lp  = raw ? JSON.parse(raw) : null
+          if (lp && lp.order_id === orderId) {
+            payload = { content_ids: lp.content_ids, contents: lp.contents, content_type: 'product',
+                        num_items: lp.num_items, value: Number(lp.value) || Number(total) || 0, currency: 'THB' }
+          }
+          firePurchaseOnce(orderId, payload)
+        } catch {}
       } else {
         const r: string = verData.reason || ''
         if (r.includes('1014') || r.includes('ไม่ได้โอน')) {
@@ -135,15 +146,12 @@ function OrderCompleteContent() {
       .catch(() => {})
   }, [orderId])
 
-  // FB Pixel: Purchase — ยิงเมื่อโหลด order สำเร็จ กันยิงซ้ำตอน refresh ด้วย localStorage
-  // ใช้ข้อมูลจาก checkout (sessionStorage) ถ้ามี → ได้ content_ids + value (หลังหักส่วนลด) แม่นยำ
+  // FB Pixel (ISSUE 0 — 27/07): ยิง Purchase "เฉพาะเมื่อจ่ายสำเร็จแล้ว" เท่านั้น
+  // หน้านี้เปิดหลังกดสั่ง (ยังไม่จ่าย) → ยิง custom PlaceOrder แทน
+  // Purchase จริงจะยิงตอนสลิป verified (ด้านล่าง) หรือตอนเปิดหน้านี้ซ้ำแล้ว order เป็นสถานะจ่ายแล้ว
   useEffect(() => {
     if (!order || !orderId) return
     try {
-      const KEY = 'vela_purchase_fired'
-      const fired: string[] = JSON.parse(localStorage.getItem(KEY) || '[]')
-      if (fired.includes(orderId)) return
-
       let payload: Record<string, unknown> = {
         content_name: order.sku,
         content_type: 'product',
@@ -167,8 +175,13 @@ function OrderCompleteContent() {
         }
       } catch {}
 
-      fbTrack('Purchase', payload)
-      localStorage.setItem(KEY, JSON.stringify([...fired, orderId].slice(-50)))
+      if (isPaidStatus(order.status)) {
+        // เปิดหน้าซ้ำหลังจ่ายแล้ว (หรือ order ถูกยืนยันแล้ว) → ยิง Purchase จริง (dedup ด้วย order_id)
+        firePurchaseOnce(orderId, payload)
+      } else {
+        // เพิ่งกดสั่ง ยังไม่จ่าย → custom event ไม่ให้ FB นับเป็นยอดขาย/ไป optimize ผิดคน
+        fbTrackCustom('PlaceOrder', payload)
+      }
     } catch {}
   }, [order, orderId])
 

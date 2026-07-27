@@ -445,7 +445,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Promo banner — ลูกค้าใหม่ลด 50% (ต้อง login ถึงได้สิทธิ์) */}
+      {/* Promo banner — ลูกค้าใหม่ลด 50% อัตโนมัติ (ไม่ต้องล็อกอิน ผูกเบอร์ที่ checkout) */}
       <section className="px-5 pt-2 mb-4">
         <div className="max-w-5xl mx-auto">
           <div className="rounded-2xl px-5 py-3 border-2"
@@ -457,9 +457,12 @@ export default function HomePage() {
             {!user ? (
               <div className="mt-2 flex flex-col items-center gap-2">
                 <p className="text-xs font-mono text-center" style={{ color: '#8C7B6E' }}>
-                  👉 เข้าสู่ระบบก่อนสั่งซื้อเพื่อรับสิทธิ์ 50% — ถ้าไม่ล็อกอินจะได้ส่วนลดปกติเท่านั้น
+                  👉 ลดอัตโนมัติตอน checkout · แค่กรอกเบอร์ ไม่ต้องล็อกอิน · 1 สิทธิ์/เบอร์
                 </p>
                 <LineLoginButton />
+                <p className="text-[11px] font-mono text-center" style={{ color: '#C5BAB0' }}>
+                  (ล็อกอิน LINE ไว้เช็คพัสดุ/สะสมแต้มได้ — ไม่บังคับ)
+                </p>
               </div>
             ) : (
               <p className="text-xs font-mono mt-0.5 text-center" style={{ color: '#8C7B6E' }}>
