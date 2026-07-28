@@ -144,6 +144,28 @@ export default function AdminOrdersPage() {
     } finally { setActing(false) }
   }
 
+  const fixTracking = async (orderId: string, current?: string) => {
+    const nt = window.prompt(`แก้เลขพัสดุ ${orderId}\nเลขปัจจุบัน: ${current || '-'}\n\nใส่เลขพัสดุที่ถูกต้อง:`, current || '')
+    if (nt === null) return
+    const tracking = nt.trim().toUpperCase()
+    if (!tracking) { alert('ต้องใส่เลขพัสดุ'); return }
+    if (tracking === (current || '').toUpperCase()) { alert('เลขเดิม ไม่ได้เปลี่ยน'); return }
+    if (!confirm(`แก้เลขพัสดุเป็น ${tracking}?\nระบบจะยิงแจ้งเตือนเลขใหม่ให้ลูกค้าด้วย`)) return
+    setActing(true)
+    try {
+      const res = await fetch(`${API}/admin/fix-tracking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        body: JSON.stringify({ order_id: orderId, tracking }),
+      })
+      const d = await res.json()
+      if (!res.ok) { alert(`แก้ไม่สำเร็จ: ${d.detail || 'error'}`); return }
+      const via = d.notified_via === 'line' ? 'LINE' : d.notified_via === 'sms' ? 'SMS' : 'ไม่ได้แจ้ง'
+      alert(`✓ แก้เป็น ${d.new_tracking} (${d.carrier})\nแจ้งลูกค้าทาง: ${via}`)
+      await fetchOrders()
+    } finally { setActing(false) }
+  }
+
   const confirmDelivered = async (o: Order, notify: boolean) => {
     if (!confirm(`ยืนยันว่าพัสดุ ${o.customer} ส่งถึงแล้ว?${notify ? '\nระบบจะแจ้ง SMS/LINE ลูกค้าทันที' : '\n(ไม่ส่ง SMS)'}`)) return
     setActing(true)
@@ -515,6 +537,21 @@ export default function AdminOrdersPage() {
                     className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40 border-2"
                     style={{ fontFamily: 'var(--font-display)', borderColor: '#1A5C8F', color: '#1A5C8F', background: '#F5F1EB' }}>
                     📩 ส่ง SMS แจ้งชำระเงิน
+                  </button>
+                </div>
+              )}
+
+              {/* มีเลขพัสดุแล้ว → ปุ่มแก้เลขพัสดุ (กรณีกรอกผิด) */}
+              {ship?.tracking && ship.tracking !== '-' && (
+                <div className="rounded-2xl border-2 p-4 flex items-center justify-between gap-3" style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
+                  <div className="min-w-0">
+                    <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>เลขพัสดุ</p>
+                    <p className="text-sm font-mono truncate" style={{ color: '#3D1F0F' }}>{ship.tracking}{ship.carrier ? ` (${ship.carrier})` : ''}</p>
+                  </div>
+                  <button onClick={() => fixTracking(selected.order_id, ship?.tracking)} disabled={acting}
+                    className="flex-shrink-0 px-4 py-2 rounded-xl font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-40"
+                    style={{ fontFamily: 'var(--font-display)', background: '#B8860B', color: '#fff' }}>
+                    ✏️ แก้เลขพัสดุ
                   </button>
                 </div>
               )}
