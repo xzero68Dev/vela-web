@@ -85,8 +85,9 @@ function Label({ order, ship }: { order: any; ship?: any }) {
         </div>
         {tracking && (
           <div className="ord-qr">
-            <TrackQR value={`https://velacoldbrew.com/track/${tracking}`} />
-            <div className="ord-qr-cap">สแกนติดตาม</div>
+            {/* QR = เลขพัสดุดิบ → ใช้เป็นตัวสำรองถ้าบาร์โค้ดเสีย (สแกนได้เลขเดียวกัน) */}
+            <TrackQR value={tracking} />
+            <div className="ord-qr-cap">QR สำรอง</div>
           </div>
         )}
       </div>
