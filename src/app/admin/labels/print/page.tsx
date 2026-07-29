@@ -1,7 +1,9 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAdminAuth } from '@/components/useAdminAuth'
+import JsBarcode from 'jsbarcode'
+import QRCode from 'qrcode'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -19,6 +21,31 @@ function parseItems(sku: string): { name: string; qty: number }[] {
     const m = part.match(/^(.+?)\s*[x×]\s*(\d+)\s*$/i)
     return m ? { name: m[1].trim(), qty: parseInt(m[2], 10) } : { name: part, qty: 1 }
   })
+}
+
+// บาร์โค้ด Code128 ของเลขพัสดุ (ให้ขนส่งสแกน)
+function Barcode({ value }: { value: string }) {
+  const ref = useRef<SVGSVGElement>(null)
+  useEffect(() => {
+    if (ref.current && value) {
+      try {
+        JsBarcode(ref.current, value, {
+          format: 'CODE128', width: 1.7, height: 46, displayValue: true,
+          fontSize: 14, textMargin: 2, margin: 0, font: 'monospace', lineColor: '#000',
+        })
+      } catch {}
+    }
+  }, [value])
+  return <svg ref={ref} className="barcode" />
+}
+
+// QR ลิงก์ติดตามพัสดุ (velacoldbrew.com/track/เลข)
+function TrackQR({ value }: { value: string }) {
+  const [url, setUrl] = useState('')
+  useEffect(() => {
+    if (value) QRCode.toDataURL(value, { margin: 0, width: 160, errorCorrectionLevel: 'M' }).then(setUrl).catch(() => {})
+  }, [value])
+  return url ? <img src={url} alt="track qr" className="trackqr" /> : null
 }
 
 function Label({ order, ship }: { order: any; ship?: any }) {
@@ -49,19 +76,27 @@ function Label({ order, ship }: { order: any; ship?: any }) {
         <div className="to-addr">{fullAddr}</div>
       </div>
 
-      {/* ออเดอร์ + ขนส่ง */}
+      {/* ออเดอร์ + ขนส่ง + QR ติดตาม */}
       <div className="ord">
         <div>
           <div className="oid">#{order.order_id}</div>
           <div className="date">{order.order_date}</div>
+          {carrier && <span className="carrier">{carrier}</span>}
         </div>
-        {carrier && (
-          <div style={{ textAlign: 'right' }}>
-            <span className="carrier">{carrier}</span>
-            {tracking && <div className="trk">{tracking}</div>}
+        {tracking && (
+          <div className="ord-qr">
+            <TrackQR value={`https://velacoldbrew.com/track/${tracking}`} />
+            <div className="ord-qr-cap">สแกนติดตาม</div>
           </div>
         )}
       </div>
+
+      {/* บาร์โค้ดเลขพัสดุ — ให้ขนส่งสแกน */}
+      {tracking && (
+        <div className="bcode">
+          <Barcode value={tracking} />
+        </div>
+      )}
 
       {/* รายการสินค้า — เช็คลิสต์ (ยืดเต็มพื้นที่ที่เหลือ) */}
       <div className="items">
@@ -140,9 +175,13 @@ function LabelsInner() {
         .to-addr { font-size:16px; line-height:1.4; margin-top:2px; }
         .ord { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:6px 0; border-bottom:1px dashed #666; }
         .oid { font-size:20px; font-weight:800; letter-spacing:1px; font-family:'Courier New',monospace; }
-        .date { font-size:12px; color:#555; }
+        .date { font-size:12px; color:#555; margin-bottom:3px; }
         .carrier { display:inline-block; border:2px solid #000; border-radius:6px; padding:2px 9px; font-weight:800; font-size:14px; }
-        .trk { font-family:'Courier New',monospace; font-size:15px; font-weight:700; margin-top:3px; }
+        .ord-qr { text-align:center; flex-shrink:0; }
+        .ord-qr .trackqr { width:16mm; height:16mm; object-fit:contain; display:block; }
+        .ord-qr-cap { font-size:8px; color:#333; margin-top:1px; }
+        .bcode { text-align:center; padding:5px 0 3px; border-bottom:1px dashed #666; }
+        .bcode .barcode { width:100%; max-width:88mm; height:auto; }
         .items { flex:1 1 auto; padding-top:6px; overflow:hidden; }
         .items-title { font-size:14px; font-weight:800; margin-bottom:4px; }
         .item { display:flex; align-items:flex-start; gap:8px; padding:4px 0; border-bottom:1px solid #ddd; }
