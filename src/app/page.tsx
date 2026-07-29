@@ -28,7 +28,7 @@ type Product = {
   sort_order: number
 }
 
-type CartItem = { sku: string; qty: number; price: number; name: string }
+type CartItem = { sku: string; qty: number; price: number; name: string; price_original?: number }
 
 // Color accent per product
 const SKU_COLOR: Record<string, string> = {
@@ -378,7 +378,7 @@ export default function HomePage() {
       const existing = prev.find(i => i.sku === product.sku)
       const newCart: CartItem[] = existing
         ? prev.map(i => i.sku === product.sku ? { ...i, qty: i.qty + 1 } : i)
-        : [...prev, { sku: product.sku, qty: 1, price: cartPrice, name: product.name }]
+        : [...prev, { sku: product.sku, qty: 1, price: cartPrice, name: product.name, price_original: product.price_original || product.price }]
       localStorage.setItem('vela_cart', JSON.stringify(newCart))
       localStorage.setItem('vela_first_order_discount', firstOrderDiscount ? '1' : '0')
       return newCart

@@ -24,6 +24,7 @@ export default function CustomersPage() {
   const [rows, setRows]     = useState<Customer[]>([])
   const [loading, setLoad]  = useState(true)
   const [saving, setSaving] = useState<number | null>(null)
+  const [backfilling, setBackfilling] = useState(false)
   const [draft, setDraft]   = useState<Record<number, number>>({})
   const [msg, setMsg]       = useState('')
 
@@ -60,17 +61,39 @@ export default function CustomersPage() {
     } finally { setSaving(null) }
   }
 
+  const backfillPoints = async () => {
+    if (!confirm('คำนวณแต้มย้อนหลังให้ออเดอร์เว็บที่ชำระแล้วทุกใบ?\n(รันซ้ำได้ ไม่ทำให้แต้มซ้ำ)')) return
+    setBackfilling(true); setMsg('')
+    try {
+      const res = await fetch(`${API}/admin/backfill-points`, {
+        method: 'POST', headers: { 'x-api-key': ADMIN_KEY },
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.detail || 'error')
+      setMsg(`✓ คำนวณแต้มย้อนหลังเสร็จ — เช็ค ${d.checked} ออเดอร์ที่ชำระแล้ว`)
+    } catch (e: unknown) {
+      setMsg(`✗ ${e instanceof Error ? e.message : 'ไม่สำเร็จ'}`)
+    } finally { setBackfilling(false) }
+  }
+
   if (!ready) return null
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 16px' }}>
       <AdminNav />
 
-      <div style={{ marginBottom: 16 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#3B2B23' }}>จัดการลูกค้า</h2>
-        <p style={{ fontSize: 13, color: '#8C7B6E' }}>
-          ตั้ง % ส่วนลด VIP ต่อคน (ไม่มีเพดาน) — ระบบเลือกส่วนลดที่มากกว่าเทียบกับโปรลูกค้าใหม่ 50%
-        </p>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#3B2B23' }}>จัดการลูกค้า</h2>
+          <p style={{ fontSize: 13, color: '#8C7B6E' }}>
+            ตั้ง % ส่วนลด VIP ต่อคน (คิดจากราคาตั้ง) — ระบบเลือกส่วนลดที่ทำให้จ่ายน้อยกว่าเทียบกับโปรลูกค้าใหม่ 50%
+          </p>
+        </div>
+        <button onClick={backfillPoints} disabled={backfilling}
+          style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid #B8860B', background: '#FFF6DA',
+            color: '#8A6400', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          {backfilling ? 'กำลังคำนวณ...' : '🔄 คำนวณแต้มย้อนหลัง'}
+        </button>
       </div>
 
       <form onSubmit={e => { e.preventDefault(); load(q) }}

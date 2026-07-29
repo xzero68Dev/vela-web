@@ -76,7 +76,7 @@ export default function ProductClient({ sku }: { sku: string }) {
     const cart = JSON.parse(localStorage.getItem('vela_cart') || '[]')
     const idx = cart.findIndex((i: any) => i.sku === current.sku)
     if (idx >= 0) cart[idx].qty += qty
-    else cart.push({ sku: current.sku, qty, price: price, name: current.name })
+    else cart.push({ sku: current.sku, qty, price: price, name: current.name, price_original: origPrice })
     localStorage.setItem('vela_cart', JSON.stringify(cart))
     setCartCount(cart.reduce((s: number, i: any) => s + i.qty, 0))
     setCartTotal(cart.reduce((s: number, i: any) => s + i.price * i.qty, 0))

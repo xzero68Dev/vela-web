@@ -11,18 +11,22 @@ export function firstOrderDiscountAmount(subtotal: number): number {
   return Math.min(Math.round(subtotal * FIRST_ORDER_PCT), FIRST_ORDER_CAP)
 }
 
-// ── ส่วนลดลูกค้า VIP: % ต่อคน ไม่มีเพดาน (ลดเต็ม % ทุกบิล) ──
-export function vipDiscountAmount(subtotal: number, pct: number): number {
-  if (!subtotal || subtotal <= 0 || !pct || pct <= 0) return 0
-  return Math.round(subtotal * pct / 100)
+// ── ส่วนลดลูกค้า VIP: % ต่อคน คิดจาก "ราคาตั้ง" (original) แทนส่วนลด 30% ปกติ (ไม่ลดซ้ำ) ──
+// vipTotal = ราคาตั้งรวม × (1 - vip%)  → ราคาที่ VIP จ่ายจริง
+export function vipTotalFromOriginal(origSubtotal: number, pct: number): number {
+  if (!origSubtotal || origSubtotal <= 0 || !pct || pct <= 0) return origSubtotal
+  return Math.round(origSubtotal * (1 - pct / 100))
 }
 
-// เลือกส่วนลดที่มากกว่าระหว่างโปรลูกค้าใหม่กับ VIP (ไม่ซ้อน) — ตรงกับ backend
+// เลือกส่วนลดที่ทำให้ "จ่ายน้อยที่สุด" ระหว่างโปรลูกค้าใหม่ (คิดจากราคาปกติ) กับ VIP (คิดจากราคาตั้ง) — ไม่ซ้อน
+// คืน: kind, amount=ยอดที่ลด, total=ยอดจ่ายจริง, base=ยอดตั้งต้นที่ใช้โชว์
 export function bestDiscount(
-  subtotal: number, firstOrderEligible: boolean, vipPct: number,
-): { amount: number; kind: 'first' | 'vip' | 'none' } {
-  const fo  = firstOrderEligible ? firstOrderDiscountAmount(subtotal) : 0
-  const vip = vipDiscountAmount(subtotal, vipPct)
-  if (fo === 0 && vip === 0) return { amount: 0, kind: 'none' }
-  return fo >= vip ? { amount: fo, kind: 'first' } : { amount: vip, kind: 'vip' }
+  subtotalDisc: number, origSubtotal: number, firstOrderEligible: boolean, vipPct: number,
+): { kind: 'first' | 'vip' | 'none'; amount: number; total: number; base: number } {
+  const fo = firstOrderEligible ? firstOrderDiscountAmount(subtotalDisc) : 0
+  const vipTotal = (vipPct > 0 && origSubtotal > 0) ? vipTotalFromOriginal(origSubtotal, vipPct) : subtotalDisc
+  const vipDisc  = Math.max(0, subtotalDisc - vipTotal)
+  if (fo > 0 && fo >= vipDisc) return { kind: 'first', amount: fo, total: subtotalDisc - fo, base: subtotalDisc }
+  if (vipDisc > 0)             return { kind: 'vip', amount: origSubtotal - vipTotal, total: vipTotal, base: origSubtotal }
+  return { kind: 'none', amount: 0, total: subtotalDisc, base: subtotalDisc }
 }

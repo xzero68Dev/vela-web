@@ -15,7 +15,7 @@ const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onre
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-type CartItem = { sku: string; qty: number; price: number; name: string }
+type CartItem = { sku: string; qty: number; price: number; name: string; price_original?: number }
 
 // โลโก้ขนส่ง (inline SVG — ไม่ต้องพึ่งไฟล์ภายนอก)
 function ThaiPostLogo() {
@@ -151,9 +151,11 @@ function CheckoutForm() {
   const shipping = 0 // ส่งฟรี
 
   // ส่วนลด: เลือกอันที่มากกว่าระหว่างโปรลูกค้าใหม่ (50% เพดาน ฿130) กับ VIP% (เพดาน ฿130) — ไม่ซ้อน
-  const best     = bestDiscount(subtotal, firstOrderDiscount, vipPct)
+  // ยอดราคาตั้งรวม (original) — ใช้คิด VIP (VIP% คิดจากราคาตั้ง ไม่ใช่ราคาที่ลด 30% แล้ว)
+  const origSubtotal = cart.reduce((s, i) => s + (i.price_original || i.price) * i.qty, 0)
+  const best     = bestDiscount(subtotal, origSubtotal, firstOrderDiscount, vipPct)
   const discount = best.amount
-  const total    = subtotal - discount
+  const total    = best.total
 
   // ประกอบที่อยู่เต็มให้สมบูรณ์สำหรับพิมพ์ label (บ้านเลขที่ + ตำบล/แขวง + อำเภอ/เขต)
   const composeFullAddress = () => {
@@ -436,17 +438,21 @@ function CheckoutForm() {
           <div className="px-5 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
             <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>สรุปคำสั่งซื้อ</p>
           </div>
-          {cart.map(item => (
-            <div key={item.sku} className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
-              <p className="text-sm" style={{ color: '#3D1F0F' }}>{item.name} × {item.qty}</p>
-              <p className="text-sm font-mono" style={{ color: '#D64B2A' }}>฿{(item.price * item.qty).toLocaleString()}</p>
-            </div>
-          ))}
+          {cart.map(item => {
+            // VIP เห็นราคาตั้ง (original) เพราะ VIP% คิดจากราคาตั้ง | คนอื่นเห็นราคาปกติ (ลด 30% แล้ว)
+            const unit = best.kind === 'vip' ? (item.price_original || item.price) : item.price
+            return (
+              <div key={item.sku} className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
+                <p className="text-sm" style={{ color: '#3D1F0F' }}>{item.name} × {item.qty}</p>
+                <p className="text-sm font-mono" style={{ color: '#D64B2A' }}>฿{(unit * item.qty).toLocaleString()}</p>
+              </div>
+            )
+          })}
           {/* รวมสินค้า (ก่อนหักส่วนลด) — แสดงเมื่อมีส่วนลด เพื่อให้เห็นก่อน/หลังชัด */}
           {discount > 0 && (
             <div className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
-              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>รวมสินค้า</p>
-              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>฿{subtotal.toLocaleString()}</p>
+              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>รวมสินค้า{best.kind === 'vip' ? ' (ราคาตั้ง)' : ''}</p>
+              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>฿{best.base.toLocaleString()}</p>
             </div>
           )}
           {/* บรรทัดส่วนลดจริง: ลูกค้าใหม่ 50% หรือ VIP% (เพดาน ฿130) */}
