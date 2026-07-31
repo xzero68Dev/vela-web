@@ -75,7 +75,7 @@ export default function LeaderboardPage() {
         {/* How it works */}
         <div className="rounded-2xl border-2 px-5 py-4 mb-6" style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
           <p className="text-xs leading-relaxed" style={{ color: '#854F0B' }}>
-            💡 ทุก 100ml ที่ดื่ม = 1 point — รวมยอดจากทุกช่องทาง (Shopee + เว็บ) ตามเบอร์โทรเดียวกัน
+            💡 ทุก 100ml ที่ดื่ม = 1 point — เฉพาะออเดอร์ที่สั่งผ่านเว็บ velacoldbrew.com สะสมตามเบอร์โทร
             อันดับรีเซ็ตใหม่ทุกเดือน
           </p>
         </div>
