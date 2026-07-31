@@ -23,6 +23,7 @@ function PhoneLoginForm() {
   const [phone,   setPhone]   = useState('')
   const [name,    setName]    = useState('')
   const [otp,     setOtp]     = useState('')
+  const [isNew,   setIsNew]   = useState(false)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
   const [timer,   setTimer]   = useState(0)
@@ -46,6 +47,7 @@ function PhoneLoginForm() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'ส่ง OTP ไม่สำเร็จ')
+      setIsNew(data.is_new === true)   // สมาชิกใหม่ = ต้องกรอกชื่อ
       setStep('otp')
       setTimer(60)
     } catch (e: any) {
@@ -55,6 +57,7 @@ function PhoneLoginForm() {
 
   const verifyOTP = async () => {
     if (otp.length !== 6) { setError('กรุณาใส่ OTP 6 หลัก'); return }
+    if (isNew && name.trim().length < 2) { setError('กรุณากรอกชื่อสำหรับสมัครสมาชิก'); return }
     setLoading(true); setError('')
     try {
       const cleanPhone = phone.replace(/\D/g, '')
@@ -80,10 +83,6 @@ function PhoneLoginForm() {
         type="tel" inputMode="numeric"
         className="w-full px-4 py-3 rounded-2xl border-2 text-sm font-mono"
         style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
-      <input value={name} onChange={e => setName(e.target.value)}
-        placeholder="ชื่อ (ถ้าเป็นสมาชิกใหม่)"
-        className="w-full px-4 py-3 rounded-2xl border-2 text-sm"
-        style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
       {error && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
       <button onClick={requestOTP} disabled={loading}
         className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
@@ -103,6 +102,15 @@ function PhoneLoginForm() {
         type="tel" inputMode="numeric" maxLength={6}
         className="w-full px-4 py-3 rounded-2xl border-2 text-sm font-mono text-center tracking-widest"
         style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F', fontSize: '22px' }} />
+      {isNew && (
+        <>
+          <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>👋 สมาชิกใหม่ — ตั้งชื่อที่จะแสดงบนอันดับ (ห้ามซ้ำกับคนอื่น)</p>
+          <input value={name} onChange={e => setName(e.target.value)}
+            placeholder="ชื่อ / ชื่อเล่นของคุณ"
+            className="w-full px-4 py-3 rounded-2xl border-2 text-sm"
+            style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+        </>
+      )}
       {error && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>{error}</p>}
       <button onClick={verifyOTP} disabled={loading}
         className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
