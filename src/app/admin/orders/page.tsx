@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
+import { adminHeaders } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const SB_URL    = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
 const PAGE_SIZE = 20
 
 type Order = {
@@ -89,7 +89,7 @@ export default function AdminOrdersPage() {
     setActing(true)
     try {
       const res = await fetch(`${API}/admin/confirm-payment?order_id=${encodeURIComponent(o.order_id)}`, {
-        method: 'POST', headers: { 'x-api-key': ADMIN_KEY },
+        method: 'POST', headers: adminHeaders(),
       })
       if (!res.ok) { alert(`ยืนยันไม่สำเร็จ: ${await res.text()}`); return }
       await fetchOrders()
@@ -105,7 +105,7 @@ export default function AdminOrdersPage() {
     try {
       const res  = await fetch(`${API}/admin/send-payment-sms`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ order_id: o.order_id }),
       })
       const data = await res.json().catch(() => ({}))
@@ -128,7 +128,7 @@ export default function AdminOrdersPage() {
     try {
       const res = await fetch(`${API}/admin/add-shipping`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           order_id: o.order_id,
           tracking: shipForm.tracking.trim().toUpperCase(),
@@ -155,7 +155,7 @@ export default function AdminOrdersPage() {
     try {
       const res = await fetch(`${API}/admin/fix-tracking`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ order_id: orderId, tracking }),
       })
       const d = await res.json()
@@ -171,7 +171,7 @@ export default function AdminOrdersPage() {
     setActing(true)
     try {
       const res = await fetch(`${API}/admin/confirm-delivered?order_id=${encodeURIComponent(o.order_id)}&notify=${notify}`, {
-        method: 'POST', headers: { 'x-api-key': ADMIN_KEY },
+        method: 'POST', headers: adminHeaders(),
       })
       if (!res.ok) { alert(`ยืนยันไม่สำเร็จ: ${await res.text()}`); return }
       await fetchOrders()
@@ -184,7 +184,7 @@ export default function AdminOrdersPage() {
     setActing(true)
     try {
       const res = await fetch(`${API}/admin/sync-order-status`, {
-        method: 'POST', headers: { 'x-api-key': ADMIN_KEY },
+        method: 'POST', headers: adminHeaders(),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { alert('Sync ไม่สำเร็จ'); return }

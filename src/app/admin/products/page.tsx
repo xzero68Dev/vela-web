@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
+import { adminHeaders } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
 
 type Product = {
   id: number; sku: string; name: string; flavor: string; roast: string; process: string
@@ -37,7 +37,7 @@ export default function AdminProductsPage() {
     try {
       const res = await fetch(`${API}/admin/products/${p.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(changes),
       })
       if (!res.ok) throw new Error(await res.text())

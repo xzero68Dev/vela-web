@@ -1,12 +1,12 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
+import { adminHeaders } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
 
 type Acc = {
   order_id: string; order_date: string; customer: string; status?: string
@@ -31,7 +31,7 @@ export default function AdminAccountingPage() {
     if (!confirm('คำนวณต้นทุน/กำไรย้อนหลังให้ออเดอร์เว็บที่ยังไม่มี?\n(ออเดอร์ที่คำนวณไว้แล้วจะไม่ถูกแตะ)')) return
     setBusy(true)
     try {
-      const res = await fetch(`${API}/admin/backfill-web-accounting`, { method: 'POST', headers: { 'x-api-key': ADMIN_KEY } })
+      const res = await fetch(`${API}/admin/backfill-web-accounting`, { method: 'POST', headers: adminHeaders() })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { alert('ทำย้อนหลังไม่สำเร็จ'); return }
       alert(`เสร็จ — คำนวณย้อนหลัง ${data.count ?? 0} ออเดอร์`)
@@ -44,7 +44,7 @@ export default function AdminAccountingPage() {
     ;(async () => {
       setLoading(true)
       try {
-        const res = await fetch(`${API}/admin/web-accounting`, { headers: { 'x-api-key': ADMIN_KEY } })
+        const res = await fetch(`${API}/admin/web-accounting`, { headers: adminHeaders() })
         const data = await res.json().catch(() => ({}))
         setRows(Array.isArray(data.rows) ? data.rows : [])
       } catch {}

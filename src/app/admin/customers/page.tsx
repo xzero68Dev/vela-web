@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
+import { adminHeaders } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_API_KEY || ''
 
 type Customer = {
   id: number
@@ -32,7 +32,7 @@ export default function CustomersPage() {
     setLoad(true)
     try {
       const res  = await fetch(`${API}/admin/customers?q=${encodeURIComponent(query)}`, {
-        headers: { 'x-api-key': ADMIN_KEY },
+        headers: adminHeaders(),
       })
       const data = await res.json()
       const list: Customer[] = data.customers || []
@@ -50,7 +50,7 @@ export default function CustomersPage() {
     try {
       const res = await fetch(`${API}/admin/customers/vip`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ADMIN_KEY },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ id: c.id, vip_discount_pct: pct }),
       })
       if (!res.ok) throw new Error((await res.json()).detail || 'error')
@@ -66,7 +66,7 @@ export default function CustomersPage() {
     setBackfilling(true); setMsg('')
     try {
       const res = await fetch(`${API}/admin/backfill-points`, {
-        method: 'POST', headers: { 'x-api-key': ADMIN_KEY },
+        method: 'POST', headers: adminHeaders(),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.detail || 'error')

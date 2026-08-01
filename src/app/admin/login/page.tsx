@@ -7,14 +7,22 @@ import VelaBunny from '@/components/VelaBunny'
 export default function LoginPage() {
   const [pass,  setPass]  = useState('')
   const [error, setError] = useState('')
+  const [busy,  setBusy]  = useState(false)
   const router = useRouter()
 
-  const handleLogin = () => {
-    if (login(pass)) {
-      router.push('/admin')
-    } else {
-      setError('รหัสผ่านไม่ถูกต้อง')
-      setPass('')
+  const handleLogin = async () => {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      if (await login(pass)) {
+        router.push('/admin')
+      } else {
+        setError('รหัสผ่านไม่ถูกต้อง')
+        setPass('')
+      }
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -48,10 +56,10 @@ export default function LoginPage() {
           {error && (
             <p className="text-xs font-mono mb-3" style={{ color: '#D64B2A' }}>⚠ {error}</p>
           )}
-          <button onClick={handleLogin}
-            className="w-full py-3 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95"
+          <button onClick={handleLogin} disabled={busy}
+            className="w-full py-3 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
             style={{ fontFamily: 'var(--font-display)', fontSize: '16px', background: '#D64B2A', color: '#EDE8DF' }}>
-            เข้าสู่ระบบ
+            {busy ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
           </button>
           <p className="text-xs font-mono mt-4" style={{ color: '#C5BAB0' }}>
             Session หมดอายุใน 8 ชั่วโมง
