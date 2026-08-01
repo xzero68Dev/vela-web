@@ -60,24 +60,14 @@ export default function AdminOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(
-        `${SB_URL}/rest/v1/orders?order=${sortBy}.desc&limit=1000&select=order_id,order_date,ship_date,customer,phone,province,zip,full_address,sku,qty,channel,status,slip_url,paid_at,note,total,preferred_carrier`,
-        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
-      )
-      const list = await res.json()
-      if (!Array.isArray(list)) { setLoading(false); return }
+      const res = await fetch(`${API}/admin/orders-list?sort=${sortBy}&limit=1000`, { headers: adminHeaders() })
+      const payload = await res.json()
+      const list: Order[] = Array.isArray(payload?.orders) ? payload.orders : []
       setOrders(list)
-      if (list.length) {
-        const ids = list.map((o: Order) => o.order_id)
-        const sRes = await fetch(
-          `${SB_URL}/rest/v1/shipping?order_id=in.(${ids.join(',')})&select=order_id,tracking,carrier`,
-          { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
-        )
-        const sData = await sRes.json()
-        const map: Record<string, ShipInfo> = {}
-        if (Array.isArray(sData)) sData.forEach((s: any) => { map[s.order_id] = { tracking: s.tracking, carrier: s.carrier } })
-        setShipping(map)
-      }
+      // เลขพัสดุ join มากับ order แล้วจาก backend
+      const map: Record<string, ShipInfo> = {}
+      list.forEach((o: any) => { if (o.tracking) map[o.order_id] = { tracking: o.tracking, carrier: o.carrier } })
+      setShipping(map)
       setUpdated(new Date().toLocaleTimeString('th-TH'))
     } finally { setLoading(false) }
   }, [sortBy])

@@ -2,8 +2,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { captureUtm } from '@/lib/utm'
 
-const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
 type Customer = {
   id?:          number
@@ -32,30 +31,26 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 async function upsertCustomer(data: Partial<Customer> & { line_user_id: string }) {
-  const res = await fetch(
-    `${SB_URL}/rest/v1/customers?line_user_id=eq.${data.line_user_id}&on_conflict=line_user_id`,
-    {
-      method: 'POST',
-      headers: {
-        apikey: SB_KEY,
-        Authorization: `Bearer ${SB_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=representation',
-      },
-      body: JSON.stringify({ ...data, updated_at: new Date().toISOString() }),
-    }
-  )
+  // ผ่าน backend (service key) แทนการยิง Supabase ตรงด้วย anon key
+  const res = await fetch(`${API}/customers/profile`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    // 409 = ชื่อซ้ำ — โยน error ให้ caller จัดการ (หน้า profile จะเช็คก่อนอยู่แล้ว)
+    const detail = (await res.json().catch(() => ({})))?.detail || 'อัปเดตโปรไฟล์ไม่สำเร็จ'
+    throw new Error(detail)
+  }
   const result = await res.json()
-  return Array.isArray(result) ? result[0] : result
+  return result?.customer || null
 }
 
 async function fetchCustomer(lineUserId: string): Promise<Customer | null> {
-  const res = await fetch(
-    `${SB_URL}/rest/v1/customers?line_user_id=eq.${lineUserId}&limit=1`,
-    { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
-  )
+  const res = await fetch(`${API}/customers/by-line/${encodeURIComponent(lineUserId)}`)
+  if (!res.ok) return null
   const data = await res.json()
-  return Array.isArray(data) && data.length > 0 ? data[0] : null
+  return data?.customer || null
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 
-const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
 export default function LineLoginButton({ onDone }: { onDone?: (isNew: boolean) => void }) {
   const { user, loading, login, logout, updateProfile } = useAuth()
@@ -27,9 +26,8 @@ export default function LineLoginButton({ onDone }: { onDone?: (isNew: boolean) 
 
     // ดึงประวัติ order จากเบอร์นี้
     try {
-      const res  = await fetch(`${SB_URL}/rest/v1/orders?phone=eq.${p}&order=order_date.desc&limit=5`,
-        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-      const data = await res.json()
+      const res  = await fetch(`${API}/my/orders?phone=${encodeURIComponent(p)}&limit=5`)
+      const data = ((await res.json())?.orders) || []
       if (Array.isArray(data) && data.length > 0) {
         setOrders(data)
         setShowOrders(true)

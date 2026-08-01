@@ -7,8 +7,6 @@ import LineLoginButton from '@/components/LineLoginButton'
 import AddressList from '@/components/AddressList'
 import { firePurchaseOnce, isPaidStatus } from '@/lib/fbpixel'
 
-const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const API    = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -245,9 +243,6 @@ export default function AccountPage() {
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
   const [addresses, setAddresses] = useState<any[]>([])
 
-  const SB_URL_ACC = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const SB_KEY_ACC = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
   const fetchAddresses = useCallback(async () => {
     if (!user?.phone) return
     const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`)
@@ -256,11 +251,9 @@ export default function AccountPage() {
       setAddresses(data)
       return
     }
-    // ถ้าไม่มีที่อยู่ — ดึงจาก order ล่าสุดมาสร้างให้อัตโนมัติ
-    const ordRes = await fetch(
-      `${SB_URL_ACC}/rest/v1/orders?phone=eq.${user.phone}&order=created_at.desc&limit=1&select=customer,phone,full_address,province,zip`,
-      { headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}` } })
-    const orders = await ordRes.json()
+    // ถ้าไม่มีที่อยู่ — ดึงจาก order ล่าสุดมาสร้างให้อัตโนมัติ (ผ่าน backend)
+    const ordRes = await fetch(`${API}/my/orders?phone=${encodeURIComponent(user.phone)}&limit=1`)
+    const orders = ((await ordRes.json())?.orders) || []
     if (Array.isArray(orders) && orders.length > 0) {
       const o = orders[0]
       if (o.full_address && o.province) {
@@ -304,17 +297,16 @@ export default function AccountPage() {
   const fetchOrders = useCallback(async () => {
     if (!user?.phone) return
     setLoading(true)
-    fetch(`${SB_URL}/rest/v1/orders?phone=eq.${user.phone}&order=order_date.desc&limit=20&select=order_id,order_date,sku,qty,total,status,province,slip_url,slip_status,paid_at`,
-      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
+    fetch(`${API}/my/orders?phone=${encodeURIComponent(user.phone)}&limit=20`)
       .then(r => r.json())
-      .then(async (data: any[]) => {
-        setOrders(Array.isArray(data) ? data : [])
-        if (!data?.length) return
-        // ดึง tracking
-        const res = await fetch(`${SB_URL}/rest/v1/shipping?order_id=in.(${data.map(o => o.order_id).join(',')})&select=order_id,tracking`,
-          { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-        const shipping = await res.json()
-        if (!Array.isArray(shipping) || !shipping.length) return
+      .then(async (payload: any) => {
+        const data: any[] = Array.isArray(payload?.orders) ? payload.orders : []
+        setOrders(data)
+        if (!data.length) return
+        // เลขพัสดุมากับ order แล้ว (backend join จาก shipping)
+        const shipping = data
+          .filter((o: any) => o.tracking)
+          .map((o: any) => ({ order_id: o.order_id, tracking: o.tracking }))
         const trackings = shipping.map((s: any) => s.tracking).filter(Boolean)
         if (!trackings.length) return
         const trackRes = await fetch(`${API}/track/bulk`, {
@@ -373,14 +365,11 @@ export default function AccountPage() {
 
     // เช็คชื่อซ้ำก่อน save (ถ้ามีการเปลี่ยนชื่อ)
     if (newName && newName !== (user?.name || '').trim()) {
-      const SB_URL_CHK = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-      const SB_KEY_CHK = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
       const res = await fetch(
-        `${SB_URL_CHK}/rest/v1/customers?name=eq.${encodeURIComponent(newName)}&select=id`,
-        { headers: { apikey: SB_KEY_CHK, Authorization: `Bearer ${SB_KEY_CHK}` } }
+        `${API}/customers/check-name?name=${encodeURIComponent(newName)}&line_user_id=${encodeURIComponent(user?.line_user_id || '')}`
       )
-      const existing = await res.json()
-      if (Array.isArray(existing) && existing.length > 0) {
+      const chk = await res.json().catch(() => ({}))
+      if (chk?.taken) {
         setNameError('ชื่อนี้มีคนใช้แล้ว กรุณาตั้งชื่ออื่นครับ')
         return
       }

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
+import { adminHeaders } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
@@ -51,19 +52,12 @@ export default function AdminPage() {
   const fetchCustomerByBarcode = async (barcode: string) => {
     setLoadingCust(true)
     try {
-      const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-      const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      // หา order_id จาก shipping
-      const shipRes = await fetch(`${SB_URL}/rest/v1/shipping?tracking=eq.${barcode}&select=order_id`,
-        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-      const shipData = await shipRes.json()
-      if (!shipData?.[0]?.order_id) { setCustDetail({ error: 'ไม่พบข้อมูลลูกค้า' }); return }
-      const orderId = shipData[0].order_id
-      const orderRes = await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}`,
-        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-      const orderData = await orderRes.json()
-      if (orderData?.[0]) setCustDetail({ ...orderData[0], barcode })
-      else setCustDetail({ error: 'ไม่พบข้อมูล order' })
+      const res = await fetch(`${API}/admin/order-by-tracking?tracking=${encodeURIComponent(barcode)}`,
+        { headers: adminHeaders() })
+      if (!res.ok) { setCustDetail({ error: 'เชื่อมต่อไม่ได้' }); return }
+      const data = await res.json()
+      if (data?.order) setCustDetail({ ...data.order, barcode })
+      else setCustDetail({ error: 'ไม่พบข้อมูลลูกค้า' })
     } catch { setCustDetail({ error: 'เชื่อมต่อไม่ได้' }) }
     finally { setLoadingCust(false) }
   }

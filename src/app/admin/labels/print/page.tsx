@@ -2,11 +2,11 @@
 import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAdminAuth } from '@/components/useAdminAuth'
+import { adminHeaders } from '@/components/auth'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 
-const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
 const SHOP = { name: 'VeLA Cold Brew', phone: '090-698-0460' }
 
@@ -127,17 +127,16 @@ function LabelsInner() {
     if (!ids.length) { setLoading(false); return }
     ;(async () => {
       try {
-        const headers = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
-        const inList = ids.map(i => `"${i}"`).join(',')
-        const oRes = await fetch(`${SB_URL}/rest/v1/orders?order_id=in.(${inList})&select=order_id,order_date,customer,phone,full_address,province,zip,sku,qty,note,channel,total,preferred_carrier`, { headers })
-        const oData = await oRes.json()
+        const oRes = await fetch(`${API}/admin/orders-list?ids=${encodeURIComponent(ids.join(','))}&limit=2000`,
+          { headers: adminHeaders() })
+        const payload = await oRes.json()
+        const arr: any[] = Array.isArray(payload?.orders) ? payload.orders : []
         const byId: Record<string, any> = {}
-        ;(Array.isArray(oData) ? oData : []).forEach((o: any) => { byId[o.order_id] = o })
+        arr.forEach((o: any) => { byId[o.order_id] = o })
         setOrders(ids.map(i => byId[i]).filter(Boolean))
-        const sRes = await fetch(`${SB_URL}/rest/v1/shipping?order_id=in.(${inList})&select=order_id,tracking,carrier`, { headers })
-        const sData = await sRes.json()
+        // เลขพัสดุ join มากับ order แล้ว
         const sm: Record<string, any> = {}
-        ;(Array.isArray(sData) ? sData : []).forEach((s: any) => { if (!sm[s.order_id]) sm[s.order_id] = s })
+        arr.forEach((o: any) => { if (!sm[o.order_id]) sm[o.order_id] = { order_id: o.order_id, tracking: o.tracking, carrier: o.carrier } })
         setShips(sm)
       } catch {}
       finally { setLoading(false) }

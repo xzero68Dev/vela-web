@@ -135,10 +135,9 @@ function OrderCompleteContent() {
 
   useEffect(() => {
     if (!orderId) return
-    fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}&select=order_id,customer,phone,sku,qty,total,status,full_address,province,zip`,
-      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-      .then(r => r.json())
-      .then(data => { if (data?.[0]) setOrder(data[0]) })
+    fetch(`${API}/my/order/${encodeURIComponent(orderId)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.order) setOrder(data.order) })
       .catch(() => {})
   }, [orderId])
 
