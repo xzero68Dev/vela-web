@@ -60,9 +60,8 @@ function CheckoutForm() {
 
   // โหลดที่อยู่ที่บันทึกไว้
   const fetchAddresses = async (phone: string) => {
-    const res = await fetch(`${SB_URL}/rest/v1/addresses?phone=eq.${phone}&order=is_default.desc,id.desc`,
-      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } })
-    const data = await res.json()
+    const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(phone)}`)
+    const data = (await res.json()).addresses || []
     if (Array.isArray(data) && data.length > 0) {
       setAddresses(data)
       // เลือก default หรืออันแรก
@@ -582,9 +581,8 @@ function CheckoutForm() {
                     onSave={(data) => {
                       setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip }))
                       if (user?.phone) {
-                        fetch(`${SB_URL}/rest/v1/addresses`, {
-                          method: 'POST',
-                          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                        fetch(`${API}/addresses`, {
+                          method: 'POST', headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ ...data, phone: user.phone, customer_id: user.id }),
                         }).then(() => { if (user?.phone) fetchAddresses(user.phone) })
                       }

@@ -250,9 +250,8 @@ export default function AccountPage() {
 
   const fetchAddresses = useCallback(async () => {
     if (!user?.phone) return
-    const res = await fetch(`${SB_URL_ACC}/rest/v1/addresses?phone=eq.${user.phone}&order=is_default.desc,id.desc`,
-      { headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}` } })
-    const data = await res.json()
+    const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`)
+    const data = (await res.json()).addresses || []
     if (Array.isArray(data) && data.length > 0) {
       setAddresses(data)
       return
@@ -265,9 +264,8 @@ export default function AccountPage() {
     if (Array.isArray(orders) && orders.length > 0) {
       const o = orders[0]
       if (o.full_address && o.province) {
-        await fetch(`${SB_URL_ACC}/rest/v1/addresses`, {
-          method: 'POST',
-          headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        await fetch(`${API}/addresses`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             phone:        user.phone,
             name:         o.customer || user.display_name || '',
@@ -277,11 +275,8 @@ export default function AccountPage() {
             is_default:   true,
           }),
         })
-        // โหลดใหม่
-        const res2 = await fetch(`${SB_URL_ACC}/rest/v1/addresses?phone=eq.${user.phone}&order=is_default.desc,id.desc`,
-          { headers: { apikey: SB_KEY_ACC, Authorization: `Bearer ${SB_KEY_ACC}` } })
-        const data2 = await res2.json()
-        if (Array.isArray(data2)) setAddresses(data2)
+        const res2 = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`)
+        setAddresses((await res2.json()).addresses || [])
       }
     }
   }, [user?.phone])

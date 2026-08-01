@@ -2,8 +2,8 @@
 import { useState } from 'react'
 import AddressForm, { AddressData } from './AddressForm'
 
-const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
 interface Props {
   addresses:   AddressData[]
@@ -28,23 +28,14 @@ export default function AddressList({ addresses, selectedId, phone, customerId, 
   const saveAddress = async (data: AddressData) => {
     setSaving(true)
     try {
-      if (data.is_default) {
-        await fetch(`${SB_URL}/rest/v1/addresses?phone=eq.${phone}`, {
-          method: 'PATCH',
-          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ is_default: false }),
-        })
-      }
       if (data.id) {
-        await fetch(`${SB_URL}/rest/v1/addresses?id=eq.${data.id}`, {
-          method: 'PATCH',
-          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ name: data.name, phone: data.phone, full_address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip, is_default: data.is_default }),
+        await fetch(`${API}/addresses/${data.id}`, {
+          method: 'PATCH', headers: JSON_HEADERS,
+          body: JSON.stringify({ phone, name: data.name, full_address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip, is_default: data.is_default }),
         })
       } else {
-        await fetch(`${SB_URL}/rest/v1/addresses`, {
-          method: 'POST',
-          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        await fetch(`${API}/addresses`, {
+          method: 'POST', headers: JSON_HEADERS,
           body: JSON.stringify({ ...data, phone, customer_id: customerId }),
         })
       }
@@ -55,27 +46,16 @@ export default function AddressList({ addresses, selectedId, phone, customerId, 
   }
 
   const setDefault = async (addr: AddressData) => {
-    // ยกเลิก default เดิม
-    await fetch(`${SB_URL}/rest/v1/addresses?phone=eq.${phone}`, {
-      method: 'PATCH',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ is_default: false }),
-    })
-    // ตั้งใหม่
-    await fetch(`${SB_URL}/rest/v1/addresses?id=eq.${addr.id}`, {
-      method: 'PATCH',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ is_default: true }),
+    await fetch(`${API}/addresses/${addr.id}`, {
+      method: 'PATCH', headers: JSON_HEADERS,
+      body: JSON.stringify({ phone, is_default: true }),
     })
     onRefresh()
   }
 
   const deleteAddress = async (id: number) => {
     if (!confirm('ลบที่อยู่นี้ออกไหมครับ?')) return
-    await fetch(`${SB_URL}/rest/v1/addresses?id=eq.${id}`, {
-      method: 'DELETE',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
-    })
+    await fetch(`${API}/addresses/${id}?phone=${encodeURIComponent(phone || '')}`, { method: 'DELETE' })
     onRefresh()
   }
 
