@@ -29,11 +29,7 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
       })
       if (!upRes.ok) throw new Error('อัปโหลดไม่สำเร็จ')
       const slip_url = `${SB_URL}/storage/v1/object/public/slips/${path}`
-      await fetch(`${SB_URL}/rest/v1/orders?order_id=eq.${orderId}`, {
-        method: 'PATCH',
-        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ slip_url }),
-      })
+      // ไม่ PATCH orders ตรงจาก client แล้ว (ความปลอดภัย) — backend slip-notify เซ็ต slip_url ให้เอง
       const verRes  = await fetch(`${API}/orders/slip-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
