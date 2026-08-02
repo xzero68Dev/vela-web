@@ -140,13 +140,13 @@ function CheckoutForm() {
       return
     }
     const t = setTimeout(() => {
-      fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(eligPhone)}`)
+      fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(eligPhone)}&line_user_id=${encodeURIComponent(user?.line_user_id || '')}`)
         .then(r => r.json())
         .then(d => { setFirstOrderDiscount(d.eligible === true); setVipPct(d.vip_discount_pct || 0) })
         .catch(() => setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1'))
     }, 450)   // debounce ระหว่างพิมพ์เบอร์
     return () => clearTimeout(t)
-  }, [eligPhone])
+  }, [eligPhone, user?.line_user_id])
   const shipping = 0 // ส่งฟรี
 
   // ส่วนลด: เลือกอันที่มากกว่าระหว่างโปรลูกค้าใหม่ (50% เพดาน ฿130) กับ VIP% (เพดาน ฿130) — ไม่ซ้อน
