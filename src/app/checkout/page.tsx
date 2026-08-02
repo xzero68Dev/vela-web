@@ -272,7 +272,8 @@ function CheckoutForm() {
         const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
         const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
         const ext  = file.name.split('.').pop()
-        const path = `${orderId}-${Date.now()}.${ext}`
+        const rand = (crypto?.randomUUID?.() || `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '')
+        const path = `${orderId}-${Date.now()}-${rand}.${ext}`
 
         // Upload ไปที่ Supabase Storage bucket "slips"
         const upRes = await fetch(`${SB_URL}/storage/v1/object/slips/${path}`, {

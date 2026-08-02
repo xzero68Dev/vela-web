@@ -21,7 +21,8 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
     setUploading(true); setError(''); setVerified(null)
     try {
       const ext  = file.name.split('.').pop()
-      const path = `${orderId}-${Date.now()}.${ext}`
+      const rand = (crypto?.randomUUID?.() || `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '')
+      const path = `${orderId}-${Date.now()}-${rand}.${ext}`
       const upRes = await fetch(`${SB_URL}/storage/v1/object/slips/${path}`, {
         method: 'POST',
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type },
