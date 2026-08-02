@@ -270,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('vela_user', JSON.stringify(newUser))
     } catch (e) {
       console.error('update profile error:', e)
+      throw e   // ให้ caller รู้ว่าไม่สำเร็จ จะได้ไม่โชว์ "บันทึกแล้ว" ทั้งที่ยังไม่ได้เซฟ
     }
   }
 

@@ -60,3 +60,14 @@ export function logout() {
     localStorage.removeItem(SESSION_KEY)
   }
 }
+
+/** ถ้า response เป็น 401 (token หมดอายุ/ถูกเพิกฝั่ง server) → เคลียร์ session + เด้งไป login
+ *  คืน true ถ้าจัดการแล้ว (caller ควร return ทันที ไม่อ่าน body ต่อ) */
+export function onAdminUnauthorized(res: Response): boolean {
+  if (res.status === 401) {
+    logout()
+    if (typeof window !== 'undefined') window.location.href = '/admin/login'
+    return true
+  }
+  return false
+}

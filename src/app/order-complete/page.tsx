@@ -1,5 +1,5 @@
 'use client'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { fbTrack, fbTrackCustom, firePurchaseOnce, isPaidStatus } from '@/lib/fbpixel'
@@ -132,15 +132,27 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
 function OrderCompleteContent() {
   const params  = useSearchParams()
   const orderId = params.get('order_id') || ''
-  const [order, setOrder] = useState<any>(null)
+  const [order,   setOrder]   = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [err,     setErr]     = useState(false)
 
-  useEffect(() => {
-    if (!orderId) return
-    fetch(`${API}/my/order/${encodeURIComponent(orderId)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.order) setOrder(data.order) })
-      .catch(() => {})
+  const loadOrder = useCallback(async () => {
+    if (!orderId) { setLoading(false); return }
+    setLoading(true); setErr(false)
+    try {
+      const r = await fetch(`${API}/my/order/${encodeURIComponent(orderId)}`)
+      if (!r.ok) throw new Error('load failed')
+      const data = await r.json()
+      if (data?.order) setOrder(data.order)
+      else setErr(true)
+    } catch {
+      setErr(true)
+    } finally {
+      setLoading(false)
+    }
   }, [orderId])
+
+  useEffect(() => { loadOrder() }, [loadOrder])
 
   // FB Pixel (ISSUE 0 — 27/07): ยิง Purchase "เฉพาะเมื่อจ่ายสำเร็จแล้ว" เท่านั้น
   // หน้านี้เปิดหลังกดสั่ง (ยังไม่จ่าย) → ยิง custom PlaceOrder แทน
@@ -200,6 +212,30 @@ function OrderCompleteContent() {
             ขอบคุณที่สั่งซื้อกับ VeLA Cold Brew นะคะ 🐰
           </p>
         </div>
+
+        {/* กำลังโหลด / โหลดพลาด — กันหน้าจ่ายเงินหายเงียบๆ ตอน backend ตอบช้า/พลาด */}
+        {!order && loading && (
+          <div className="rounded-3xl border-2 p-6 mb-4 text-center"
+            style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+            <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>กำลังโหลดข้อมูลออเดอร์...</p>
+          </div>
+        )}
+        {!order && !loading && err && (
+          <div className="rounded-3xl border-2 p-6 mb-4 text-center"
+            style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
+            <p className="text-sm mb-3" style={{ color: '#D64B2A' }}>
+              โหลดข้อมูลออเดอร์ไม่สำเร็จ (เซิร์ฟเวอร์อาจกำลังตื่น ลองใหม่อีกครั้งนะคะ)
+            </p>
+            <button onClick={loadOrder}
+              className="px-5 py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95"
+              style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+              ลองใหม่
+            </button>
+            <p className="text-xs font-mono mt-3" style={{ color: '#8C7B6E' }}>
+              Order #{orderId}
+            </p>
+          </div>
+        )}
 
         {/* Order summary */}
         {order && (

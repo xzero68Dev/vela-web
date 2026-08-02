@@ -28,34 +28,41 @@ export default function AddressList({ addresses, selectedId, phone, customerId, 
   const saveAddress = async (data: AddressData) => {
     setSaving(true)
     try {
-      if (data.id) {
-        await fetch(`${API}/addresses/${data.id}`, {
-          method: 'PATCH', headers: JSON_HEADERS,
-          body: JSON.stringify({ phone, name: data.name, full_address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip, is_default: data.is_default }),
-        })
-      } else {
-        await fetch(`${API}/addresses`, {
-          method: 'POST', headers: JSON_HEADERS,
-          body: JSON.stringify({ ...data, phone, customer_id: customerId }),
-        })
+      const res = data.id
+        ? await fetch(`${API}/addresses/${data.id}`, {
+            method: 'PATCH', headers: JSON_HEADERS,
+            body: JSON.stringify({ phone, name: data.name, full_address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip, is_default: data.is_default }),
+          })
+        : await fetch(`${API}/addresses`, {
+            method: 'POST', headers: JSON_HEADERS,
+            body: JSON.stringify({ ...data, phone, customer_id: customerId }),
+          })
+      if (!res.ok) {
+        const detail = (await res.json().catch(() => ({})))?.detail || 'บันทึกที่อยู่ไม่สำเร็จ กรุณาลองใหม่'
+        alert(detail)
+        return   // ไม่ปิดฟอร์ม ให้ลูกค้าลองใหม่ได้
       }
       setView('list')
       setEditing(null)
       onRefresh()
+    } catch {
+      alert('บันทึกที่อยู่ไม่สำเร็จ กรุณาลองใหม่')
     } finally { setSaving(false) }
   }
 
   const setDefault = async (addr: AddressData) => {
-    await fetch(`${API}/addresses/${addr.id}`, {
+    const res = await fetch(`${API}/addresses/${addr.id}`, {
       method: 'PATCH', headers: JSON_HEADERS,
       body: JSON.stringify({ phone, is_default: true }),
-    })
+    }).catch(() => null)
+    if (!res || !res.ok) { alert('ตั้งที่อยู่หลักไม่สำเร็จ กรุณาลองใหม่'); return }
     onRefresh()
   }
 
   const deleteAddress = async (id: number) => {
     if (!confirm('ลบที่อยู่นี้ออกไหมครับ?')) return
-    await fetch(`${API}/addresses/${id}?phone=${encodeURIComponent(phone || '')}`, { method: 'DELETE' })
+    const res = await fetch(`${API}/addresses/${id}?phone=${encodeURIComponent(phone || '')}`, { method: 'DELETE' }).catch(() => null)
+    if (!res || !res.ok) { alert('ลบที่อยู่ไม่สำเร็จ กรุณาลองใหม่'); return }
     onRefresh()
   }
 

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
-import { adminHeaders } from '@/components/auth'
+import { adminHeaders, onAdminUnauthorized } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
@@ -34,6 +34,7 @@ export default function CustomersPage() {
       const res  = await fetch(`${API}/admin/customers?q=${encodeURIComponent(query)}`, {
         headers: adminHeaders(),
       })
+      if (onAdminUnauthorized(res)) return
       const data = await res.json()
       const list: Customer[] = data.customers || []
       setRows(list)

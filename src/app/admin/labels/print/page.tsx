@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAdminAuth } from '@/components/useAdminAuth'
-import { adminHeaders } from '@/components/auth'
+import { adminHeaders, onAdminUnauthorized } from '@/components/auth'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 
@@ -129,6 +129,7 @@ function LabelsInner() {
       try {
         const oRes = await fetch(`${API}/admin/orders-list?ids=${encodeURIComponent(ids.join(','))}&limit=2000`,
           { headers: adminHeaders() })
+        if (onAdminUnauthorized(oRes)) return
         const payload = await oRes.json()
         const arr: any[] = Array.isArray(payload?.orders) ? payload.orders : []
         const byId: Record<string, any> = {}

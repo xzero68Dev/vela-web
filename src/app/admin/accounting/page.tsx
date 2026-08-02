@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
-import { adminHeaders } from '@/components/auth'
+import { adminHeaders, onAdminUnauthorized } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -45,6 +45,7 @@ export default function AdminAccountingPage() {
       setLoading(true)
       try {
         const res = await fetch(`${API}/admin/web-accounting`, { headers: adminHeaders() })
+        if (onAdminUnauthorized(res)) return
         const data = await res.json().catch(() => ({}))
         setRows(Array.isArray(data.rows) ? data.rows : [])
       } catch {}

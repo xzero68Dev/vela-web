@@ -246,7 +246,9 @@ export default function AccountPage() {
 
   const fetchAddresses = useCallback(async () => {
     if (!user?.phone) return
+    try {
     const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`)
+    if (!res.ok) return
     const data = (await res.json()).addresses || []
     if (Array.isArray(data) && data.length > 0) {
       setAddresses(data)
@@ -270,9 +272,10 @@ export default function AccountPage() {
           }),
         })
         const res2 = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`)
-        setAddresses((await res2.json()).addresses || [])
+        if (res2.ok) setAddresses((await res2.json()).addresses || [])
       }
     }
+    } catch {}
   }, [user?.phone])
 
   // Form state
@@ -299,7 +302,7 @@ export default function AccountPage() {
     if (!user?.phone) return
     setLoading(true)
     fetch(`${API}/my/orders?phone=${encodeURIComponent(user.phone)}&limit=20`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(async (payload: any) => {
         const data: any[] = Array.isArray(payload?.orders) ? payload.orders : []
         setOrders(data)
@@ -323,6 +326,7 @@ export default function AccountPage() {
         })
         setShipments(map)
       })
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [user?.phone])
 
@@ -377,10 +381,15 @@ export default function AccountPage() {
     }
 
     setSaving(true)
-    await updateProfile(form)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      await updateProfile(form)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      setNameError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ กรุณาลองใหม่ครับ')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!user) return (

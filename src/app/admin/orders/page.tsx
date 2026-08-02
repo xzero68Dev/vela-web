@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
-import { adminHeaders } from '@/components/auth'
+import { adminHeaders, onAdminUnauthorized } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
 
 const SB_URL    = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -61,6 +61,7 @@ export default function AdminOrdersPage() {
     setLoading(true)
     try {
       const res = await fetch(`${API}/admin/orders-list?sort=${sortBy}&limit=1000`, { headers: adminHeaders() })
+      if (onAdminUnauthorized(res)) return
       const payload = await res.json()
       const list: Order[] = Array.isArray(payload?.orders) ? payload.orders : []
       setOrders(list)

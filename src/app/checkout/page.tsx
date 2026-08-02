@@ -199,8 +199,8 @@ function CheckoutForm() {
         })
       }
 
-      // สร้าง order ID
-      const oid = `WEB${Date.now().toString().slice(-8)}`
+      // สร้าง order ID — เติม 4 หลักสุ่มต่อท้าย ให้เดา/ไล่ order_id ไม่ได้ (กัน IDOR) + กันชนกันในวินาทีเดียว
+      const oid = `WEB${Date.now().toString().slice(-8)}${Math.floor(1000 + Math.random() * 9000)}`
 
       // เช็คว่าใช้ส่วนลดครั้งแรกไหม — ดูจาก cart item price เทียบกับ total
       // ถ้าราคาใน cart ถูกกว่า 60% ของยอดรวมปกติ (30% discount) = ใช้ first-order 50%

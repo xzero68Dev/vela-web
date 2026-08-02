@@ -22,7 +22,13 @@ export default function LineLoginButton({ onDone }: { onDone?: (isNew: boolean) 
     setSaving(true)
     const p = phone.length === 9 ? '0' + phone : phone
 
-    await updateProfile({ phone: p, name: user?.name || user?.display_name })
+    try {
+      await updateProfile({ phone: p, name: user?.name || user?.display_name })
+    } catch {
+      setSaving(false)
+      alert('บันทึกเบอร์ไม่สำเร็จ กรุณาลองใหม่ครับ')
+      return
+    }
 
     // ดึงประวัติ order จากเบอร์นี้
     try {
