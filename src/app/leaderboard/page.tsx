@@ -8,7 +8,6 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.c
 type LeaderboardEntry = {
   rank: number
   customer: string
-  phone_masked: string
   points: number
 }
 
@@ -125,7 +124,6 @@ export default function LeaderboardPage() {
                     <p className="text-sm font-medium truncate" style={{ color: '#3D1F0F' }}>
                       {entry.customer || 'ลูกค้า VeLA'}
                     </p>
-                    <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{entry.phone_masked}</p>
                   </div>
 
                   {/* Points */}
