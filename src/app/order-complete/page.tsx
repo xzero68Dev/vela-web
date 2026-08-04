@@ -261,16 +261,8 @@ function OrderCompleteContent() {
                   </p>
                 </div>
               )}
-              {/* ที่อยู่จัดส่ง */}
-              {order.full_address && (
-                <div className="pt-2 border-t" style={{ borderColor: '#E0D9CE' }}>
-                  <p className="text-xs font-mono mb-1" style={{ color: '#C5BAB0' }}>จัดส่งไปที่</p>
-                  <p className="text-sm font-black mb-0.5" style={{ color: '#3D1F0F' }}>{order.customer}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: '#8C7B6E' }}>
-                    {[order.full_address, order.province, order.zip].filter(Boolean).join(' ')}
-                  </p>
-                </div>
-              )}
+              {/* ที่อยู่จัดส่ง — ตัดออกเพื่อความปลอดภัย (หน้านี้เปิดด้วย order_id ไม่มี auth
+                  ไม่โชว์ชื่อ/ที่อยู่/เบอร์ กัน PII หลุดถ้าลิงก์ถูกแชร์/เดา) */}
               {/* Order ID */}
               <div className="flex justify-between items-center pt-2 border-t" style={{ borderColor: '#E0D9CE' }}>
                 <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>Order ID</p>
