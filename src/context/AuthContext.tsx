@@ -161,13 +161,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true)
         const profile = await liff.getProfile()
         let customer = await fetchCustomer(profile.userId)
-        if (!customer) {
-          customer = await upsertCustomer({
+        // upsert เสมอ (แม้มีข้อมูลแล้ว) เพื่อรับ token มาเก็บทันที — กัน 401 แว้บตอนโหลดหน้า
+        try {
+          const upserted = await upsertCustomer({
             line_user_id: profile.userId,
             display_name: profile.displayName,
             picture_url:  profile.pictureUrl,
           })
-        }
+          if (upserted) customer = upserted
+        } catch {}
         if (customer) {
           setUser(customer)
           localStorage.setItem('vela_user', JSON.stringify(customer))
