@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import AddressForm, { AddressData } from './AddressForm'
+import { authHeaders } from '@/lib/customerAuth'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
@@ -30,11 +31,11 @@ export default function AddressList({ addresses, selectedId, phone, customerId, 
     try {
       const res = data.id
         ? await fetch(`${API}/addresses/${data.id}`, {
-            method: 'PATCH', headers: JSON_HEADERS,
+            method: 'PATCH', headers: authHeaders(JSON_HEADERS),
             body: JSON.stringify({ phone, name: data.name, full_address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip, is_default: data.is_default }),
           })
         : await fetch(`${API}/addresses`, {
-            method: 'POST', headers: JSON_HEADERS,
+            method: 'POST', headers: authHeaders(JSON_HEADERS),
             body: JSON.stringify({ ...data, phone, customer_id: customerId }),
           })
       if (!res.ok) {
@@ -52,7 +53,7 @@ export default function AddressList({ addresses, selectedId, phone, customerId, 
 
   const setDefault = async (addr: AddressData) => {
     const res = await fetch(`${API}/addresses/${addr.id}`, {
-      method: 'PATCH', headers: JSON_HEADERS,
+      method: 'PATCH', headers: authHeaders(JSON_HEADERS),
       body: JSON.stringify({ phone, is_default: true }),
     }).catch(() => null)
     if (!res || !res.ok) { alert('ตั้งที่อยู่หลักไม่สำเร็จ กรุณาลองใหม่'); return }
@@ -61,7 +62,7 @@ export default function AddressList({ addresses, selectedId, phone, customerId, 
 
   const deleteAddress = async (id: number) => {
     if (!confirm('ลบที่อยู่นี้ออกไหมครับ?')) return
-    const res = await fetch(`${API}/addresses/${id}?phone=${encodeURIComponent(phone || '')}`, { method: 'DELETE' }).catch(() => null)
+    const res = await fetch(`${API}/addresses/${id}?phone=${encodeURIComponent(phone || '')}`, { method: 'DELETE', headers: authHeaders() }).catch(() => null)
     if (!res || !res.ok) { alert('ลบที่อยู่ไม่สำเร็จ กรุณาลองใหม่'); return }
     onRefresh()
   }

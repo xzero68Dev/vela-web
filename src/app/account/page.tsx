@@ -6,6 +6,7 @@ import VelaBunny from '@/components/VelaBunny'
 import LineLoginButton from '@/components/LineLoginButton'
 import AddressList from '@/components/AddressList'
 import { firePurchaseOnce, isPaidStatus } from '@/lib/fbpixel'
+import { authHeaders, setAuthToken, onCustomerUnauthorized } from '@/lib/customerAuth'
 
 const API    = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
@@ -66,6 +67,7 @@ function PhoneLoginForm() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'OTP ไม่ถูกต้อง')
+      if (data.token) setAuthToken(data.token)
       localStorage.setItem('vela_user', JSON.stringify(data.customer))
       window.dispatchEvent(new StorageEvent('storage', { key: 'vela_user' }))
       setUser(data.customer)
@@ -247,7 +249,8 @@ export default function AccountPage() {
   const fetchAddresses = useCallback(async () => {
     if (!user?.phone) return
     try {
-    const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`)
+    const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`, { headers: authHeaders() })
+    if (onCustomerUnauthorized(res)) return
     if (!res.ok) return
     const data = (await res.json()).addresses || []
     if (Array.isArray(data) && data.length > 0) {
@@ -255,13 +258,13 @@ export default function AccountPage() {
       return
     }
     // ถ้าไม่มีที่อยู่ — ดึงจาก order ล่าสุดมาสร้างให้อัตโนมัติ (ผ่าน backend)
-    const ordRes = await fetch(`${API}/my/orders?phone=${encodeURIComponent(user.phone)}&limit=1`)
-    const orders = ((await ordRes.json())?.orders) || []
+    const ordRes = await fetch(`${API}/my/orders?phone=${encodeURIComponent(user.phone)}&limit=1`, { headers: authHeaders() })
+    const orders = (ordRes.ok ? (await ordRes.json())?.orders : []) || []
     if (Array.isArray(orders) && orders.length > 0) {
       const o = orders[0]
       if (o.full_address && o.province) {
         await fetch(`${API}/addresses`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             phone:        user.phone,
             name:         o.customer || user.display_name || '',
@@ -271,7 +274,7 @@ export default function AccountPage() {
             is_default:   true,
           }),
         })
-        const res2 = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`)
+        const res2 = await fetch(`${API}/addresses?phone=${encodeURIComponent(user.phone)}`, { headers: authHeaders() })
         if (res2.ok) setAddresses((await res2.json()).addresses || [])
       }
     }
@@ -301,8 +304,8 @@ export default function AccountPage() {
   const fetchOrders = useCallback(async () => {
     if (!user?.phone) return
     setLoading(true)
-    fetch(`${API}/my/orders?phone=${encodeURIComponent(user.phone)}&limit=20`)
-      .then(r => r.ok ? r.json() : null)
+    fetch(`${API}/my/orders?phone=${encodeURIComponent(user.phone)}&limit=20`, { headers: authHeaders() })
+      .then(r => { if (onCustomerUnauthorized(r)) return null; return r.ok ? r.json() : null })
       .then(async (payload: any) => {
         const data: any[] = Array.isArray(payload?.orders) ? payload.orders : []
         setOrders(data)
@@ -371,7 +374,8 @@ export default function AccountPage() {
     // เช็คชื่อซ้ำก่อน save (ถ้ามีการเปลี่ยนชื่อ)
     if (newName && newName !== (user?.name || '').trim()) {
       const res = await fetch(
-        `${API}/customers/check-name?name=${encodeURIComponent(newName)}&line_user_id=${encodeURIComponent(user?.line_user_id || '')}`
+        `${API}/customers/check-name?name=${encodeURIComponent(newName)}&line_user_id=${encodeURIComponent(user?.line_user_id || '')}`,
+        { headers: authHeaders() }
       )
       const chk = await res.json().catch(() => ({}))
       if (chk?.taken) {

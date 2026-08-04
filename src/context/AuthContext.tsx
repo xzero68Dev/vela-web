@@ -1,6 +1,7 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { captureUtm } from '@/lib/utm'
+import { authHeaders, setAuthToken, clearAuthToken } from '@/lib/customerAuth'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
@@ -34,7 +35,7 @@ async function upsertCustomer(data: Partial<Customer> & { line_user_id: string }
   // ผ่าน backend (service key) แทนการยิง Supabase ตรงด้วย anon key
   const res = await fetch(`${API}/customers/profile`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -43,11 +44,13 @@ async function upsertCustomer(data: Partial<Customer> & { line_user_id: string }
     throw new Error(detail)
   }
   const result = await res.json()
+  if (result?.token) setAuthToken(result.token)   // เก็บ token ใหม่ (เผื่อเพิ่งเพิ่มเบอร์)
   return result?.customer || null
 }
 
 async function fetchCustomer(lineUserId: string): Promise<Customer | null> {
-  const res = await fetch(`${API}/customers/by-line/${encodeURIComponent(lineUserId)}`)
+  const res = await fetch(`${API}/customers/by-line/${encodeURIComponent(lineUserId)}`,
+    { headers: authHeaders() })
   if (!res.ok) return null
   const data = await res.json()
   return data?.customer || null
@@ -75,7 +78,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
+    // ถ้ามี request ไหนโดน 401 (token หมด/ถูกบังคับ) → เคลียร์ user ให้หน้าเด้งไป login
+    const handleForcedLogout = () => setUser(null)
+    window.addEventListener('vela-logout', handleForcedLogout)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('vela-logout', handleForcedLogout)
+    }
   }, [])
 
   // รับ LINE OAuth callback จาก popup window
@@ -102,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json()
         if (data.customer) {
           setUser(data.customer)
+          if (data.token) setAuthToken(data.token)
           localStorage.setItem('vela_user', JSON.stringify(data.customer))
           // redirect กลับหน้าเดิม
           const returnUrl = sessionStorage.getItem('vela_return_url')
@@ -255,6 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null)
+    clearAuthToken()
     localStorage.removeItem('vela_user')
   }
 

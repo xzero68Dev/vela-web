@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { setAuthToken } from '@/lib/customerAuth'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
@@ -41,6 +42,7 @@ export default function LineCallbackPage() {
         })
         const data = await res.json()
         if (data.customer) {
+          if (data.token) setAuthToken(data.token)
           localStorage.setItem('vela_user', JSON.stringify(data.customer))
           // บอกให้ทุก tab รู้ว่า user เปลี่ยนแปลง
           window.dispatchEvent(new StorageEvent('storage', { key: 'vela_user' }))

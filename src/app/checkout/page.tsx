@@ -10,6 +10,7 @@ import AddressList from '@/components/AddressList'
 import { getUtm } from '@/lib/utm'
 import { fbTrack } from '@/lib/fbpixel'
 import { firstOrderDiscountAmount, FIRST_ORDER_CAP, bestDiscount } from '@/lib/promo'
+import { authHeaders } from '@/lib/customerAuth'
 
 const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
@@ -60,8 +61,8 @@ function CheckoutForm() {
 
   // โหลดที่อยู่ที่บันทึกไว้
   const fetchAddresses = async (phone: string) => {
-    const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(phone)}`)
-    const data = (await res.json()).addresses || []
+    const res = await fetch(`${API}/addresses?phone=${encodeURIComponent(phone)}`, { headers: authHeaders() })
+    const data = (res.ok ? (await res.json()).addresses : []) || []
     if (Array.isArray(data) && data.length > 0) {
       setAddresses(data)
       // เลือก default หรืออันแรก
@@ -583,7 +584,7 @@ function CheckoutForm() {
                       setForm(prev => ({ ...prev, name: data.name, phone: data.phone, address: data.full_address, subdistrict: data.subdistrict, district: data.district, province: data.province, zip: data.zip }))
                       if (user?.phone) {
                         fetch(`${API}/addresses`, {
-                          method: 'POST', headers: { 'Content-Type': 'application/json' },
+                          method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
                           body: JSON.stringify({ ...data, phone: user.phone, customer_id: user.id }),
                         }).then(() => { if (user?.phone) fetchAddresses(user.phone) })
                       }

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { authHeaders } from '@/lib/customerAuth'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
@@ -32,8 +33,8 @@ export default function LineLoginButton({ onDone }: { onDone?: (isNew: boolean) 
 
     // ดึงประวัติ order จากเบอร์นี้
     try {
-      const res  = await fetch(`${API}/my/orders?phone=${encodeURIComponent(p)}&limit=5`)
-      const data = ((await res.json())?.orders) || []
+      const res  = await fetch(`${API}/my/orders?phone=${encodeURIComponent(p)}&limit=5`, { headers: authHeaders() })
+      const data = (res.ok ? (await res.json())?.orders : []) || []
       if (Array.isArray(data) && data.length > 0) {
         setOrders(data)
         setShowOrders(true)
