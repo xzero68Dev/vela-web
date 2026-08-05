@@ -374,7 +374,7 @@ export default function AccountPage() {
     // เช็คชื่อซ้ำก่อน save (ถ้ามีการเปลี่ยนชื่อ)
     if (newName && newName !== (user?.name || '').trim()) {
       const res = await fetch(
-        `${API}/customers/check-name?name=${encodeURIComponent(newName)}&line_user_id=${encodeURIComponent(user?.line_user_id || '')}`,
+        `${API}/customers/check-name?name=${encodeURIComponent(newName)}&line_user_id=${encodeURIComponent(user?.line_user_id || '')}&phone=${encodeURIComponent(user?.phone || '')}`,
         { headers: authHeaders() }
       )
       const chk = await res.json().catch(() => ({}))

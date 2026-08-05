@@ -31,7 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {}, logout: () => {}, updateProfile: async () => {}, setUser: () => {},
 })
 
-async function upsertCustomer(data: Partial<Customer> & { line_user_id: string }) {
+async function upsertCustomer(data: Partial<Customer>) {
   // ผ่าน backend (service key) แทนการยิง Supabase ตรงด้วย anon key
   const res = await fetch(`${API}/customers/profile`, {
     method: 'POST',
@@ -276,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await upsertCustomer({
         line_user_id: user.line_user_id,
+        phone:        user.phone,   // ลูกค้า phone-only (ไม่มี LINE) ใช้เบอร์ชี้ตัวแทน line_user_id
         ...data,
       })
       const newUser = { ...user, ...updated }
