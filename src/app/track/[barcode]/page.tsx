@@ -28,6 +28,14 @@ const STATUS_ICON: Record<string, string> = {
   pending:          '⏳',
 }
 
+// กัน render object ตรงๆ (React error #31 crash ทั้งหน้า) — บางขนส่ง เช่น SPX คืน location เป็น object
+const asText = (v: any): string => {
+  if (v == null) return ''
+  if (typeof v === 'string') return v
+  if (typeof v === 'object') return v.location_name || v.full_address || v.name || v.description || ''
+  return String(v)
+}
+
 export default function TrackPage() {
   const params  = useParams()
   const barcode = (params.barcode as string || '').toUpperCase()
@@ -152,14 +160,14 @@ export default function TrackPage() {
                   style={{ fontFamily: 'var(--font-display)', color }}>
                   {result.status_th || result.status}
                 </p>
-                {result.latest_event?.location && (
+                {asText(result.latest_event?.location) && (
                   <p className="text-sm mt-1 font-mono" style={{ color: '#8C7B6E' }}>
-                    {result.latest_event.location}
+                    {asText(result.latest_event?.location)}
                   </p>
                 )}
-                {result.latest_event?.datetime && (
+                {asText(result.latest_event?.datetime) && (
                   <p className="text-xs mt-0.5 font-mono" style={{ color: '#C5BAB0' }}>
-                    {result.latest_event.datetime}
+                    {asText(result.latest_event?.datetime)}
                   </p>
                 )}
               </div>
@@ -206,11 +214,11 @@ export default function TrackPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm leading-tight"
                           style={{ color: i === 0 ? '#3D1F0F' : '#8C7B6E', fontWeight: i === 0 ? 600 : 400 }}>
-                          {e.description || e.status_th || e.status}
+                          {asText(e.description) || asText(e.status_th) || asText(e.status)}
                         </p>
                         <div className="flex gap-2 flex-wrap mt-0.5">
-                          {e.location && <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{e.location}</p>}
-                          {e.datetime && <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{e.datetime}</p>}
+                          {asText(e.location) && <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{asText(e.location)}</p>}
+                          {asText(e.datetime) && <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{asText(e.datetime)}</p>}
                         </div>
                       </div>
                     </div>
