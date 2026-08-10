@@ -29,6 +29,7 @@ const CARRIER_CHIP: Record<string, { label: string; bg: string; fg: string }> = 
 const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
   'รอชำระเงิน':   { bg: '#F5E6C0', text: '#854F0B' },
   'ชำระแล้ว':     { bg: '#C5E8D5', text: '#1A6B3C' },
+  'เตรียมจัดส่ง': { bg: '#E4DBF5', text: '#5B3A9B' },
   'จัดส่งแล้ว':   { bg: '#D0E8F5', text: '#1A5C8F' },
   'จัดส่งสำเร็จ': { bg: '#C5E8D5', text: '#1A6B3C' },
   'ตีกลับ':       { bg: '#F5D5CC', text: '#D64B2A' },
@@ -129,9 +130,11 @@ export default function AdminOrdersPage() {
         }),
       })
       if (!res.ok) { alert(`เพิ่มการจัดส่งไม่สำเร็จ: ${await res.text()}`); return }
+      // ส่งเอง (ไม่มีเลข/"-") → "จัดส่งแล้ว" เลย; มีเลขจริง → "เตรียมจัดส่ง" (cron เลื่อนเป็นจัดส่งแล้วตอนขนส่งรับพัสดุ)
+      const isSelfDelivery = !shipForm.tracking.trim() || shipForm.tracking.trim() === '-'
       setShipForm({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' })
       await fetchOrders()
-      setSelected(prev => prev ? { ...prev, status: 'จัดส่งแล้ว' } : null)
+      setSelected(prev => prev ? { ...prev, status: isSelfDelivery ? 'จัดส่งแล้ว' : 'เตรียมจัดส่ง' } : null)
     } finally { setActing(false) }
   }
 
@@ -216,6 +219,7 @@ export default function AdminOrdersPage() {
   const webStats = [
     { label: 'รอชำระ',    status: 'รอชำระเงิน',   value: webOrders.filter(o => o.status === 'รอชำระเงิน').length },
     { label: 'ชำระแล้ว',  status: 'ชำระแล้ว',     value: webOrders.filter(o => o.status === 'ชำระแล้ว').length },
+    { label: 'เตรียมส่ง', status: 'เตรียมจัดส่ง', value: webOrders.filter(o => o.status === 'เตรียมจัดส่ง').length },
     { label: 'จัดส่งแล้ว',status: 'จัดส่งแล้ว',   value: webOrders.filter(o => o.status === 'จัดส่งแล้ว').length },
     { label: 'สำเร็จ',    status: 'จัดส่งสำเร็จ', value: webOrders.filter(o => o.status === 'จัดส่งสำเร็จ').length },
   ]
@@ -252,7 +256,7 @@ export default function AdminOrdersPage() {
 
         {/* Web stats */}
         {tab === 'web' && (
-          <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-5 gap-2 mb-4">
             {webStats.map(({ label, status, value }) => (
               <div key={label} className="rounded-2xl p-3 text-center border-2 cursor-pointer transition-all"
                 onClick={() => setStatusFilter(prev => prev === status ? 'ทั้งหมด' : status)}
@@ -607,8 +611,8 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {/* Action: ยืนยันส่งสำเร็จ — แสดงสำหรับทุก order ที่ยังไม่ complete */}
-              {selected.status === 'จัดส่งแล้ว' && (
+              {/* Action: ยืนยันส่งสำเร็จ — แสดงตั้งแต่ เตรียมจัดส่ง (เผื่อส่งเอง/พัสดุค้าง admin กดยืนยันเองได้) */}
+              {(selected.status === 'จัดส่งแล้ว' || selected.status === 'เตรียมจัดส่ง') && (
                 <div className="space-y-2">
                   {ship?.tracking && (
                     <a href={

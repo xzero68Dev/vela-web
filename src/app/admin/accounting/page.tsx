@@ -14,7 +14,7 @@ type Acc = {
   coffee_cost?: number; packaging?: number; other?: number; net_profit?: number
 }
 
-const PAID = new Set(['ชำระแล้ว', 'จัดส่งแล้ว', 'จัดส่งสำเร็จ'])
+const PAID = new Set(['ชำระแล้ว', 'เตรียมจัดส่ง', 'จัดส่งแล้ว', 'จัดส่งสำเร็จ'])
 const n = (v: any) => Number(v || 0)
 const baht = (v: any) => `฿${n(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 

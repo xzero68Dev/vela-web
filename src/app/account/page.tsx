@@ -527,10 +527,10 @@ export default function AccountPage() {
                       </div>
                       <span className="text-xs px-3 py-1 rounded-full font-mono"
                         style={{
-                          background: o.status === 'ชำระแล้ว' || o.status === 'จัดส่งแล้ว' ? '#1A6B3C20'
+                          background: o.status === 'ชำระแล้ว' || o.status === 'เตรียมจัดส่ง' || o.status === 'จัดส่งแล้ว' ? '#1A6B3C20'
                                     : o.status === 'รอชำระเงิน' ? '#F5E6C0'
                                     : '#E0D9CE',
-                          color:      o.status === 'ชำระแล้ว' || o.status === 'จัดส่งแล้ว' ? '#1A6B3C'
+                          color:      o.status === 'ชำระแล้ว' || o.status === 'เตรียมจัดส่ง' || o.status === 'จัดส่งแล้ว' ? '#1A6B3C'
                                     : o.status === 'รอชำระเงิน' ? '#854F0B'
                                     : '#8C7B6E'
                         }}>
