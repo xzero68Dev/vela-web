@@ -8,7 +8,7 @@ const API       = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onre
 
 type Product = {
   id: number; sku: string; name: string; flavor: string; roast: string; process: string
-  price: number; price_discounted: number; discount_pct: number; active: boolean; sort_order: number
+  price: number; price_discounted: number; discount_pct: number; active: boolean; in_stock: boolean; sort_order: number
 }
 
 export default function AdminProductsPage() {
@@ -19,7 +19,8 @@ export default function AdminProductsPage() {
   const [msg,      setMsg]      = useState('')
 
   const fetchProducts = useCallback(async () => {
-    const res = await fetch(`${API}/products`)
+    // show_all=1 → เห็นสินค้าที่ปิดขายด้วย จะได้กดเปิดกลับได้ (ไม่หายจากหน้า admin)
+    const res = await fetch(`${API}/products?show_all=1`)
     const data = await res.json()
     setProducts(data.products || [])
   }, [])
@@ -80,13 +81,23 @@ export default function AdminProductsPage() {
                   <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>{p.sku}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Active toggle */}
+                  {/* มีของ / หมด — ยังโชว์บนเว็บ แต่ขึ้นว่า "หมด" (ต่างจากปิดขายที่ซ่อนเลย) */}
+                  <button
+                    onClick={() => { handleEdit(p.id, 'in_stock', val(p, 'in_stock') === false); }}
+                    className="text-xs px-2 py-1 rounded-lg font-mono transition-all"
+                    style={{
+                      background: val(p, 'in_stock') !== false ? '#C5E8D5' : '#F5D5CC',
+                      color: val(p, 'in_stock') !== false ? '#1A6B3C' : '#D64B2A',
+                    }}>
+                    {val(p, 'in_stock') !== false ? '● มีของ' : '○ หมด'}
+                  </button>
+                  {/* เปิดขาย / ปิดขาย — ปิด = ซ่อนจากเว็บทั้งหมด (แต่ยังอยู่ในหน้านี้ กดเปิดกลับได้) */}
                   <button
                     onClick={() => { handleEdit(p.id, 'active', !val(p, 'active')); }}
                     className="text-xs px-2 py-1 rounded-lg font-mono transition-all"
                     style={{
-                      background: val(p, 'active') ? '#C5E8D5' : '#E0D9CE',
-                      color: val(p, 'active') ? '#1A6B3C' : '#8C7B6E',
+                      background: val(p, 'active') ? '#D0E8F5' : '#E0D9CE',
+                      color: val(p, 'active') ? '#1A5C8F' : '#8C7B6E',
                     }}>
                     {val(p, 'active') ? '● เปิดขาย' : '○ ปิดขาย'}
                   </button>

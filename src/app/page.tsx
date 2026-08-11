@@ -24,6 +24,7 @@ type Product = {
   price_shopee: number
   discount_pct: number
   stock: number
+  in_stock?: boolean
   active: boolean
   sort_order: number
 }
@@ -81,6 +82,7 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
   const meta    = SKU_META[baseSku] || { bg: '#F5F1EB', accent: '#D64B2A', img: '', dark: false }
   // แสดงราคาปกติ (หลังลด 30%) เสมอ — ส่วนลดลูกค้าใหม่ 50% (เพดาน ฿130) คิดระดับบิลตอน checkout
   const effectivePrice = product.price_discounted || product.price
+  const soldOut = product.in_stock === false   // ยังโชว์บนเว็บ แต่สั่งไม่ได้
   return (
     <div className="group relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
       style={{ background: meta.bg }}>
@@ -88,16 +90,26 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
       {/* Product image — full frame */}
       <Link href={`/product/${baseSku}`} className="block">
         <div className="relative aspect-square overflow-hidden">
-          {/* Tag ลูกค้าใหม่ -50% — มุมขวาล่างของรูป (โชว์เฉพาะคนมีสิทธิ์, ราคายังปกติ) */}
-          {firstOrderDiscount && (
+          {/* Tag ลูกค้าใหม่ -50% — มุมขวาล่างของรูป (โชว์เฉพาะคนมีสิทธิ์, ราคายังปกติ, ซ่อนถ้าหมด) */}
+          {firstOrderDiscount && !soldOut && (
             <div className="absolute bottom-2 right-2 z-10 px-2 py-1 rounded-lg text-xs font-black uppercase shadow-md"
               style={{ background: '#D64B2A', color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
               ลูกค้าใหม่ -50%
             </div>
           )}
+          {/* ป้าย "สินค้าหมด" — ทับรูปเมื่อหมด (ยังโชว์สินค้าอยู่ ไม่ได้ซ่อน) */}
+          {soldOut && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+              <span className="px-3 py-1.5 rounded-lg text-sm font-black uppercase"
+                style={{ background: '#3D1F0F', color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
+                สินค้าหมด
+              </span>
+            </div>
+          )}
           {meta.img
             ? <img src={meta.img} alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                style={soldOut ? { filter: 'grayscale(0.7)', opacity: 0.6 } : undefined} />
             : <div className="w-full h-full flex items-center justify-center opacity-20"><VelaBunny size={60} /></div>
           }
         </div>
@@ -130,11 +142,13 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
             -{product.discount_pct || 30}%
           </span>
         </div>
-        {/* ปุ่มเพิ่มตะกร้า — เต็มความกว้าง ได้สัดส่วนทุกขนาดจอ */}
-        <button onClick={() => onAdd(product)}
-          className="w-full text-sm font-black uppercase py-2 rounded-xl transition-all active:scale-95 whitespace-nowrap"
-          style={{ background: meta.accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
-          + ตะกร้า
+        {/* ปุ่มเพิ่มตะกร้า — ถ้าหมด: ปิดปุ่ม แสดง "สินค้าหมด" */}
+        <button onClick={() => { if (!soldOut) onAdd(product) }} disabled={soldOut}
+          className="w-full text-sm font-black uppercase py-2 rounded-xl transition-all active:scale-95 whitespace-nowrap disabled:cursor-not-allowed"
+          style={soldOut
+            ? { background: '#D8D0C5', color: '#8C7B6E', fontFamily: 'var(--font-display)' }
+            : { background: meta.accent, color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
+          {soldOut ? 'สินค้าหมด' : '+ ตะกร้า'}
         </button>
       </div>
     </div>
