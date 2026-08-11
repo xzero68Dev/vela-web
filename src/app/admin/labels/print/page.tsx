@@ -54,6 +54,32 @@ function Label({ order, ship }: { order: any; ship?: any }) {
   const carrier = ship?.carrier || CARRIER_LABEL[order.preferred_carrier] || order.preferred_carrier || ''
   const tracking = ship?.tracking && ship.tracking !== '-' ? ship.tracking : ''
   const fullAddr = [order.full_address, order.province, order.zip].filter(Boolean).join(' ')
+
+  // Auto-fit รายการสินค้าให้อยู่ในแผ่นเสมอ (กันรายการเยอะแล้วโดนตัดหาย)
+  // วัดจริง: ถ้าเนื้อหาล้นกล่อง → ย่อขนาด (ตัวแปร --isz) ทีละขั้นจนพอดี; ถ้ายังล้น → สลับ 2 คอลัมน์
+  const itemsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = itemsRef.current
+    if (!el) return
+    const fit = () => {
+      const shrink = () => {
+        let s = 1, g = 0
+        el.style.setProperty('--isz', '1')
+        while (el.scrollHeight > el.clientHeight + 1 && s > 0.5 && g < 30) {
+          s -= 0.05; el.style.setProperty('--isz', s.toFixed(2)); g++
+        }
+        return el.scrollHeight <= el.clientHeight + 1
+      }
+      el.classList.remove('twocol')
+      if (!shrink()) { el.classList.add('twocol'); shrink() }  // ยังล้น → 2 คอลัมน์แล้วย่อซ้ำ
+    }
+    const raf = requestAnimationFrame(fit)
+    const t = setTimeout(fit, 500)                             // เผื่อบาร์โค้ด/QR โหลดช้าแล้ว layout ขยับ
+    const ro = new ResizeObserver(() => requestAnimationFrame(fit))
+    const sheet = el.closest('.sheet'); if (sheet) ro.observe(sheet)
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); ro.disconnect() }
+  }, [order.order_id, order.sku])
+
   return (
     <div className="sheet">
       {/* ผู้ส่ง = โลโก้ + QR LINE ร้าน */}
@@ -99,8 +125,8 @@ function Label({ order, ship }: { order: any; ship?: any }) {
         </div>
       )}
 
-      {/* รายการสินค้า — เช็คลิสต์ (ยืดเต็มพื้นที่ที่เหลือ) */}
-      <div className="items">
+      {/* รายการสินค้า — เช็คลิสต์ (auto-fit ให้ครบทุกรายการ) */}
+      <div className="items" ref={itemsRef}>
         <div className="items-title">📦 รายการสินค้า · {totalQty} ชิ้น</div>
         {items.map((it, i) => (
           <div className="item" key={i}>
@@ -183,12 +209,16 @@ function LabelsInner() {
         .ord-qr-cap { font-size:8px; color:#333; margin-top:1px; }
         .bcode { text-align:center; padding:5px 0 3px; border-bottom:1px dashed #666; }
         .bcode .barcode { width:100%; max-width:88mm; height:auto; }
-        .items { flex:1 1 auto; padding-top:6px; overflow:hidden; }
-        .items-title { font-size:14px; font-weight:800; margin-bottom:4px; }
-        .item { display:flex; align-items:flex-start; gap:8px; padding:4px 0; border-bottom:1px solid #ddd; }
-        .chk { width:16px; height:16px; border:2px solid #000; border-radius:3px; flex-shrink:0; margin-top:2px; }
-        .qty { font-weight:800; font-size:16px; min-width:34px; }
-        .iname { font-size:15px; line-height:1.3; }
+        .items { flex:1 1 auto; padding-top:6px; overflow:hidden; --isz:1; }
+        .items-title { font-size:calc(14px*var(--isz,1)); font-weight:800; margin-bottom:calc(4px*var(--isz,1)); }
+        .item { display:flex; align-items:flex-start; gap:calc(8px*var(--isz,1)); padding:calc(4px*var(--isz,1)) 0; border-bottom:1px solid #ddd; }
+        .chk { width:calc(16px*var(--isz,1)); height:calc(16px*var(--isz,1)); border:2px solid #000; border-radius:3px; flex-shrink:0; margin-top:2px; }
+        .qty { font-weight:800; font-size:calc(16px*var(--isz,1)); min-width:calc(34px*var(--isz,1)); }
+        .iname { font-size:calc(15px*var(--isz,1)); line-height:1.3; }
+        /* รายการเยอะมาก → 2 คอลัมน์ (หัวข้อกินเต็มความกว้าง, กันแถวถูกหั่นครึ่งคอลัมน์) */
+        .items.twocol { column-count:2; column-gap:7px; }
+        .items.twocol .items-title { column-span:all; }
+        .items.twocol .item { break-inside:avoid; }
         .note { background:#FFF3CD; border:1px solid #C9A227; border-radius:6px; padding:5px 9px; font-size:13px; margin-top:6px; }
 
         @media print {
