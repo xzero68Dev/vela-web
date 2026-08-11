@@ -55,6 +55,9 @@ export default function TrackPage() {
   }
 
   const carrierLink = detectCarrierLink(barcode)
+  // พัสดุ Shopee/SPX (เลขขึ้นต้น TH) บางตัวเป็นแบบ 3PL ส่งต่อ ที่ระบบเราดึง event ไม่ได้
+  // → ให้ลิงก์ไปหน้า SPX ที่ tracking ได้จริง (ครอบคลุมทั้ง SPX และ Shopee-managed)
+  const spxTrackUrl = /^TH/i.test(barcode) ? `https://spx.co.th/track?${barcode}` : null
 
   useEffect(() => {
     if (!barcode) return
@@ -139,7 +142,13 @@ export default function TrackPage() {
             <p className="text-sm" style={{ color: '#8C7B6E' }}>{error}</p>
             <p className="text-xs font-mono mt-2" style={{ color: '#C5BAB0' }}>{barcode}</p>
             {/* ถ้าไม่เจอในระบบ แต่ detect carrier ได้ → ยังแสดงลิงก์ external ได้ */}
-            {carrierLink && (
+            {spxTrackUrl ? (
+              <a href={spxTrackUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-block mt-4 px-4 py-2 rounded-xl border-2 text-xs font-mono transition-all"
+                style={{ borderColor: '#D64B2A', color: '#D64B2A' }}>
+                ติดตามที่ SPX / Shopee →
+              </a>
+            ) : carrierLink && (
               <a href={carrierLink?.url || "#"} target="_blank" rel="noopener noreferrer"
                 className="inline-block mt-4 px-4 py-2 rounded-xl border-2 text-xs font-mono transition-all"
                 style={{ borderColor: '#D64B2A', color: '#D64B2A' }}>
@@ -223,6 +232,25 @@ export default function TrackPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* พัสดุมีสถานะแต่ยังไม่มีประวัติในระบบเรา (เช่น SPX 3PL ส่งต่อ ที่ดึง event ไม่ได้)
+                → ให้ลูกค้าไปดูสถานะล่าสุดที่ SPX โดยตรง แทนที่จะเห็นหน้าว่างๆ */}
+            {(!result.events || result.events.length === 0) && spxTrackUrl && (
+              <div className="rounded-3xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                <div className="px-5 py-4 text-center">
+                  <div className="text-3xl mb-2">🚚</div>
+                  <p className="text-sm mb-1" style={{ color: '#3D1F0F', fontWeight: 600 }}>อยู่ระหว่างขนส่ง</p>
+                  <p className="text-xs mb-3" style={{ color: '#8C7B6E' }}>
+                    พัสดุนี้จัดส่งผ่านเครือข่าย SPX/Shopee — ดูประวัติการเดินทางล่าสุดได้ที่ SPX โดยตรง
+                  </p>
+                  <a href={spxTrackUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-block px-5 py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95"
+                    style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+                    ติดตามที่ SPX →
+                  </a>
                 </div>
               </div>
             )}
