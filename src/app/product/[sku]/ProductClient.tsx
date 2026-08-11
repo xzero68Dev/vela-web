@@ -9,7 +9,7 @@ type Product = {
   id: number; sku: string; name: string; description: string
   flavor: string; roast: string; process: string
   price: number; price_original: number; price_discounted: number; price_shopee: number
-  discount_pct: number; stock: number; active: boolean; sort_order: number
+  discount_pct: number; stock: number; in_stock?: boolean; active: boolean; sort_order: number
 }
 
 export default function ProductClient({ sku }: { sku: string }) {
@@ -64,6 +64,7 @@ export default function ProductClient({ sku }: { sku: string }) {
   const prod1L  = products.find(p => p.sku === rawSku)
   const prod200 = products.find(p => p.sku === `${rawSku}-200`)
   const current = sizeOption === '200ml' && prod200 ? prod200 : prod1L
+  const soldOut = current?.in_stock === false   // ขนาดที่เลือกนี้หมด (แต่ละขนาดเช็คแยก)
 
   // ราคาปกติ (หลังลด 30%) — ส่วนลดลูกค้าใหม่ 50% เพดาน ฿130 คิดระดับบิลตอน checkout
   const price      = current?.price_discounted || current?.price || 0
@@ -72,7 +73,7 @@ export default function ProductClient({ sku }: { sku: string }) {
   const textColor  = isDark ? '#EDE8DF' : '#3D1F0F'
 
   const handleAddToCart = () => {
-    if (!current) return
+    if (!current || soldOut) return
     const cart = JSON.parse(localStorage.getItem('vela_cart') || '[]')
     const idx = cart.findIndex((i: any) => i.sku === current.sku)
     if (idx >= 0) cart[idx].qty += qty
@@ -184,36 +185,51 @@ export default function ProductClient({ sku }: { sku: string }) {
               )}
             </div>
 
-            {/* Qty + cart */}
-            <div className="flex gap-3 items-center mb-3">
-              <div className="flex items-center gap-2 rounded-xl border-2 px-3 py-2.5"
-                style={{ borderColor: isDark ? '#FFFFFF30' : '#D8D0C5' }}>
-                <button onClick={() => setQty(q => Math.max(1, q - 1))}
-                  className="w-6 h-6 font-bold text-lg flex items-center justify-center"
-                  style={{ color: textColor }}>−</button>
-                <span className="w-6 text-center font-mono text-sm" style={{ color: textColor }}>{qty}</span>
-                <button onClick={() => setQty(q => q + 1)}
-                  className="w-6 h-6 font-bold text-lg flex items-center justify-center"
-                  style={{ color: textColor }}>+</button>
+            {soldOut ? (
+              /* สินค้าหมด — ยังโชว์รายละเอียด แต่สั่งไม่ได้ (backend ก็กันอีกชั้น) */
+              <div className="mb-3">
+                <div className="w-full py-3 rounded-xl font-black uppercase tracking-wider text-center cursor-not-allowed"
+                  style={{ fontFamily: 'var(--font-display)', fontSize: '15px', background: '#D8D0C5', color: '#8C7B6E' }}>
+                  สินค้าหมด
+                </div>
+                <p className="text-xs font-mono opacity-60 mt-2" style={{ color: textColor }}>
+                  ขออภัย สินค้านี้หมดชั่วคราว{prod200 ? ' — ลองเลือกอีกขนาด' : ''} หรือดูรสอื่น ๆ ด้านล่าง
+                </p>
               </div>
-              <button onClick={handleAddToCart}
-                className="flex-1 py-3 rounded-xl font-black uppercase tracking-wider transition-all active:scale-95"
-                style={{
-                  fontFamily: 'var(--font-display)', fontSize: '15px',
-                  background: added ? '#1A6B3C' : meta.accent, color: '#EDE8DF',
-                }}>
-                {added ? '✓ เพิ่มแล้ว!' : '+ ใส่ตะกร้า'}
-              </button>
-            </div>
-            {/* ปุ่ม checkout ทันที */}
-            <Link href={`/checkout?cart=${encodeURIComponent(JSON.stringify([{ sku: current?.sku, qty, price: price, name: current?.name }]))}`}
-              className="block w-full py-3 rounded-xl text-center font-black uppercase tracking-wider mt-2 transition-all active:scale-95 border-2"
-              style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: meta.accent, borderColor: meta.accent }}>
-              สั่งซื้อเลย →
-            </Link>
-            <p className="text-xs font-mono opacity-50 mt-2" style={{ color: textColor }}>
-              🚚 ส่งฟรี · ผลิตสดทุกวัน · เก็บได้ 1 เดือน (นับจากวันที่ส่ง)
-            </p>
+            ) : (
+              <>
+                {/* Qty + cart */}
+                <div className="flex gap-3 items-center mb-3">
+                  <div className="flex items-center gap-2 rounded-xl border-2 px-3 py-2.5"
+                    style={{ borderColor: isDark ? '#FFFFFF30' : '#D8D0C5' }}>
+                    <button onClick={() => setQty(q => Math.max(1, q - 1))}
+                      className="w-6 h-6 font-bold text-lg flex items-center justify-center"
+                      style={{ color: textColor }}>−</button>
+                    <span className="w-6 text-center font-mono text-sm" style={{ color: textColor }}>{qty}</span>
+                    <button onClick={() => setQty(q => q + 1)}
+                      className="w-6 h-6 font-bold text-lg flex items-center justify-center"
+                      style={{ color: textColor }}>+</button>
+                  </div>
+                  <button onClick={handleAddToCart}
+                    className="flex-1 py-3 rounded-xl font-black uppercase tracking-wider transition-all active:scale-95"
+                    style={{
+                      fontFamily: 'var(--font-display)', fontSize: '15px',
+                      background: added ? '#1A6B3C' : meta.accent, color: '#EDE8DF',
+                    }}>
+                    {added ? '✓ เพิ่มแล้ว!' : '+ ใส่ตะกร้า'}
+                  </button>
+                </div>
+                {/* ปุ่ม checkout ทันที */}
+                <Link href={`/checkout?cart=${encodeURIComponent(JSON.stringify([{ sku: current?.sku, qty, price: price, name: current?.name }]))}`}
+                  className="block w-full py-3 rounded-xl text-center font-black uppercase tracking-wider mt-2 transition-all active:scale-95 border-2"
+                  style={{ fontFamily: 'var(--font-display)', fontSize: '14px', color: meta.accent, borderColor: meta.accent }}>
+                  สั่งซื้อเลย →
+                </Link>
+                <p className="text-xs font-mono opacity-50 mt-2" style={{ color: textColor }}>
+                  🚚 ส่งฟรี · ผลิตสดทุกวัน · เก็บได้ 1 เดือน (นับจากวันที่ส่ง)
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
