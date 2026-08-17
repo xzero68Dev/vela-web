@@ -61,6 +61,8 @@ export default function AdminOrdersPage() {
   const [receiptTotal, setReceiptTotal] = useState('')
   const [receiptItems, setReceiptItems] = useState<{ name: string; qty: number; unit_price: string }[]>([])
   const [receiptBusy,  setReceiptBusy]  = useState(false)
+  const [receiptResult, setReceiptResult] = useState<{ receipt_url: string; pdf_url: string } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -236,18 +238,21 @@ export default function AdminOrdersPage() {
       const name = m ? part.slice(0, m.index).trim() : part
       return { name: name || part, qty, unit_price: '' }
     })
-  const blobOpen = async (res: Response) => {
-    const url = URL.createObjectURL(await res.blob())
-    window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 60000)
+  const postReceipt = async (orderId: string, body: any) => {
+    const res = await fetch(`${API}/admin/receipt/${encodeURIComponent(orderId)}`, {
+      method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+    })
+    if (onAdminUnauthorized(res)) return null
+    if (!res.ok) { alert(`ออกใบเสร็จไม่สำเร็จ: ${await res.text()}`); return null }
+    return res.json()
   }
   const openReceipt = async (o: Order) => {
     if (o.channel === 'web' && o.total) {
-      const res = await fetch(`${API}/admin/receipt/${encodeURIComponent(o.order_id)}`, { headers: adminHeaders() })
-      if (onAdminUnauthorized(res)) return
-      if (!res.ok) { alert(`ออกใบเสร็จไม่สำเร็จ: ${await res.text()}`); return }
-      await blobOpen(res)
+      const r = await postReceipt(o.order_id, {})           // เว็บ: auto จาก DB
+      if (r) { setCopied(false); setReceiptResult(r); window.open(`${API}${r.pdf_url}`, '_blank') }
     } else {
-      setReceiptOrder(o)
+      setReceiptOrder(o)                                     // Shopee: เปิดฟอร์มพิมพ์ยอด
       setReceiptTotal(o.total ? String(o.total) : '')
       setReceiptItems(parseSku(o.sku))
     }
@@ -262,14 +267,8 @@ export default function AdminOrdersPage() {
         name: i.name.trim(), qty: Number(i.qty) || 1,
         unit_price: i.unit_price !== '' ? parseFloat(i.unit_price) : null,
       }))
-      const res = await fetch(`${API}/admin/receipt/${encodeURIComponent(receiptOrder.order_id)}`, {
-        method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ total, items: items.length ? items : null }),
-      })
-      if (onAdminUnauthorized(res)) return
-      if (!res.ok) { alert(`ออกใบเสร็จไม่สำเร็จ: ${await res.text()}`); return }
-      await blobOpen(res)
-      setReceiptOrder(null)
+      const r = await postReceipt(receiptOrder.order_id, { total, items: items.length ? items : null })
+      if (r) { setCopied(false); setReceiptResult(r); setReceiptOrder(null); window.open(`${API}${r.pdf_url}`, '_blank') }
     } finally { setReceiptBusy(false) }
   }
 
@@ -499,6 +498,45 @@ export default function AdminOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Receipt result — ลิงก์ให้ลูกค้า */}
+      {receiptResult && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-5" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setReceiptResult(null)}>
+          <div className="w-full max-w-md rounded-3xl p-5 space-y-4" style={{ background: '#EDE8DF' }}
+            onClick={e => e.stopPropagation()}>
+            <p className="font-black text-sm uppercase" style={{ fontFamily: 'var(--font-display)', color: '#1A6B3C' }}>
+              ✅ ออกใบเสร็จแล้ว
+            </p>
+            <p className="text-xs" style={{ color: '#8C7B6E' }}>
+              ส่งลิงก์นี้ให้ลูกค้า — เปิดแล้วจะเจอหน้า VeLA พร้อมปุ่มโหลดใบเสร็จ และปุ่มชวนสั่งกาแฟที่เว็บเรา
+            </p>
+            <div className="flex gap-2">
+              <input readOnly value={receiptResult.receipt_url}
+                onFocus={e => e.currentTarget.select()}
+                className="flex-1 px-3 py-2 rounded-xl border-2 text-xs font-mono"
+                style={{ borderColor: '#E0D9CE', background: '#F5F1EB', color: '#3D1F0F' }} />
+              <button onClick={() => { navigator.clipboard?.writeText(receiptResult.receipt_url); setCopied(true) }}
+                className="px-3 py-2 rounded-xl border-2 text-xs font-mono font-bold flex-shrink-0"
+                style={{ borderColor: '#2E75B6', color: '#2E75B6', background: '#F0F6FC' }}>
+                {copied ? '✓ คัดลอกแล้ว' : 'คัดลอก'}
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => window.open(`${API}${receiptResult.pdf_url}`, '_blank')}
+                className="flex-1 py-2.5 rounded-2xl font-black text-sm border-2"
+                style={{ fontFamily: 'var(--font-display)', borderColor: '#2E75B6', color: '#fff', background: '#2E75B6' }}>
+                เปิด PDF
+              </button>
+              <button onClick={() => setReceiptResult(null)}
+                className="px-5 py-2.5 rounded-2xl font-black text-sm border-2"
+                style={{ fontFamily: 'var(--font-display)', borderColor: '#D8D0C5', color: '#8C7B6E', background: '#F5F1EB' }}>
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Receipt form modal (Shopee / พิมพ์ยอดเอง) */}
       {receiptOrder && (
