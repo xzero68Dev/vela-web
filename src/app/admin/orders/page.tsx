@@ -57,6 +57,10 @@ export default function AdminOrdersPage() {
   const [printSel,  setPrintSel]  = useState<Set<string>>(new Set())
   const [updated,   setUpdated]   = useState('')
   const [sendSms,   setSendSms]   = useState(true)
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null)
+  const [receiptTotal, setReceiptTotal] = useState('')
+  const [receiptItems, setReceiptItems] = useState<{ name: string; qty: number; unit_price: string }[]>([])
+  const [receiptBusy,  setReceiptBusy]  = useState(false)
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -223,6 +227,51 @@ export default function AdminOrdersPage() {
     { label: 'จัดส่งแล้ว',status: 'จัดส่งแล้ว',   value: webOrders.filter(o => o.status === 'จัดส่งแล้ว').length },
     { label: 'สำเร็จ',    status: 'จัดส่งสำเร็จ', value: webOrders.filter(o => o.status === 'จัดส่งสำเร็จ').length },
   ]
+
+  // ---- ใบเสร็จรับเงิน ----
+  const parseSku = (sku: string) =>
+    (sku || '').split(/[,\n]+/).map(s => s.trim()).filter(Boolean).map(part => {
+      const m = part.match(/(?:x|X|×|\*)\s*(\d+)\s*$/)
+      const qty  = m ? parseInt(m[1]) : 1
+      const name = m ? part.slice(0, m.index).trim() : part
+      return { name: name || part, qty, unit_price: '' }
+    })
+  const blobOpen = async (res: Response) => {
+    const url = URL.createObjectURL(await res.blob())
+    window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 60000)
+  }
+  const openReceipt = async (o: Order) => {
+    if (o.channel === 'web' && o.total) {
+      const res = await fetch(`${API}/admin/receipt/${encodeURIComponent(o.order_id)}`, { headers: adminHeaders() })
+      if (onAdminUnauthorized(res)) return
+      if (!res.ok) { alert(`ออกใบเสร็จไม่สำเร็จ: ${await res.text()}`); return }
+      await blobOpen(res)
+    } else {
+      setReceiptOrder(o)
+      setReceiptTotal(o.total ? String(o.total) : '')
+      setReceiptItems(parseSku(o.sku))
+    }
+  }
+  const submitReceipt = async () => {
+    if (!receiptOrder) return
+    const total = parseFloat(receiptTotal)
+    if (!total || total <= 0) { alert('กรุณาระบุยอดเงิน'); return }
+    setReceiptBusy(true)
+    try {
+      const items = receiptItems.filter(i => i.name.trim()).map(i => ({
+        name: i.name.trim(), qty: Number(i.qty) || 1,
+        unit_price: i.unit_price !== '' ? parseFloat(i.unit_price) : null,
+      }))
+      const res = await fetch(`${API}/admin/receipt/${encodeURIComponent(receiptOrder.order_id)}`, {
+        method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ total, items: items.length ? items : null }),
+      })
+      if (onAdminUnauthorized(res)) return
+      if (!res.ok) { alert(`ออกใบเสร็จไม่สำเร็จ: ${await res.text()}`); return }
+      await blobOpen(res)
+      setReceiptOrder(null)
+    } finally { setReceiptBusy(false) }
+  }
 
   if (!ready) return null
   const ship = selected ? shipping[selected.order_id] : null
@@ -451,6 +500,59 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
+      {/* Receipt form modal (Shopee / พิมพ์ยอดเอง) */}
+      {receiptOrder && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setReceiptOrder(null)}>
+          <div className="w-full max-w-lg rounded-t-3xl overflow-y-auto" style={{ background: '#EDE8DF', maxHeight: '92vh' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b-2 flex items-center justify-between sticky top-0 z-10"
+              style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
+              <p className="font-black text-sm uppercase" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>
+                🧾 ออกใบเสร็จ · {receiptOrder.order_id}
+              </p>
+              <button onClick={() => setReceiptOrder(null)} style={{ color: '#8C7B6E', fontSize: 22 }}>✕</button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <p className="text-xs" style={{ color: '#8C7B6E' }}>
+                ออเดอร์นี้ไม่มียอดในระบบ — พิมพ์ยอดที่ลูกค้าจ่ายจริง (ใส่ราคา/หน่วยด้วยก็ได้ ถ้าอยากให้ใบเสร็จแยกราคารายชิ้น ถ้าไม่ใส่จะโชว์แค่รายการ+จำนวน)
+              </p>
+              <div className="space-y-2">
+                {receiptItems.map((it, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <input value={it.name} onChange={e => setReceiptItems(a => a.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))}
+                      placeholder="ชื่อสินค้า" className="flex-1 px-3 py-2 rounded-xl border-2 text-xs"
+                      style={{ borderColor: '#E0D9CE', background: '#F5F1EB' }} />
+                    <input value={it.qty} onChange={e => setReceiptItems(a => a.map((x, i) => i === idx ? { ...x, qty: Number(e.target.value) || 1 } : x))}
+                      type="number" min={1} className="w-14 px-2 py-2 rounded-xl border-2 text-xs text-center"
+                      style={{ borderColor: '#E0D9CE', background: '#F5F1EB' }} />
+                    <input value={it.unit_price} onChange={e => setReceiptItems(a => a.map((x, i) => i === idx ? { ...x, unit_price: e.target.value } : x))}
+                      placeholder="฿/หน่วย" type="number" className="w-20 px-2 py-2 rounded-xl border-2 text-xs text-right"
+                      style={{ borderColor: '#E0D9CE', background: '#F5F1EB' }} />
+                    <button onClick={() => setReceiptItems(a => a.filter((_, i) => i !== idx))} style={{ color: '#B4462F', fontSize: 18 }}>✕</button>
+                  </div>
+                ))}
+                <button onClick={() => setReceiptItems(a => [...a, { name: '', qty: 1, unit_price: '' }])}
+                  className="text-xs px-3 py-1.5 rounded-xl border-2 font-mono" style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                  + เพิ่มรายการ
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono flex-shrink-0" style={{ color: '#8C7B6E' }}>ยอดสุทธิ (บาท)</span>
+                <input value={receiptTotal} onChange={e => setReceiptTotal(e.target.value)} type="number"
+                  placeholder="0.00" className="flex-1 px-3 py-2 rounded-xl border-2 text-sm font-bold text-right"
+                  style={{ borderColor: '#2E75B6', background: '#F5F1EB' }} />
+              </div>
+              <button onClick={submitReceipt} disabled={receiptBusy}
+                className="w-full py-2.5 rounded-2xl font-black uppercase text-sm border-2 disabled:opacity-50"
+                style={{ fontFamily: 'var(--font-display)', borderColor: '#2E75B6', color: '#fff', background: '#2E75B6' }}>
+                {receiptBusy ? 'กำลังสร้าง…' : '🧾 สร้างใบเสร็จ PDF'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Order Modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}
@@ -506,6 +608,13 @@ export default function AdminOrdersPage() {
                   🖨️ พิมพ์ใบแปะหน้า (มีรายการแพ็ค)
                 </button>
               )}
+
+              {/* ออกใบเสร็จรับเงิน — เว็บออโต้, Shopee เปิดฟอร์มพิมพ์ยอด */}
+              <button onClick={() => openReceipt(selected)}
+                className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 border-2"
+                style={{ fontFamily: 'var(--font-display)', borderColor: '#2E75B6', color: '#2E75B6', background: '#F5F1EB' }}>
+                🧾 ออกใบเสร็จรับเงิน
+              </button>
 
               {/* Slip */}
               {selected.slip_url ? (

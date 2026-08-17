@@ -336,6 +336,18 @@ export default function AccountPage() {
   useEffect(() => { fetchOrders() }, [fetchOrders])
   useEffect(() => { fetchAddresses() }, [fetchAddresses])
 
+  // ดาวน์โหลดใบเสร็จรับเงิน (เฉพาะออเดอร์เว็บที่มียอด)
+  const downloadReceipt = async (orderId: string) => {
+    if (!user?.phone) return
+    const res = await fetch(
+      `${API}/my/receipt/${encodeURIComponent(orderId)}?phone=${encodeURIComponent(user.phone)}`,
+      { headers: authHeaders() })
+    if (onCustomerUnauthorized(res)) return
+    if (!res.ok) { alert('ยังออกใบเสร็จไม่ได้ในตอนนี้'); return }
+    const url = URL.createObjectURL(await res.blob())
+    window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 60000)
+  }
+
   // ISSUE 0: ยิง Purchase สำหรับออเดอร์ที่ "จ่ายสำเร็จแล้ว" เท่านั้น (ครอบคลุมเคส admin กดยืนยันเอง
   // ที่ลูกค้าไม่ได้อยู่หน้าอัปสลิป) — dedup ด้วย order_id กันยิงซ้ำ
   useEffect(() => {
@@ -617,6 +629,15 @@ export default function AccountPage() {
                           </div>
                           <SlipUploadInline orderId={o.order_id} onDone={() => fetchOrders()} />
                         </div>
+                      )}
+
+                      {/* ใบเสร็จรับเงิน — ออเดอร์เว็บที่ชำระแล้ว */}
+                      {(o.channel || 'web') === 'web' && o.total > 0 && o.status !== 'รอชำระเงิน' && (
+                        <button onClick={() => downloadReceipt(o.order_id)}
+                          className="mt-3 w-full py-2 rounded-xl border-2 text-xs font-mono font-bold transition-all active:scale-95"
+                          style={{ borderColor: '#2E75B6', color: '#2E75B6', background: '#F0F6FC' }}>
+                          🧾 ดาวน์โหลดใบเสร็จรับเงิน
+                        </button>
                       )}
                     </div>
                   </div>
