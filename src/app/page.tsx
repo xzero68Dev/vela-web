@@ -158,18 +158,19 @@ function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product;
 // Leaderboard teaser — แสดง top 3 คร่าวๆ พร้อมลิงก์ไปหน้า leaderboard เต็ม
 function LeaderboardTeaser() {
   const [top3,    setTop3]    = useState<any[]>([])
+  const [members, setMembers] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch(`${API}/leaderboard?limit=3`)
       .then(r => r.json())
-      .then(data => setTop3(data.results || []))
+      .then(data => { setTop3(data.results || []); setMembers(data.member_count || 0) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  // ถ้ายังไม่มีข้อมูลเลย หรือกำลังโหลด — ไม่ต้องแสดง section นี้เพื่อไม่ให้ดูว่างเปล่า
-  if (loading || top3.length === 0) return null
+  // แสดงตราบใดที่มีสมาชิก (จำนวนสมาชิก = social proof) แม้เดือนใหม่ยังไม่มีคนซื้อ
+  if (loading || (members === 0 && top3.length === 0)) return null
 
   const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
@@ -185,15 +186,32 @@ function LeaderboardTeaser() {
               </p>
               <span className="text-xs font-mono" style={{ color: '#854F0B' }}>ดูทั้งหมด →</span>
             </div>
-            <div className="space-y-1.5">
-              {top3.map(entry => (
-                <div key={entry.rank} className="flex items-center gap-2 text-sm">
-                  <span>{MEDAL[entry.rank]}</span>
-                  <span className="flex-1 truncate" style={{ color: '#3D1F0F' }}>{entry.customer || 'ลูกค้า VeLA'}</span>
-                  <span className="font-mono font-bold" style={{ color: '#D64B2A' }}>{entry.points} pt</span>
-                </div>
-              ))}
-            </div>
+
+            {members > 0 && (
+              <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                style={{ background: '#D4890A20' }}>
+                <span>👥</span>
+                <span className="text-sm font-mono" style={{ color: '#854F0B' }}>
+                  มีสมาชิกแล้ว <span className="font-black">{members.toLocaleString()}</span> คน
+                </span>
+              </div>
+            )}
+
+            {top3.length > 0 ? (
+              <div className="space-y-1.5">
+                {top3.map(entry => (
+                  <div key={entry.rank} className="flex items-center gap-2 text-sm">
+                    <span>{MEDAL[entry.rank]}</span>
+                    <span className="flex-1 truncate" style={{ color: '#3D1F0F' }}>{entry.customer || 'ลูกค้า VeLA'}</span>
+                    <span className="font-mono font-bold" style={{ color: '#D64B2A' }}>{entry.points} pt</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm" style={{ color: '#854F0B' }}>
+                เดือนนี้เพิ่งเริ่ม — สั่งเลยขึ้นอันดับ 1 ก่อนใคร! 🚀
+              </p>
+            )}
           </div>
         </Link>
       </div>

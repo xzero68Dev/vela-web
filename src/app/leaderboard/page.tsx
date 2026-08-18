@@ -11,6 +11,8 @@ type LeaderboardEntry = {
   points: number
 }
 
+type Period = 'month' | 'all'
+
 const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
 const MONTH_NAMES_TH = [
@@ -26,21 +28,25 @@ function formatThaiMonth(monthStr: string) {
 }
 
 export default function LeaderboardPage() {
+  const [period,  setPeriod]  = useState<Period>('month')
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [month,   setMonth]   = useState('')
+  const [members, setMembers] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState('')
 
   useEffect(() => {
-    fetch(`${API}/leaderboard?limit=10`)
+    setLoading(true); setError('')
+    fetch(`${API}/leaderboard?limit=20&period=${period}`)
       .then(r => r.json())
       .then(data => {
         setEntries(data.results || [])
         setMonth(data.month || '')
+        setMembers(data.member_count || 0)
       })
       .catch(() => setError('เชื่อมต่อไม่ได้ กรุณาลองใหม่'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [period])
 
   return (
     <main style={{ background: '#EDE8DF', minHeight: '100vh' }}>
@@ -60,22 +66,50 @@ export default function LeaderboardPage() {
       <div className="max-w-lg mx-auto px-5 py-10">
 
         {/* Title */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-5">
           <div className="text-5xl mb-3">🏆</div>
           <h1 className="text-4xl font-black uppercase leading-none mb-2"
             style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
             VeLA Ranking
           </h1>
           <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>
-            {month ? `ประจำเดือน ${formatThaiMonth(month)}` : 'จัดอันดับนักดื่มประจำเดือน'}
+            {period === 'all'
+              ? 'อันดับสะสมตลอดกาล'
+              : (month ? `ประจำเดือน ${formatThaiMonth(month)}` : 'จัดอันดับนักดื่มประจำเดือน')}
           </p>
+        </div>
+
+        {/* จำนวนสมาชิก — social proof */}
+        {members > 0 && (
+          <div className="flex justify-center mb-5">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border-2"
+              style={{ background: '#F5F1EB', borderColor: '#D4890A40' }}>
+              <span className="text-lg">👥</span>
+              <span className="text-sm font-mono" style={{ color: '#854F0B' }}>
+                สมาชิก VeLA แล้ว <span className="font-black text-base" style={{ color: '#D64B2A' }}>{members.toLocaleString()}</span> คน
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Toggle เดือนนี้ / ตลอดกาล */}
+        <div className="flex gap-2 mb-6 p-1 rounded-2xl" style={{ background: '#E4DBCB' }}>
+          {([['month', 'เดือนนี้'], ['all', 'ตลอดกาล']] as [Period, string][]).map(([val, label]) => (
+            <button key={val} onClick={() => setPeriod(val)}
+              className="flex-1 py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95"
+              style={period === val
+                ? { fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }
+                : { fontFamily: 'var(--font-display)', background: 'transparent', color: '#8C7B6E' }}>
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* How it works */}
         <div className="rounded-2xl border-2 px-5 py-4 mb-6" style={{ background: '#F5E6C0', borderColor: '#D4890A30' }}>
           <p className="text-xs leading-relaxed" style={{ color: '#854F0B' }}>
             💡 ทุก 100ml ที่ดื่ม = 1 point — เฉพาะออเดอร์ที่สั่งผ่านเว็บ velacoldbrew.com สะสมตามเบอร์โทร
-            อันดับรีเซ็ตใหม่ทุกเดือน
+            {period === 'all' ? ' · อันดับตลอดกาลนับสะสมทั้งหมด ไม่รีเซ็ต' : ' · อันดับเดือนรีเซ็ตใหม่ทุกเดือน'}
           </p>
         </div>
 
@@ -94,7 +128,9 @@ export default function LeaderboardPage() {
         ) : entries.length === 0 ? (
           <div className="text-center py-16 rounded-3xl border-2" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
             <VelaBunny size={48} className="mx-auto mb-4 opacity-30" />
-            <p className="text-sm mb-1" style={{ color: '#8C7B6E' }}>ยังไม่มีใครติดอันดับเดือนนี้</p>
+            <p className="text-sm mb-1" style={{ color: '#8C7B6E' }}>
+              {period === 'all' ? 'ยังไม่มีใครติดอันดับ' : 'ยังไม่มีใครติดอันดับเดือนนี้'}
+            </p>
             <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>สั่งซื้อตอนนี้เพื่อเป็นคนแรก!</p>
           </div>
         ) : (
