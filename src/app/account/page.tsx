@@ -673,7 +673,7 @@ export default function AccountPage() {
               )
             })()}
 
-            {/* จัดการที่อยู่ทั้งหมด */}
+            {/* จัดการที่อยู่ทั้งหมด — ต้องมีเบอร์โทรก่อน (ที่อยู่ผูกกับเบอร์) */}
             <div className="rounded-2xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
               <div className="px-4 py-3 border-b-2" style={{ borderColor: '#E0D9CE' }}>
                 <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
@@ -681,13 +681,22 @@ export default function AccountPage() {
                 </p>
               </div>
               <div className="p-4">
-                <AddressList
-                  addresses={addresses}
-                  phone={user?.phone || ''}
-                  customerId={user?.id}
-                  mode="manage"
-                  onRefresh={fetchAddresses}
-                />
+                {user?.phone ? (
+                  <AddressList
+                    addresses={addresses}
+                    phone={user.phone}
+                    customerId={user?.id}
+                    mode="manage"
+                    onRefresh={fetchAddresses}
+                  />
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm mb-1" style={{ color: '#8C7B6E' }}>ต้องมีเบอร์โทรก่อนถึงจะเพิ่มที่อยู่จัดส่งได้</p>
+                    <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>
+                      เบอร์จะถูกบันทึกอัตโนมัติหลังสั่งซื้อครั้งแรก
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
