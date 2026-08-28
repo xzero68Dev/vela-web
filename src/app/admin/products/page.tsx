@@ -17,12 +17,19 @@ type NewProduct = {
   sku: string; name: string; price: string; discount_pct: string
   flavor: string; roast: string; process: string; description: string
   image_url: string; active: boolean; in_stock: boolean
+  // เนื้อหาหน้าสินค้า (detail)
+  origin: string; tagline: string; highlights: string; howto: string
+  specs: string; storage: string; hashtags: string
+  bg: string; accent: string; dark: boolean
 }
 
 const BLANK_NEW: NewProduct = {
   sku: '', name: '', price: '', discount_pct: '0',
   flavor: '', roast: '', process: '', description: '',
   image_url: '', active: true, in_stock: true,
+  origin: '', tagline: '', highlights: '', howto: '',
+  specs: '', storage: '', hashtags: '',
+  bg: '', accent: '', dark: false,
 }
 
 const inputStyle = { borderColor: '#D8D0C5', background: '#EDE8DF', color: '#3D1F0F' }
@@ -109,6 +116,30 @@ export default function AdminProductsPage() {
     if (!newP.sku.trim() || !newP.name.trim()) { setMsg('❌ ต้องมี SKU และชื่อสินค้า'); return }
     const price = Number(newP.price)
     if (!price || price <= 0) { setMsg('❌ ใส่ราคาให้มากกว่า 0'); return }
+    // แปลงช่องข้อความเป็นโครงสร้าง detail (jsonb)
+    const highlights = newP.highlights.split('\n').map(s => s.trim()).filter(Boolean)
+    const specs = newP.specs.split('\n').map(line => {
+      const idx = line.indexOf(':')
+      if (idx < 0) return null
+      const label = line.slice(0, idx).trim()
+      const value = line.slice(idx + 1).trim()
+      return (label && value) ? { label, value } : null
+    }).filter(Boolean) as { label: string; value: string }[]
+    const hashtags = newP.hashtags.split(/[,\s]+/).map(s => s.replace(/^#/, '').trim()).filter(Boolean)
+    const detail = {
+      origin:      newP.origin.trim(),
+      tagline:     newP.tagline.trim(),
+      highlights,
+      description: newP.description.trim(),
+      howto:       newP.howto.trim(),
+      specs,
+      storage:     newP.storage.trim(),
+      hashtags,
+      bg:          newP.bg.trim(),
+      accent:      newP.accent.trim(),
+      dark:        newP.dark,
+    }
+
     setAdding(true); setMsg('')
     try {
       const res = await fetch(`${API}/admin/products/create`, {
@@ -126,6 +157,7 @@ export default function AdminProductsPage() {
           image_url:    newP.image_url.trim(),
           active:       newP.active,
           in_stock:     newP.in_stock,
+          detail,
         }),
       })
       if (!res.ok) {
@@ -265,6 +297,85 @@ export default function AdminProductsPage() {
                         className="w-full px-3 py-2 rounded-xl border-2 text-xs font-mono" style={inputStyle} />
                     </div>
                   </div>
+                </div>
+
+                {/* ── เนื้อหาหน้าสินค้า (detail) — ไม่บังคับ แต่ถ้าเป็นรสใหม่ควรกรอกให้ครบ ── */}
+                <div className="rounded-xl border-2 border-dashed p-3 space-y-3" style={{ borderColor: '#E0C8C0' }}>
+                  <p className="text-xs font-black uppercase" style={{ fontFamily: 'var(--font-display)', color: '#B8735A' }}>
+                    📄 เนื้อหาหน้าสินค้า (ถ้าเป็นรสใหม่ ควรกรอกให้ครบ)
+                  </p>
+
+                  <div>
+                    <label className={labelCls} style={labelStyle}>แหล่ง/บรรทัดสั้นใต้ชื่อ (origin)</label>
+                    <input type="text" value={newP.origin} onChange={e => setNew('origin', e.target.value)}
+                      placeholder="เช่น แม่จันใต้ · Arabica · Honey Process · คั่วกลาง"
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>tagline (บรรทัดเด่น)</label>
+                    <input type="text" value={newP.tagline} onChange={e => setNew('tagline', e.target.value)}
+                      placeholder="เช่น หอมผลไม้ เปรี้ยวเบา ๆ หวานปลาย ดื่มง่าย"
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>จุดเด่น <span style={{ color: '#C5BAB0' }}>(บรรทัดละ 1 ข้อ)</span></label>
+                    <textarea value={newP.highlights} onChange={e => setNew('highlights', e.target.value)} rows={4}
+                      placeholder={'หอมกลิ่นผลไม้ เปรี้ยวเบา ๆ\nดื่มง่าย ไลท์ ๆ สบายคอ\nเมล็ด Arabica แม่จันใต้'}
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>วิธีชง / ดื่ม</label>
+                    <textarea value={newP.howto} onChange={e => setNew('howto', e.target.value)} rows={2}
+                      placeholder="ผสมกาแฟ 1 ส่วน : น้ำหรือนม 1 ส่วน (1:1) ปรับได้ตามชอบ"
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>ตารางข้อมูลสินค้า <span style={{ color: '#C5BAB0' }}>(บรรทัดละ 1 แถว รูปแบบ "หัวข้อ: ค่า")</span></label>
+                    <textarea value={newP.specs} onChange={e => setNew('specs', e.target.value)} rows={5}
+                      placeholder={'ปริมาณ: 1,000 มล. (1 ลิตร)\nเมล็ดกาแฟ: Arabica บ้านแม่จันใต้\nกระบวนการ: Honey Process\nระดับคั่ว: คั่วกลาง\nอัตราส่วนชง: 1:1'}
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm font-mono" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>การเก็บรักษา</label>
+                    <textarea value={newP.storage} onChange={e => setNew('storage', e.target.value)} rows={2}
+                      placeholder="บรรจุในถุงฟอยล์ แช่เย็นทันทีหลังได้รับ เก็บได้ 1 เดือน"
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label className={labelCls} style={labelStyle}>hashtags <span style={{ color: '#C5BAB0' }}>(คั่นด้วยเว้นวรรคหรือจุลภาค)</span></label>
+                    <input type="text" value={newP.hashtags} onChange={e => setNew('hashtags', e.target.value)}
+                      placeholder="กาแฟ ColdBrew กาแฟแม่จันใต้ HoneyProcess"
+                      className="w-full px-3 py-2 rounded-xl border-2 text-sm font-mono" style={inputStyle} />
+                  </div>
+
+                  {/* สีธีมหน้าสินค้า */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls} style={labelStyle}>สีพื้นหลัง (bg)</label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={newP.bg || '#F5F1EB'} onChange={e => setNew('bg', e.target.value)}
+                          className="w-9 h-9 rounded-lg border-2 cursor-pointer" style={{ borderColor: '#D8D0C5' }} />
+                        <input type="text" value={newP.bg} onChange={e => setNew('bg', e.target.value)}
+                          placeholder="#F9D0DC"
+                          className="flex-1 px-3 py-2 rounded-xl border-2 text-xs font-mono" style={inputStyle} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelCls} style={labelStyle}>สีเน้น (accent)</label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={newP.accent || '#D64B2A'} onChange={e => setNew('accent', e.target.value)}
+                          className="w-9 h-9 rounded-lg border-2 cursor-pointer" style={{ borderColor: '#D8D0C5' }} />
+                        <input type="text" value={newP.accent} onChange={e => setNew('accent', e.target.value)}
+                          placeholder="#E05A7A"
+                          className="flex-1 px-3 py-2 rounded-xl border-2 text-xs font-mono" style={inputStyle} />
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => setNew('dark', !newP.dark)}
+                    className="text-xs px-3 py-1.5 rounded-lg font-mono transition-all"
+                    style={{ background: newP.dark ? '#3D1F0F' : '#EDE8DF', color: newP.dark ? '#EDE8DF' : '#8C7B6E', border: '1px solid #D8D0C5' }}>
+                    {newP.dark ? '🌙 พื้นเข้ม (ตัวอักษรสว่าง)' : '☀️ พื้นสว่าง (ตัวอักษรเข้ม)'}
+                  </button>
                 </div>
 
                 {/* เปิดขาย / มีของ */}

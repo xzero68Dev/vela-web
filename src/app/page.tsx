@@ -27,6 +27,8 @@ type Product = {
   in_stock?: boolean
   active: boolean
   sort_order: number
+  image_url?: string
+  detail?: { bg?: string; accent?: string; dark?: boolean }
 }
 
 type CartItem = { sku: string; qty: number; price: number; name: string; price_original?: number }
@@ -77,9 +79,18 @@ const SKU_META: Record<string, { bg: string; accent: string; img: string; dark: 
 
 function getBaseSku(sku: string) { return sku.replace('-200', '') }
 
+const _has = (v: any) => v !== undefined && v !== null && v !== ''
+
 function ProductCard({ product, onAdd, firstOrderDiscount }: { product: Product; onAdd: (p: Product) => void; firstOrderDiscount?: boolean }) {
   const baseSku = getBaseSku(product.sku)
-  const meta    = SKU_META[baseSku] || { bg: '#F5F1EB', accent: '#D64B2A', img: '', dark: false }
+  const hardMeta = SKU_META[baseSku]
+  // DB (image_url + detail สีธีม) ทับ ของเดิม — รองรับสินค้าใหม่ที่เพิ่มจาก admin
+  const meta = {
+    bg:     _has(product.detail?.bg) ? (product.detail!.bg as string) : (hardMeta?.bg ?? '#F5F1EB'),
+    accent: _has(product.detail?.accent) ? (product.detail!.accent as string) : (hardMeta?.accent ?? '#D64B2A'),
+    dark:   (typeof product.detail?.dark === 'boolean') ? product.detail.dark : (hardMeta?.dark ?? false),
+    img:    _has(product.image_url) ? (product.image_url as string) : (hardMeta?.img ?? ''),
+  }
   // แสดงราคาปกติ (หลังลด 30%) เสมอ — ส่วนลดลูกค้าใหม่ 50% (เพดาน ฿130) คิดระดับบิลตอน checkout
   const effectivePrice = product.price_discounted || product.price
   const soldOut = product.in_stock === false   // ยังโชว์บนเว็บ แต่สั่งไม่ได้

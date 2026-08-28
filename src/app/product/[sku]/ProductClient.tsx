@@ -3,21 +3,31 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { fbTrack } from '@/lib/fbpixel'
-import { SKU_META, SKU_DETAIL, resolveSku } from '@/lib/products-data'
+import { SKU_META, SKU_DETAIL } from '@/lib/products-data'
 
+type Spec = { label: string; value: string }
+type ProductDetail = {
+  name?: string; tagline?: string; origin?: string
+  highlights?: string[]; description?: string; howto?: string
+  specs?: Spec[]; storage?: string; hashtags?: string[]
+  bg?: string; accent?: string; dark?: boolean
+}
 type Product = {
   id: number; sku: string; name: string; description: string
   flavor: string; roast: string; process: string
   price: number; price_original: number; price_discounted: number; price_shopee: number
   discount_pct: number; stock: number; in_stock?: boolean; active: boolean; sort_order: number
+  image_url?: string; detail?: ProductDetail
 }
+
+const DEFAULT_ACCENT = '#D64B2A'
+const DEFAULT_BG     = '#F5F1EB'
+const has = (v: any) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)
 
 export default function ProductClient({ sku }: { sku: string }) {
   const { user } = useAuth()
-  const rawSku  = resolveSku(sku)
-  const meta    = SKU_META[rawSku]
-  const detail  = SKU_DETAIL[rawSku]
-  const isDark  = meta.dark
+  // ไม่บังคับ collapse เป็น ORIGINAL อีกต่อไป — รองรับ SKU ใหม่ที่มาจาก DB ล้วน
+  const rawSku = (sku || '').toUpperCase().replace('-200', '')
 
   const [products,   setProducts]   = useState<Product[]>([])
   const [sizeOption, setSizeOption] = useState<'1L' | '200ml'>('1L')
@@ -66,11 +76,37 @@ export default function ProductClient({ sku }: { sku: string }) {
   const current = sizeOption === '200ml' && prod200 ? prod200 : prod1L
   const soldOut = current?.in_stock === false   // ขนาดที่เลือกนี้หมด (แต่ละขนาดเช็คแยก)
 
+  // ── รวมข้อมูลหน้าสินค้า: DB (detail/image_url) ทับ ของเดิมใน products-data.ts เป็น fallback ──
+  const hardMeta   = SKU_META[rawSku]
+  const hardDetail = SKU_DETAIL[rawSku] as any
+  const dd: ProductDetail = (prod1L?.detail && typeof prod1L.detail === 'object') ? prod1L.detail : {}
+  const pick = (k: keyof ProductDetail, fb: any) =>
+    has((dd as any)[k]) ? (dd as any)[k] : (hardDetail && has(hardDetail[k]) ? hardDetail[k] : fb)
+
+  const meta = {
+    bg:     has(dd.bg) ? (dd.bg as string) : (hardMeta?.bg ?? DEFAULT_BG),
+    accent: has(dd.accent) ? (dd.accent as string) : (hardMeta?.accent ?? DEFAULT_ACCENT),
+    dark:   (typeof dd.dark === 'boolean') ? dd.dark : (hardMeta?.dark ?? false),
+    img:    has(prod1L?.image_url) ? (prod1L!.image_url as string) : (hardMeta?.img ?? ''),
+  }
+  const detail = {
+    name:        pick('name', prod1L?.name || rawSku),
+    tagline:     pick('tagline', ''),
+    origin:      pick('origin', ''),
+    highlights:  (pick('highlights', []) as string[]),
+    description: pick('description', prod1L?.description || ''),
+    howto:       pick('howto', ''),
+    specs:       (pick('specs', []) as Spec[]),
+    storage:     pick('storage', ''),
+    hashtags:    (pick('hashtags', []) as string[]),
+  }
+  const isDark    = meta.dark
+  const textColor = isDark ? '#EDE8DF' : '#3D1F0F'
+
   // ราคาปกติ (หลังลด 30%) — ส่วนลดลูกค้าใหม่ 50% เพดาน ฿130 คิดระดับบิลตอน checkout
-  const price      = current?.price_discounted || current?.price || 0
-  const origPrice  = current?.price_original || current?.price || 0
-  const discPct    = current?.discount_pct || 0
-  const textColor  = isDark ? '#EDE8DF' : '#3D1F0F'
+  const price     = current?.price_discounted || current?.price || 0
+  const origPrice = current?.price_original || current?.price || 0
+  const discPct   = current?.discount_pct || 0
 
   const handleAddToCart = () => {
     if (!current || soldOut) return
@@ -113,6 +149,14 @@ export default function ProductClient({ sku }: { sku: string }) {
     </div>
   )
 
+  // ไม่พบสินค้า (ไม่มีทั้งใน DB และ products-data.ts) — กันหน้าเพี้ยน/ราคา ฿0
+  if (!current) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6" style={{ background: '#EDE8DF' }}>
+      <p className="font-black text-lg" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>ไม่พบสินค้านี้</p>
+      <Link href="/" className="text-sm font-mono px-4 py-2 rounded-xl" style={{ background: '#D64B2A', color: '#EDE8DF' }}>← กลับร้าน</Link>
+    </div>
+  )
+
   return (
     <main style={{ background: '#EDE8DF', minHeight: '100vh' }}>
 
@@ -129,8 +173,14 @@ export default function ProductClient({ sku }: { sku: string }) {
         <div className="max-w-5xl mx-auto px-5 pb-12 grid md:grid-cols-2 gap-8 items-center">
           {/* Image */}
           <div className="flex justify-center order-first md:order-last relative">
-            <img src={meta.img} alt={detail.name}
-              className="w-64 h-64 md:w-80 md:h-80 object-contain drop-shadow-2xl animate-float" />
+            {meta.img
+              ? <img src={meta.img} alt={detail.name}
+                  className="w-64 h-64 md:w-80 md:h-80 object-contain drop-shadow-2xl animate-float" />
+              : <div className="w-64 h-64 md:w-80 md:h-80 rounded-3xl flex items-center justify-center"
+                  style={{ background: meta.accent + '22' }}>
+                  <span className="text-6xl font-black uppercase" style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>{rawSku.slice(0, 2)}</span>
+                </div>
+            }
             {firstOrderDiscount && (
               <span className="absolute bottom-2 right-2 text-xs font-black px-3 py-1 rounded-full shadow-md"
                 style={{ background: '#D64B2A', color: '#EDE8DF', fontFamily: 'var(--font-display)' }}>
@@ -151,10 +201,14 @@ export default function ProductClient({ sku }: { sku: string }) {
             <p className="text-sm font-semibold mb-1 leading-snug" style={{ color: textColor, fontFamily: 'var(--font-body)' }}>
               {detail.name}
             </p>
-            <p className="text-xs font-mono mb-3 opacity-60" style={{ color: textColor }}>{detail.origin}</p>
-            <p className="text-base mb-6 leading-relaxed" style={{ color: textColor, fontFamily: 'var(--font-body)' }}>
-              {detail.tagline}
-            </p>
+            {detail.origin && (
+              <p className="text-xs font-mono mb-3 opacity-60" style={{ color: textColor }}>{detail.origin}</p>
+            )}
+            {detail.tagline && (
+              <p className="text-base mb-6 leading-relaxed" style={{ color: textColor, fontFamily: 'var(--font-body)' }}>
+                {detail.tagline}
+              </p>
+            )}
 
             {/* Size selector */}
             {prod200 && (
@@ -238,79 +292,91 @@ export default function ProductClient({ sku }: { sku: string }) {
       <div className="max-w-5xl mx-auto px-5 py-10">
 
         {/* จุดเด่น */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-black uppercase mb-4"
-            style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>จุดเด่น</h2>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {detail.highlights.map((h, i) => (
-              <div key={i} className="flex items-start gap-3 rounded-2xl border-2 px-4 py-3"
-                style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
-                <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
-                  style={{ background: meta.accent, color: '#EDE8DF' }}>✓</span>
-                <p className="text-sm leading-relaxed" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>{h}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {detail.highlights.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-2xl font-black uppercase mb-4"
+              style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>จุดเด่น</h2>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {detail.highlights.map((h, i) => (
+                <div key={i} className="flex items-start gap-3 rounded-2xl border-2 px-4 py-3"
+                  style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+                    style={{ background: meta.accent, color: '#EDE8DF' }}>✓</span>
+                  <p className="text-sm leading-relaxed" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>{h}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* รายละเอียดสินค้า */}
-        <section className="mb-8 rounded-3xl border-2 p-6" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
-          <h2 className="text-xl font-black uppercase mb-3"
-            style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>รายละเอียดสินค้า</h2>
-          <p className="text-sm leading-relaxed" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>
-            {detail.description}
-          </p>
-        </section>
+        {detail.description && (
+          <section className="mb-8 rounded-3xl border-2 p-6" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+            <h2 className="text-xl font-black uppercase mb-3"
+              style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>รายละเอียดสินค้า</h2>
+            <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>
+              {detail.description}
+            </p>
+          </section>
+        )}
 
         {/* วิธีชง/ดื่ม + ข้อมูลสินค้า */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <section className="rounded-3xl border-2 p-6" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
-            <h2 className="text-xl font-black uppercase mb-3"
-              style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>วิธีชง / ดื่ม</h2>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>
-              {detail.howto}
-            </p>
-            <div className="rounded-2xl px-4 py-3" style={{ background: meta.bg + '80' }}>
-              <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>
-                ⏱ สกัดเย็นนานกว่า 20 ชั่วโมง · ไม่มีสารปรุงแต่ง · ไม่มีน้ำตาล
+        {(detail.howto || detail.specs.length > 0) && (
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            {detail.howto && (
+              <section className="rounded-3xl border-2 p-6" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                <h2 className="text-xl font-black uppercase mb-3"
+                  style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>วิธีชง / ดื่ม</h2>
+                <p className="text-sm leading-relaxed mb-4 whitespace-pre-line" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>
+                  {detail.howto}
+                </p>
+                <div className="rounded-2xl px-4 py-3" style={{ background: meta.bg + '80' }}>
+                  <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>
+                    ⏱ สกัดเย็นนานกว่า 20 ชั่วโมง · ไม่มีสารปรุงแต่ง · ไม่มีน้ำตาล
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {detail.specs.length > 0 && (
+              <section className="rounded-3xl border-2 p-6" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+                <h2 className="text-xl font-black uppercase mb-3"
+                  style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>ข้อมูลสินค้า</h2>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {detail.specs.map((s, i) => (
+                      <tr key={`${s.label}-${i}`} style={{ background: i % 2 ? 'transparent' : '#EDE8DF80' }}>
+                        <td className="py-2 px-3 font-mono align-top whitespace-nowrap" style={{ color: '#8C7B6E', width: '38%' }}>{s.label}</td>
+                        <td className="py-2 px-3 align-top" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>{s.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+          </div>
+        )}
+
+        {/* การเก็บรักษา */}
+        {detail.storage && (
+          <section className="mb-10 rounded-3xl border-2 p-6 flex items-start gap-4"
+            style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+            <span className="text-2xl flex-shrink-0">🧊</span>
+            <div>
+              <h2 className="text-xl font-black uppercase mb-2"
+                style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>การเก็บรักษา</h2>
+              <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>
+                {detail.storage}
               </p>
             </div>
           </section>
-
-          <section className="rounded-3xl border-2 p-6" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
-            <h2 className="text-xl font-black uppercase mb-3"
-              style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>ข้อมูลสินค้า</h2>
-            <table className="w-full text-sm">
-              <tbody>
-                {detail.specs.map((s, i) => (
-                  <tr key={s.label} style={{ background: i % 2 ? 'transparent' : '#EDE8DF80' }}>
-                    <td className="py-2 px-3 font-mono align-top whitespace-nowrap" style={{ color: '#8C7B6E', width: '38%' }}>{s.label}</td>
-                    <td className="py-2 px-3 align-top" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>{s.value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        </div>
-
-        {/* การเก็บรักษา */}
-        <section className="mb-10 rounded-3xl border-2 p-6 flex items-start gap-4"
-          style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
-          <span className="text-2xl flex-shrink-0">🧊</span>
-          <div>
-            <h2 className="text-xl font-black uppercase mb-2"
-              style={{ fontFamily: 'var(--font-display)', color: meta.accent }}>การเก็บรักษา</h2>
-            <p className="text-sm leading-relaxed" style={{ color: '#3D1F0F', fontFamily: 'var(--font-body)' }}>
-              {detail.storage}
-            </p>
-          </div>
-        </section>
+        )}
 
         {/* Hashtags */}
         {detail.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-12">
-            {detail.hashtags.map(tag => (
-              <span key={tag} className="text-xs font-mono px-3 py-1 rounded-full"
+            {detail.hashtags.map((tag, i) => (
+              <span key={`${tag}-${i}`} className="text-xs font-mono px-3 py-1 rounded-full"
                 style={{ background: '#F5F1EB', border: '1px solid #E0D9CE', color: '#8C7B6E' }}>#{tag}</span>
             ))}
           </div>
@@ -323,17 +389,26 @@ export default function ProductClient({ sku }: { sku: string }) {
               style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>รสอื่น ๆ</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {products.filter(p => !p.sku.includes('-200') && p.sku !== rawSku).map(p => {
-                const mm = SKU_META[p.sku] || SKU_META['ORIGINAL']
+                const pm = SKU_META[p.sku]
+                const mmBg     = has(p.detail?.bg) ? (p.detail!.bg as string) : (pm?.bg ?? DEFAULT_BG)
+                const mmAccent = has(p.detail?.accent) ? (p.detail!.accent as string) : (pm?.accent ?? DEFAULT_ACCENT)
+                const mmDark   = (typeof p.detail?.dark === 'boolean') ? p.detail.dark : (pm?.dark ?? false)
+                const mmImg    = has(p.image_url) ? (p.image_url as string) : (pm?.img ?? '')
                 return (
                   <Link key={p.sku} href={`/product/${p.sku}`}
                     className="rounded-2xl overflow-hidden border-2 transition-all hover:shadow-md active:scale-95"
-                    style={{ borderColor: '#E0D9CE', background: mm.bg }}>
-                    <img src={mm.img} alt={p.name} className="w-full aspect-square object-contain p-3" />
+                    style={{ borderColor: '#E0D9CE', background: mmBg }}>
+                    {mmImg
+                      ? <img src={mmImg} alt={p.name} className="w-full aspect-square object-contain p-3" />
+                      : <div className="w-full aspect-square flex items-center justify-center">
+                          <span className="text-3xl font-black uppercase" style={{ fontFamily: 'var(--font-display)', color: mmAccent }}>{p.sku.slice(0, 2)}</span>
+                        </div>
+                    }
                     <div className="px-3 pb-3">
-                      <p className="font-black text-sm uppercase" style={{ fontFamily: 'var(--font-display)', color: mm.accent }}>
+                      <p className="font-black text-sm uppercase" style={{ fontFamily: 'var(--font-display)', color: mmAccent }}>
                         {p.sku}
                       </p>
-                      <p className="font-mono text-xs" style={{ color: mm.dark ? '#C5BAB0' : '#8C7B6E' }}>฿{p.price_discounted || p.price}</p>
+                      <p className="font-mono text-xs" style={{ color: mmDark ? '#C5BAB0' : '#8C7B6E' }}>฿{p.price_discounted || p.price}</p>
                     </div>
                   </Link>
                 )
@@ -345,7 +420,7 @@ export default function ProductClient({ sku }: { sku: string }) {
 
       {/* Floating cart */}
       {cartCount > 0 && (
-        <Link href={`/checkout?cart=${encodeURIComponent(localStorage.getItem('vela_cart') || '[]')}`}
+        <Link href={`/checkout?cart=${encodeURIComponent(typeof window !== 'undefined' ? (localStorage.getItem('vela_cart') || '[]') : '[]')}`}
           className="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl shadow-lg font-black uppercase text-sm transition-all active:scale-95"
           style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
           🛒 ({cartCount}) · ฿{cartTotal.toLocaleString()}
