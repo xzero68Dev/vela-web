@@ -11,6 +11,7 @@ const SB_KEY    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 type Product = {
   id: number; sku: string; name: string; flavor: string; roast: string; process: string
   price: number; price_discounted: number; discount_pct: number; active: boolean; in_stock: boolean; sort_order: number
+  image_url?: string
 }
 
 type NewProduct = {
@@ -47,7 +48,7 @@ export default function AdminProductsPage() {
   const [showAdd,     setShowAdd]     = useState(false)
   const [newP,        setNewP]        = useState<NewProduct>(BLANK_NEW)
   const [adding,      setAdding]      = useState(false)
-  const [imgUploading, setImgUploading] = useState(false)
+  const [uploadingImg, setUploadingImg] = useState<number | 'new' | null>(null)
 
   const fetchProducts = useCallback(async () => {
     // show_all=1 → เห็นสินค้าที่ปิดขายด้วย จะได้กดเปิดกลับได้ (ไม่หายจากหน้า admin)
@@ -88,28 +89,28 @@ export default function AdminProductsPage() {
   const setNew = (field: keyof NewProduct, value: any) =>
     setNewP(prev => ({ ...prev, [field]: value }))
 
-  // อัปโหลดรูปสินค้าไป Supabase Storage bucket "products" (public) — แบบเดียวกับสลิป
-  const uploadImage = async (file: File) => {
+  // อัปโหลดรูปสินค้าไป Supabase Storage bucket "products" (public) — ใช้ได้ทั้งเพิ่มใหม่และแก้ของเดิม
+  const uploadImage = async (file: File, base: string, tag: number | 'new', onUrl: (url: string) => void) => {
     if (!file) return
     if (!SB_URL || !SB_KEY) { setMsg('❌ ยังไม่ได้ตั้งค่า Supabase (ใช้ช่องวางลิงก์แทนได้)'); return }
-    setImgUploading(true); setMsg('')
+    setUploadingImg(tag); setMsg('')
     try {
       const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase()
       const rand = (crypto?.randomUUID?.() || `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '')
-      const base = (newP.sku || 'product').replace(/[^a-zA-Z0-9_-]/g, '') || 'product'
-      const path = `${base}-${Date.now()}-${rand}.${ext}`
+      const b    = (base || 'product').replace(/[^a-zA-Z0-9_-]/g, '') || 'product'
+      const path = `${b}-${Date.now()}-${rand}.${ext}`
       const upRes = await fetch(`${SB_URL}/storage/v1/object/products/${path}`, {
         method: 'POST',
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type },
         body: file,
       })
       if (!upRes.ok) throw new Error('upload failed')
-      setNew('image_url', `${SB_URL}/storage/v1/object/public/products/${path}`)
+      onUrl(`${SB_URL}/storage/v1/object/public/products/${path}`)
       setMsg('✅ อัปโหลดรูปแล้ว')
       setTimeout(() => setMsg(''), 2000)
     } catch {
-      setMsg('❌ อัปโหลดรูปไม่สำเร็จ — ต้องมี bucket "products" แบบ public ใน Supabase (หรือวางลิงก์รูปแทน)')
-    } finally { setImgUploading(false) }
+      setMsg('❌ อัปโหลดรูปไม่สำเร็จ — เช็ค bucket "products" (public) + policy อัปโหลด หรือวางลิงก์รูปแทน')
+    } finally { setUploadingImg(null) }
   }
 
   const submitNew = async () => {
@@ -287,10 +288,10 @@ export default function AdminProductsPage() {
                       <label className="block">
                         <span className="inline-block text-xs font-mono px-3 py-2 rounded-xl border-2 cursor-pointer transition-all active:scale-95"
                           style={{ borderColor: '#D8D0C5', background: '#EDE8DF', color: '#3D1F0F' }}>
-                          {imgUploading ? 'กำลังอัปโหลด...' : '📎 อัปโหลดรูป'}
+                          {uploadingImg === 'new' ? 'กำลังอัปโหลด...' : '📎 อัปโหลดรูป'}
                         </span>
                         <input type="file" accept="image/*" className="hidden"
-                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f) }} />
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f, newP.sku, 'new', url => setNew('image_url', url)) }} />
                       </label>
                       <input type="text" value={newP.image_url} onChange={e => setNew('image_url', e.target.value)}
                         placeholder="หรือวางลิงก์รูป https://..."
@@ -393,7 +394,7 @@ export default function AdminProductsPage() {
                 </div>
 
                 {/* ปุ่มเพิ่ม */}
-                <button onClick={submitNew} disabled={adding || imgUploading}
+                <button onClick={submitNew} disabled={adding || uploadingImg === 'new'}
                   className="w-full py-2.5 rounded-xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
                   style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
                   {adding ? 'กำลังเพิ่ม...' : '✓ เพิ่มสินค้า'}
@@ -497,6 +498,35 @@ export default function AdminProductsPage() {
                       onChange={e => handleEdit(p.id, 'process', e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border-2 text-sm"
                       style={{ borderColor: '#D8D0C5', background: '#EDE8DF', color: '#3D1F0F' }} />
+                  </div>
+                </div>
+
+                {/* รูปสินค้า — อัปโหลด หรือ วางลิงก์ */}
+                <div>
+                  <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>รูปสินค้า</label>
+                  <div className="flex items-start gap-3">
+                    {(val(p, 'image_url') as string) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={val(p, 'image_url') as string} alt="preview" className="w-16 h-16 rounded-xl object-cover border-2" style={{ borderColor: '#D8D0C5' }} />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl border-2 border-dashed flex items-center justify-center text-xl" style={{ borderColor: '#D8D0C5', color: '#C5BAB0' }}>🖼️</div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <label className="block">
+                        <span className="inline-block text-xs font-mono px-3 py-2 rounded-xl border-2 cursor-pointer transition-all active:scale-95"
+                          style={{ borderColor: '#D8D0C5', background: '#EDE8DF', color: '#3D1F0F' }}>
+                          {uploadingImg === p.id ? 'กำลังอัปโหลด...' : '📎 อัปโหลดรูป'}
+                        </span>
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(f, p.sku, p.id, url => handleEdit(p.id, 'image_url', url)) }} />
+                      </label>
+                      <input type="text"
+                        value={val(p, 'image_url') as string || ''}
+                        onChange={e => handleEdit(p.id, 'image_url', e.target.value)}
+                        placeholder="หรือวางลิงก์รูป https://..."
+                        className="w-full px-3 py-2 rounded-xl border-2 text-xs font-mono"
+                        style={{ borderColor: '#D8D0C5', background: '#EDE8DF', color: '#3D1F0F' }} />
+                    </div>
                   </div>
                 </div>
 
