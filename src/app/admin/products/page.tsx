@@ -89,7 +89,9 @@ export default function AdminProductsPage() {
   const setNew = (field: keyof NewProduct, value: any) =>
     setNewP(prev => ({ ...prev, [field]: value }))
 
-  // อัปโหลดรูปสินค้าไป Supabase Storage bucket "products" (public) — ใช้ได้ทั้งเพิ่มใหม่และแก้ของเดิม
+  // อัปโหลดรูปสินค้าไป Supabase Storage — ใช้ bucket "slips" ที่ public + อัปโหลดได้อยู่แล้ว (ไม่ต้องตั้ง bucket ใหม่)
+  // ตั้งชื่อไฟล์ขึ้นต้น product- เพื่อแยกจากสลิปในโฟลเดอร์เดียวกัน
+  const IMG_BUCKET = 'slips'
   const uploadImage = async (file: File, base: string, tag: number | 'new', onUrl: (url: string) => void) => {
     if (!file) return
     if (!SB_URL || !SB_KEY) { setMsg('❌ ยังไม่ได้ตั้งค่า Supabase (ใช้ช่องวางลิงก์แทนได้)'); return }
@@ -98,18 +100,18 @@ export default function AdminProductsPage() {
       const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase()
       const rand = (crypto?.randomUUID?.() || `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '')
       const b    = (base || 'product').replace(/[^a-zA-Z0-9_-]/g, '') || 'product'
-      const path = `${b}-${Date.now()}-${rand}.${ext}`
-      const upRes = await fetch(`${SB_URL}/storage/v1/object/products/${path}`, {
+      const path = `product-${b}-${Date.now()}-${rand}.${ext}`
+      const upRes = await fetch(`${SB_URL}/storage/v1/object/${IMG_BUCKET}/${path}`, {
         method: 'POST',
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type },
         body: file,
       })
       if (!upRes.ok) throw new Error('upload failed')
-      onUrl(`${SB_URL}/storage/v1/object/public/products/${path}`)
+      onUrl(`${SB_URL}/storage/v1/object/public/${IMG_BUCKET}/${path}`)
       setMsg('✅ อัปโหลดรูปแล้ว')
       setTimeout(() => setMsg(''), 2000)
     } catch {
-      setMsg('❌ อัปโหลดรูปไม่สำเร็จ — เช็ค bucket "products" (public) + policy อัปโหลด หรือวางลิงก์รูปแทน')
+      setMsg('❌ อัปโหลดรูปไม่สำเร็จ — ลองใหม่ หรือวางลิงก์รูปแทน')
     } finally { setUploadingImg(null) }
   }
 
