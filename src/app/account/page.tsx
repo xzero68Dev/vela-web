@@ -236,7 +236,39 @@ function SlipUploadInline({ orderId, onDone }: { orderId: string; onDone: () => 
 }
 
 export default function AccountPage() {
-  const { user, logout, updateProfile } = useAuth()
+  const { user, logout, updateProfile, setUser } = useAuth()
+  // เพิ่มเบอร์โทรให้ลูกค้า LINE จากหน้าโปรไฟล์ (ผูกเข้าบัญชี LINE ผ่าน /customers/profile)
+  const [newPhone,     setNewPhone]     = useState('')
+  const [bindingPhone, setBindingPhone] = useState(false)
+  const [bindError,    setBindError]    = useState('')
+
+  const bindPhone = async () => {
+    const clean = newPhone.replace(/\D/g, '')
+    if (clean.length < 9 || clean.length > 10) { setBindError('กรุณาใส่เบอร์โทรให้ครบ (9–10 หลัก)'); return }
+    setBindingPhone(true); setBindError('')
+    try {
+      const res = await fetch(`${API}/customers/profile`, {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          line_user_id: user?.line_user_id,
+          phone:        clean,
+          display_name: user?.display_name,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail || 'บันทึกเบอร์ไม่สำเร็จ ลองใหม่อีกครั้ง')
+      if (data.token) setAuthToken(data.token)
+      if (data.customer) {
+        localStorage.setItem('vela_user', JSON.stringify(data.customer))
+        window.dispatchEvent(new StorageEvent('storage', { key: 'vela_user' }))
+        setUser(data.customer)
+      }
+      setNewPhone('')
+    } catch (e: any) {
+      setBindError(e.message)
+    } finally { setBindingPhone(false) }
+  }
   const [orders,    setOrders]    = useState<any[]>([])
   const [shipments, setShipments] = useState<Record<string, any>>({})
   const [loading,   setLoading]   = useState(false)
@@ -690,10 +722,22 @@ export default function AccountPage() {
                     onRefresh={fetchAddresses}
                   />
                 ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm mb-1" style={{ color: '#8C7B6E' }}>ต้องมีเบอร์โทรก่อนถึงจะเพิ่มที่อยู่จัดส่งได้</p>
-                    <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>
-                      เบอร์จะถูกบันทึกอัตโนมัติหลังสั่งซื้อครั้งแรก
+                  <div className="space-y-2">
+                    <p className="text-sm" style={{ color: '#8C7B6E' }}>ใส่เบอร์โทรเพื่อรับส่วนลดลูกค้าใหม่ 50% + เพิ่มที่อยู่จัดส่งได้</p>
+                    <input value={newPhone}
+                      onChange={e => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="เบอร์โทรศัพท์ (เช่น 0812345678)"
+                      type="tel" inputMode="numeric"
+                      className="w-full px-4 py-3 rounded-2xl border-2 text-sm font-mono"
+                      style={{ borderColor: '#D8D0C5', background: '#EDE8DF', color: '#3D1F0F' }} />
+                    {bindError && <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>{bindError}</p>}
+                    <button onClick={bindPhone} disabled={bindingPhone}
+                      className="w-full py-3 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 disabled:opacity-40"
+                      style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+                      {bindingPhone ? 'กำลังบันทึก...' : 'บันทึกเบอร์โทร'}
+                    </button>
+                    <p className="text-xs font-mono text-center" style={{ color: '#C5BAB0' }}>
+                      เบอร์นี้ผูกกับบัญชี LINE ของคุณ ใช้เก็บแต้ม/ที่อยู่/ประวัติสั่งซื้อ
                     </p>
                   </div>
                 )}
