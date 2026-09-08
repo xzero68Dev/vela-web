@@ -4,10 +4,11 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_ADMIN_PASS: process.env.NEXT_PUBLIC_ADMIN_PASS,
   },
-  // กัน 404 จากลิงก์เก่า/พิมพ์ผิดที่ใช้ /products (พหูพจน์) → เด้งเข้า /product (เอกพจน์)
+  // redirect เฉพาะ /products/<sku> ที่ไม่มีจุด (ไม่ใช่ไฟล์รูป) → /product/<sku>
+  // ([^./]+) กันไม่ให้ดักไฟล์รูปใน public/products/*.png (ไม่งั้นรูปสินค้าหายหมด)
   async redirects() {
     return [
-      { source: '/products/:path*', destination: '/product/:path*', permanent: true },
+      { source: '/products/:sku([^./]+)', destination: '/product/:sku', permanent: true },
     ]
   },
 }
