@@ -19,6 +19,7 @@ export default function AdminNav() {
     { href: '/admin/customers', label: 'ลูกค้า' },
     { href: '/admin/accounting', label: 'บัญชี' },
     { href: '/admin/upload',   label: 'Import Excel' },
+    { href: '/admin/import-shipping', label: 'นำเข้าเลขแทรก' },
     { href: '/admin/products', label: 'สินค้า' },
   ]
 
