@@ -84,6 +84,17 @@ export default async function ProductPage({ params }: { params: { sku: string } 
     availability: s.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
     priceValidUntil,
     seller: { '@type': 'Organization', name: 'VeLA Cold Brew' },
+    // ส่งฟรีทั่วไทย — เคลียร์ warning shipping ใน Merchant listings
+    shippingDetails: {
+      '@type': 'OfferShippingDetails',
+      shippingRate: { '@type': 'MonetaryAmount', value: '0', currency: 'THB' },
+      shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'TH' },
+      deliveryTime: {
+        '@type': 'ShippingDeliveryTime',
+        handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY' },
+        transitTime:  { '@type': 'QuantitativeValue', minValue: 1, maxValue: 3, unitCode: 'DAY' },
+      },
+    },
   }
   if (s.price > 0) offer.price = String(s.price)
 
@@ -97,6 +108,12 @@ export default async function ProductPage({ params }: { params: { sku: string } 
     brand: { '@type': 'Brand', name: 'VeLA Cold Brew' },
     category: 'Cold Brew Coffee',
     offers: offer,
+    // กาแฟสด (สินค้าบริโภค) — ไม่รับคืน เคลียร์ warning return policy ใน Merchant listings
+    hasMerchantReturnPolicy: {
+      '@type': 'MerchantReturnPolicy',
+      applicableCountry: 'TH',
+      returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+    },
   }
 
   const breadcrumbLd = {
