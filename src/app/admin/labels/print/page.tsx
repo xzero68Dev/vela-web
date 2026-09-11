@@ -61,23 +61,38 @@ function Label({ order, ship }: { order: any; ship?: any }) {
   useEffect(() => {
     const el = itemsRef.current
     if (!el) return
-    const fit = () => {
-      const shrink = () => {
-        let s = 1, g = 0
-        el.style.setProperty('--isz', '1')
-        while (el.scrollHeight > el.clientHeight + 1 && s > 0.5 && g < 30) {
-          s -= 0.05; el.style.setProperty('--isz', s.toFixed(2)); g++
-        }
-        return el.scrollHeight <= el.clientHeight + 1
+    // ย่อขนาดจนพอดี — ย่อได้ลึกถึง 0.3 (30%) เพื่อ "การันตี" ว่ารายการเยอะแค่ไหนก็ไม่โดนตัดหาย
+    const shrink = (min: number) => {
+      let s = 1, g = 0
+      el.style.setProperty('--isz', '1')
+      while (el.scrollHeight > el.clientHeight + 1 && s > min && g < 80) {
+        s = Math.round((s - 0.02) * 100) / 100
+        el.style.setProperty('--isz', s.toFixed(2)); g++
       }
-      el.classList.remove('twocol')
-      if (!shrink()) { el.classList.add('twocol'); shrink() }  // ยังล้น → 2 คอลัมน์แล้วย่อซ้ำ
+      return el.scrollHeight <= el.clientHeight + 1
     }
+    const fit = () => {
+      el.classList.remove('twocol')
+      if (shrink(0.55)) return                             // 1 คอลัมน์พอ
+      el.classList.add('twocol'); if (shrink(0.4)) return  // 2 คอลัมน์
+      shrink(0.3)                                          // ยังไม่พอ → ย่อสุดทาง (ครบทุกรายการมาก่อนความสวย)
+    }
+    let done = false
     const raf = requestAnimationFrame(fit)
-    const t = setTimeout(fit, 500)                             // เผื่อบาร์โค้ด/QR โหลดช้าแล้ว layout ขยับ
+    const t = setTimeout(fit, 500)                         // เผื่อบาร์โค้ด/QR โหลดช้าแล้ว layout ขยับ
+    // สำคัญ: รอฟอนต์ Sarabun โหลดจริงก่อนวัด (ไม่งั้นวัดตอนฟอนต์ยังเล็ก → พอโหลดจริงล้น → โดนตัดหาย)
+    const f: any = (document as any).fonts
+    if (f?.ready) f.ready.then(() => { if (!done) fit() })
+    // การันตีสุดท้าย: re-fit ทันทีก่อนพิมพ์ (sync) — กันเคสจอกับกระดาษ layout ต่างกัน
+    const onBeforePrint = () => fit()
+    window.addEventListener('beforeprint', onBeforePrint)
     const ro = new ResizeObserver(() => requestAnimationFrame(fit))
     const sheet = el.closest('.sheet'); if (sheet) ro.observe(sheet)
-    return () => { cancelAnimationFrame(raf); clearTimeout(t); ro.disconnect() }
+    return () => {
+      done = true
+      cancelAnimationFrame(raf); clearTimeout(t); ro.disconnect()
+      window.removeEventListener('beforeprint', onBeforePrint)
+    }
   }, [order.order_id, order.sku])
 
   return (
