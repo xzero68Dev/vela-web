@@ -35,6 +35,7 @@ export default function AdminPage() {
   const [loadingCust, setLoadingCust] = useState(false)
   const [filter,    setFilter]    = useState<'pending' | 'all'>('pending')
   const [updated,   setUpdated]   = useState('')
+  const [cancelling, setCancelling] = useState('')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -69,6 +70,23 @@ export default function AdminPage() {
       await new Promise(r => setTimeout(r, 4000))
       await fetchData()
     } finally { setChecking(false) }
+  }
+
+  // เคลียร์เลขพัสดุที่ค้าง (ลูกค้ายกเลิกใน Shopee ฯลฯ) → mark ยกเลิก + is_done=true
+  const cancelShipment = async (barcode: string) => {
+    if (!window.confirm(`เคลียร์เลขพัสดุ ${barcode}?\n(จะถูกทำเป็น "ยกเลิก" และหลุดจากรายการที่ต้องเช็ค)`)) return
+    setCancelling(barcode)
+    try {
+      const res = await fetch(`${API}/shipments/cancel`, {
+        method: 'POST',
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ barcodes: [barcode] }),
+      })
+      if (!res.ok) { alert('เคลียร์ไม่สำเร็จ: ' + (await res.text())); return }
+      await fetchData()
+    } catch (e: any) {
+      alert('เชื่อมต่อไม่ได้: ' + (e?.message || ''))
+    } finally { setCancelling('') }
   }
 
   if (!ready) return null
@@ -146,8 +164,8 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '2px solid #E0D9CE' }}>
-                  {['Tracking', 'สถานะ', 'ตำแหน่งล่าสุด', 'เช็คล่าสุด'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-mono uppercase tracking-wider"
+                  {['Tracking', 'สถานะ', 'ตำแหน่งล่าสุด', 'เช็คล่าสุด', ''].map((h, hi) => (
+                    <th key={hi} className="px-4 py-3 text-left text-xs font-mono uppercase tracking-wider"
                       style={{ color: '#C5BAB0' }}>{h}</th>
                   ))}
                 </tr>
@@ -174,6 +192,16 @@ export default function AdminPage() {
                       {s.last_checked_at
                         ? new Date(s.last_checked_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
                         : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {!s.is_done && (
+                        <button onClick={() => cancelShipment(s.barcode)} disabled={cancelling === s.barcode}
+                          className="px-3 py-1.5 rounded-lg text-xs font-mono border-2 transition-all active:scale-95 disabled:opacity-40 whitespace-nowrap"
+                          style={{ borderColor: '#D64B2A40', color: '#D64B2A' }}
+                          title="ลูกค้ายกเลิก/เลขค้าง — เคลียร์ออกจากรายการที่ต้องเช็ค">
+                          {cancelling === s.barcode ? '...' : 'เคลียร์'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
