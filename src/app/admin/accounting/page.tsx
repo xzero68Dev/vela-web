@@ -26,6 +26,31 @@ export default function AdminAccountingPage() {
   const [paidOnly, setPaidOnly] = useState(true)
   const [tick,    setTick]    = useState(0)
   const [busy,    setBusy]    = useState(false)
+  const [editVal, setEditVal] = useState<Record<string, string>>({})   // order_id → ค่าส่งที่กำลังพิมพ์
+  const [savingId, setSavingId] = useState('')
+
+  // บันทึกค่าส่งของออเดอร์เว็บ → อัปเดต accounting.shipping + net_profit ใหม่
+  const saveShipping = async (order_id: string) => {
+    const raw = editVal[order_id]
+    if (raw === undefined || raw === '') return
+    const val = Number(raw)
+    if (isNaN(val) || val < 0) { alert('ค่าส่งไม่ถูกต้อง'); return }
+    setSavingId(order_id)
+    try {
+      const res = await fetch(`${API}/admin/accounting/set-shipping`, {
+        method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ order_id, shipping: val }),
+      })
+      if (onAdminUnauthorized(res)) return
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { alert('บันทึกไม่สำเร็จ: ' + (data.detail || res.status)); return }
+      // อัปเดตแถวในตารางทันที ไม่ต้องรีโหลดทั้งหน้า
+      setRows(rs => rs.map(r => r.order_id === order_id
+        ? { ...r, shipping: data.shipping, net_profit: data.net_profit } : r))
+      setEditVal(e => { const c = { ...e }; delete c[order_id]; return c })
+    } catch { alert('เชื่อมต่อไม่ได้') }
+    finally { setSavingId('') }
+  }
 
   const backfill = async () => {
     if (!confirm('คำนวณต้นทุน/กำไรย้อนหลังให้ออเดอร์เว็บที่ยังไม่มี?\n(ออเดอร์ที่คำนวณไว้แล้วจะไม่ถูกแตะ)')) return
@@ -153,7 +178,22 @@ export default function AdminAccountingPage() {
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{baht(r.revenue)}</td>
                       <td className="px-3 py-2 font-mono whitespace-nowrap" style={{ color: '#8C7B6E' }}>{baht(r.coffee_cost)}</td>
                       <td className="px-3 py-2 font-mono whitespace-nowrap" style={{ color: '#8C7B6E' }}>{baht(r.packaging)}</td>
-                      <td className="px-3 py-2 font-mono whitespace-nowrap" style={{ color: '#8C7B6E' }}>{baht(r.shipping)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <span style={{ color: '#8C7B6E' }}>฿</span>
+                          <input
+                            type="number" min="0" step="1"
+                            value={editVal[r.order_id] ?? (r.shipping != null ? String(r.shipping) : '')}
+                            placeholder={r.shipping != null ? '' : '0'}
+                            onChange={e => setEditVal(v => ({ ...v, [r.order_id]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                            onBlur={() => { if (editVal[r.order_id] !== undefined) saveShipping(r.order_id) }}
+                            disabled={savingId === r.order_id}
+                            className="w-16 px-1.5 py-1 rounded-lg border-2 text-xs font-mono disabled:opacity-50"
+                            style={{ background: '#fff', borderColor: editVal[r.order_id] !== undefined ? '#D64B2A' : '#D8D0C5', color: '#3D1F0F' }} />
+                          {savingId === r.order_id && <span className="text-xs" style={{ color: '#C5BAB0' }}>...</span>}
+                        </div>
+                      </td>
                       <td className="px-3 py-2 font-mono font-bold whitespace-nowrap" style={{ color: n(r.net_profit) >= 0 ? '#1A6B3C' : '#D64B2A' }}>{baht(r.net_profit)}</td>
                     </tr>
                   ))}
@@ -164,7 +204,7 @@ export default function AdminAccountingPage() {
               </table>
             </div>
             <p className="text-xs font-mono mt-3" style={{ color: '#C5BAB0' }}>
-              * รายรับ = ยอดที่ลูกค้าจ่ายจริง · ต้นทุนกาแฟ/แพ็กเกจคำนวณจากสูตรร้าน · ค่าส่งอัปเดตเมื่อใส่เลขพัสดุ · กำไรสุทธิ = รายรับ − กาแฟ − แพ็กเกจ − ค่าส่ง
+              * รายรับ = ยอดที่ลูกค้าจ่ายจริง · ต้นทุนกาแฟ/แพ็กเกจคำนวณจากสูตรร้าน · <b>ค่าส่ง</b> กรอกได้เองในช่อง (กด Enter หรือคลิกออกเพื่อบันทึก) กำไรสุทธิจะคำนวณใหม่อัตโนมัติ · กำไรสุทธิ = รายรับ − กาแฟ − แพ็กเกจ − ค่าส่ง
             </p>
           </>
         )}
