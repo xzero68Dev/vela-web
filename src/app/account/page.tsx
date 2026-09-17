@@ -271,6 +271,26 @@ export default function AccountPage() {
   }
   const [orders,    setOrders]    = useState<any[]>([])
   const [shipments, setShipments] = useState<Record<string, any>>({})
+  const [deletingId, setDeletingId] = useState('')
+
+  // ลบออเดอร์ค้างชำระของตัวเอง (เช่น สั่งซ้ำ) — ยืนยัน/ชำระแล้วลบไม่ได้ (backend กันอีกชั้น)
+  const deleteOrder = async (orderId: string) => {
+    if (!user?.phone) return
+    if (!window.confirm(`ลบออเดอร์ ${orderId}?\nลบได้เฉพาะออเดอร์ที่ยังไม่ได้ชำระ — ลบแล้วกู้คืนไม่ได้`)) return
+    setDeletingId(orderId)
+    try {
+      const res = await fetch(`${API}/my/order/${encodeURIComponent(orderId)}?phone=${encodeURIComponent(user.phone)}`,
+        { method: 'DELETE', headers: authHeaders() })
+      if (onCustomerUnauthorized(res)) return
+      if (!res.ok) {
+        let d = ''; try { d = (await res.json()).detail || '' } catch {}
+        alert(d || 'ลบไม่สำเร็จ')
+        return
+      }
+      setOrders(os => os.filter(o => o.order_id !== orderId))
+    } catch { alert('เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง') }
+    finally { setDeletingId('') }
+  }
   const [loading,   setLoading]   = useState(false)
   const [tab,       setTab]       = useState<'orders' | 'profile'>('orders')
   const [myRank,      setMyRank]      = useState<{ rank: number; points: number } | null>(null)
@@ -660,6 +680,13 @@ export default function AccountPage() {
                             )}
                           </div>
                           <SlipUploadInline orderId={o.order_id} onDone={() => fetchOrders()} />
+
+                          {/* ลบออเดอร์ค้างชำระ (เช่น สั่งซ้ำ) — ยืนยันแล้วลบไม่ได้ */}
+                          <button onClick={() => deleteOrder(o.order_id)} disabled={deletingId === o.order_id}
+                            className="w-full py-2 rounded-xl border-2 text-xs font-mono transition-all active:scale-95 disabled:opacity-50"
+                            style={{ borderColor: '#D8C5C0', color: '#B0655A', background: 'transparent' }}>
+                            {deletingId === o.order_id ? 'กำลังลบ...' : '🗑 ลบออเดอร์นี้ (ยังไม่ได้ชำระ)'}
+                          </button>
                         </div>
                       )}
 
