@@ -292,7 +292,11 @@ export default function AccountPage() {
     finally { setDeletingId('') }
   }
   const [loading,   setLoading]   = useState(false)
-  const [tab,       setTab]       = useState<'orders' | 'profile'>('orders')
+  const [tab,       setTab]       = useState<'orders' | 'profile' | 'referral'>('orders')
+  // เปิดแท็บแนะนำเพื่อนถ้ามาจาก /referral (?tab=referral)
+  useEffect(() => {
+    try { if (new URLSearchParams(window.location.search).get('tab') === 'referral') setTab('referral') } catch {}
+  }, [])
   const [myRank,      setMyRank]      = useState<{ rank: number; points: number } | null>(null)
   const [rankMonth,   setRankMonth]   = useState('')
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
@@ -550,16 +554,20 @@ export default function AccountPage() {
 
           {/* Tabs */}
           <div className="flex gap-2 mb-5 flex-wrap">
-            {(['orders', 'profile'] as const).map(t => (
+            {(['orders', 'profile', 'referral'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className="px-4 py-2 rounded-xl border-2 text-xs font-mono uppercase tracking-wider transition-all"
                 style={tab === t
                   ? { background: '#D64B2A', color: '#EDE8DF', borderColor: '#D64B2A' }
                   : { background: 'transparent', color: '#8C7B6E', borderColor: '#D8D0C5' }}>
-                {t === 'orders' ? `ประวัติสั่งซื้อ ${orders.length > 0 ? `(${orders.length})` : ''}` : 'ข้อมูลส่วนตัว'}
+                {t === 'orders' ? `ประวัติสั่งซื้อ ${orders.length > 0 ? `(${orders.length})` : ''}`
+                  : t === 'profile' ? 'ข้อมูลส่วนตัว' : 'แนะนำเพื่อน'}
               </button>
           ))}
         </div>
+
+        {/* Referral dashboard */}
+        {tab === 'referral' && <ReferralTab phone={user.phone} lineUserId={user.line_user_id} />}
 
         {/* Orders */}
         {tab === 'orders' && (
@@ -820,5 +828,150 @@ export default function AccountPage() {
         )}
       </div>
     </main>
+  )
+}
+
+
+// ============================================================
+//  แท็บแนะนำเพื่อน (referral dashboard) — ไม่โชว์ PII ลูกค้า (PDPA)
+// ============================================================
+function ReferralTab({ phone, lineUserId }: { phone?: string; lineUserId?: string }) {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [pp, setPp] = useState('')
+  const [err, setErr] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!phone) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/referral/me?phone=${encodeURIComponent(phone)}`, { headers: authHeaders() })
+      if (onCustomerUnauthorized(res)) return
+      const d = await res.json().catch(() => ({}))
+      setData(d)
+    } catch {} finally { setLoading(false) }
+  }, [phone])
+  useEffect(() => { load() }, [load])
+
+  const register = async () => {
+    setErr(''); setBusy(true)
+    try {
+      const res = await fetch(`${API}/referral/register`, {
+        method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ phone, line_user_id: lineUserId, promptpay: pp || phone }),
+      })
+      if (onCustomerUnauthorized(res)) return
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { setErr(d.detail || 'สมัครไม่สำเร็จ'); return }
+      await load()
+    } catch { setErr('เชื่อมต่อไม่ได้') } finally { setBusy(false) }
+  }
+
+  const copy = () => { try { navigator.clipboard.writeText(data?.link || ''); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch {} }
+  const lineShare = () => {
+    const msg = `ลองกาแฟสกัดเย็น VeLA ดูสิ 🐰 สั่งผ่านลิงก์นี้ลด 50% ออเดอร์แรกเลย ${data?.link || ''}`
+    window.open(`https://line.me/R/share?text=${encodeURIComponent(msg)}`, '_blank')
+  }
+
+  const baht = (v: any) => `฿${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  const KIND: Record<string, string> = { commission: 'คอม 10%', bonus_first5: 'โบนัสคนใหม่', reversal: 'คืนคอม' }
+  const ST: Record<string, { t: string; c: string }> = {
+    pending: { t: 'รอครบ 7 วัน', c: '#8B5E00' }, confirmed: { t: 'รอโอน', c: '#1A5C8F' },
+    paid: { t: 'โอนแล้ว', c: '#1A6B3C' }, reversed: { t: 'ยกเลิก', c: '#C5BAB0' },
+  }
+
+  if (loading) return <p className="text-sm font-mono py-8 text-center" style={{ color: '#C5BAB0' }}>กำลังโหลด...</p>
+  if (!phone) return (
+    <div className="rounded-2xl border-2 px-5 py-10 text-center" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+      <p className="text-sm" style={{ color: '#8C7B6E' }}>ใส่เบอร์โทรก่อนเพื่อรับลิงก์แนะนำเพื่อน</p>
+    </div>
+  )
+
+  // ยังไม่สมัคร → CTA สมัคร
+  if (!data?.is_referrer) return (
+    <div className="rounded-3xl border-2 p-5" style={{ background: '#F5F1EB', borderColor: '#D64B2A' }}>
+      <p className="font-black text-lg mb-1" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>รับรายได้จากการแนะนำเพื่อน</p>
+      <p className="text-xs mb-4" style={{ color: '#8C7B6E' }}>เพื่อนสั่งผ่านลิงก์คุณ → คุณได้ 10% ทุกออเดอร์ ตลอด 12 เดือน (เพื่อนก็ได้ลด 50% ออเดอร์แรก)</p>
+      <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>PromptPay รับเงิน (เว้นว่าง = ใช้เบอร์ {phone})</label>
+      <input value={pp} onChange={e => setPp(e.target.value)} inputMode="numeric" placeholder={phone}
+        className="w-full px-3 py-2 rounded-xl border-2 text-sm font-mono mb-3" style={{ background: '#EDE8DF', borderColor: '#D8D0C5', color: '#3D1F0F' }} />
+      {err && <p className="text-xs font-mono mb-2" style={{ color: '#D64B2A' }}>{err}</p>}
+      <button onClick={register} disabled={busy}
+        className="w-full py-3 rounded-2xl font-black uppercase text-sm active:scale-95 disabled:opacity-50"
+        style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
+        {busy ? 'กำลังสร้างลิงก์...' : 'รับลิงก์ของฉันเลย — ฟรี'}
+      </button>
+    </div>
+  )
+
+  // สมัครแล้ว → dashboard
+  return (
+    <div className="space-y-4">
+      {/* ลิงก์ + แชร์ */}
+      <div className="rounded-3xl border-2 p-4" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+        <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>ลิงก์ของคุณ</p>
+        <div className="rounded-xl border-2 px-3 py-2 mb-3 break-all text-xs font-mono" style={{ background: '#EDE8DF', borderColor: '#E0D9CE', color: '#3D1F0F' }}>{data.link}</div>
+        <div className="flex gap-2">
+          <button onClick={copy} className="flex-1 py-2.5 rounded-2xl font-black uppercase text-xs active:scale-95"
+            style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>{copied ? '✓ ก๊อปแล้ว' : '📋 ก๊อปลิงก์'}</button>
+          <button onClick={lineShare} className="flex-1 py-2.5 rounded-2xl font-black uppercase text-xs active:scale-95"
+            style={{ fontFamily: 'var(--font-display)', background: '#06C755', color: '#fff' }}>แชร์ LINE</button>
+        </div>
+      </div>
+
+      {/* ตัวเลข */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          ['คลิกสะสม', String(data.clicks ?? 0), '#8C7B6E'],
+          ['ลูกค้าที่ผูกแล้ว', String(data.active_customers ?? 0), '#3D1F0F'],
+          ['คอมเดือนนี้', baht(data.month_commission), '#1A6B3C'],
+          ['รอโอน', baht(data.unpaid_total), '#D64B2A'],
+        ].map(([l, v, c]) => (
+          <div key={l} className="rounded-2xl border-2 p-3 text-center" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+            <p className="font-black text-xl" style={{ fontFamily: 'var(--font-display)', color: c as string }}>{v}</p>
+            <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>{l}</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs font-mono text-center" style={{ color: '#C5BAB0' }}>
+        จ่ายแล้วสะสม {baht(data.paid_total)} · โอนสิ้นเดือนขั้นต่ำ {baht(data.min_payout)}
+      </p>
+
+      {/* รายการล่าสุด */}
+      <div className="rounded-2xl border-2 overflow-hidden" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs" style={{ color: '#3D1F0F', minWidth: 420 }}>
+            <thead>
+              <tr style={{ background: '#E8E4DE' }}>
+                {['วันที่', 'ลูกค้า', 'ยอดออเดอร์', 'คอม', 'สถานะ'].map(h => (
+                  <th key={h} className="text-left px-3 py-2 font-mono" style={{ color: '#8C7B6E' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(data.recent || []).map((e: any, i: number) => {
+                const st = ST[e.status] || { t: e.status, c: '#8C7B6E' }
+                return (
+                  <tr key={i} style={{ borderTop: '1px solid #E0D9CE' }}>
+                    <td className="px-3 py-2 font-mono">{e.date}</td>
+                    <td className="px-3 py-2">{e.customer}</td>
+                    <td className="px-3 py-2 font-mono" style={{ color: '#8C7B6E' }}>{e.kind === 'commission' ? baht(e.base) : '-'}</td>
+                    <td className="px-3 py-2 font-mono font-bold" style={{ color: e.commission < 0 ? '#D64B2A' : '#1A6B3C' }}>
+                      {baht(e.commission)} <span className="font-normal" style={{ color: '#C5BAB0' }}>{KIND[e.kind] || ''}</span>
+                    </td>
+                    <td className="px-3 py-2"><span className="font-mono" style={{ color: st.c }}>{st.t}</span></td>
+                  </tr>
+                )
+              })}
+              {(!data.recent || data.recent.length === 0) && (
+                <tr><td colSpan={5} className="px-3 py-6 text-center font-mono" style={{ color: '#C5BAB0' }}>ยังไม่มีรายการ — แชร์ลิงก์ให้เพื่อนเลย!</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   )
 }
