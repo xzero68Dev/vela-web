@@ -542,8 +542,6 @@ export default function HomeClient() {
 
       {/* Footer */}
       <footer className="py-8 text-center text-xs font-mono" style={{ color: '#C5BAB0', background: '#EDE8DF' }}>
-        <Link href="/referral" className="hover:opacity-70" style={{ color: '#8C7B6E' }}>แนะนำเพื่อน</Link>
-        <span className="mx-2">·</span>
         VeLA Cold Brew Coffee © {new Date().getFullYear()}
       </footer>
 

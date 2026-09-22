@@ -289,10 +289,6 @@ export default function TrackPage() {
                 style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
                 ช้อปเลย
               </Link>
-              {/* จุดเชื่อม referral (1 ใน 3) */}
-              <Link href="/referral" className="block text-center text-xs font-mono mt-3 hover:opacity-70" style={{ color: '#D64B2A' }}>
-                ชอบ VeLA? แนะนำเพื่อน รับ 10% ทุกออเดอร์ →
-              </Link>
             </div>
           </>
         )}

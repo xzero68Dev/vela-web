@@ -15,6 +15,8 @@ type Customer = {
   vip_discount_pct: number
   first_order_used: boolean
   has_line: boolean
+  is_referrer?: boolean
+  ref_code?: string | null
   created_at: string
 }
 
@@ -24,6 +26,7 @@ export default function CustomersPage() {
   const [rows, setRows]     = useState<Customer[]>([])
   const [loading, setLoad]  = useState(true)
   const [saving, setSaving] = useState<number | null>(null)
+  const [refBusy, setRefBusy] = useState<number | null>(null)
   const [backfilling, setBackfilling] = useState(false)
   const [draft, setDraft]   = useState<Record<number, number>>({})
   const [msg, setMsg]       = useState('')
@@ -60,6 +63,25 @@ export default function CustomersPage() {
     } catch (e: unknown) {
       setMsg(`✗ ${e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'}`)
     } finally { setSaving(null) }
+  }
+
+  const makeReferrer = async (c: Customer) => {
+    if (!c.phone) { setMsg('✗ ลูกค้าคนนี้ยังไม่มีเบอร์โทร'); return }
+    if (!confirm(`ตั้ง ${c.name || c.display_name || c.phone} เป็นผู้แนะนำ?\nระบบจะออกลิงก์ referral ให้`)) return
+    setRefBusy(c.id); setMsg('')
+    try {
+      const res = await fetch(`${API}/admin/referral/add-referrer`, {
+        method: 'POST',
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ phone: c.phone }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.detail || 'error')
+      setRows(rs => rs.map(r => r.id === c.id ? { ...r, is_referrer: true, ref_code: d.ref_code } : r))
+      setMsg(`✓ ตั้งผู้แนะนำแล้ว — ลิงก์: ${d.link}`)
+    } catch (e: unknown) {
+      setMsg(`✗ ${e instanceof Error ? e.message : 'ไม่สำเร็จ'}`)
+    } finally { setRefBusy(null) }
   }
 
   const backfillPoints = async () => {
@@ -157,6 +179,18 @@ export default function CustomersPage() {
                       background: changed ? '#1C7A46' : '#E0DAD0', color: changed ? '#fff' : '#9C9388' }}>
                     {saving === c.id ? '...' : 'บันทึก'}
                   </button>
+                  {c.is_referrer ? (
+                    <span title={c.ref_code || ''} style={{ fontSize: 11, fontWeight: 800, color: '#1C7A46',
+                      background: '#E6F4EA', border: '1px solid #A9D6BB', borderRadius: 6, padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                      ผู้แนะนำ · {c.ref_code || ''}
+                    </span>
+                  ) : (
+                    <button onClick={() => makeReferrer(c)} disabled={refBusy === c.id || !c.phone}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '2px solid #D64B2A', fontWeight: 700, fontSize: 12,
+                        cursor: c.phone ? 'pointer' : 'default', background: '#FFF5F3', color: '#D64B2A', whiteSpace: 'nowrap' }}>
+                      {refBusy === c.id ? '...' : '+ ผู้แนะนำ'}
+                    </button>
+                  )}
                 </div>
               </div>
             )

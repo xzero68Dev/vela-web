@@ -293,10 +293,22 @@ export default function AccountPage() {
   }
   const [loading,   setLoading]   = useState(false)
   const [tab,       setTab]       = useState<'orders' | 'profile' | 'referral'>('orders')
-  // เปิดแท็บแนะนำเพื่อนถ้ามาจาก /referral (?tab=referral)
+  const [isReferrer, setIsReferrer] = useState(false)   // เฟส invite-only: แท็บโชว์เฉพาะผู้แนะนำที่แอดมินเพิ่ม
+  // เช็คสถานะผู้แนะนำ + เปิดแท็บถ้ามาจากลิงก์ (?tab=referral)
   useEffect(() => {
-    try { if (new URLSearchParams(window.location.search).get('tab') === 'referral') setTab('referral') } catch {}
-  }, [])
+    if (!user?.phone) { setIsReferrer(false); return }
+    let ok = true
+    fetch(`${API}/referral/me?phone=${encodeURIComponent(user.phone)}`, { headers: authHeaders() })
+      .then(r => (onCustomerUnauthorized(r) ? null : (r.ok ? r.json() : null)))
+      .then(d => {
+        if (!ok) return
+        const ref = !!(d && d.is_referrer)
+        setIsReferrer(ref)
+        try { if (ref && new URLSearchParams(window.location.search).get('tab') === 'referral') setTab('referral') } catch {}
+      })
+      .catch(() => {})
+    return () => { ok = false }
+  }, [user?.phone])
   const [myRank,      setMyRank]      = useState<{ rank: number; points: number } | null>(null)
   const [rankMonth,   setRankMonth]   = useState('')
   const [totalPoints, setTotalPoints] = useState<number | null>(null)
@@ -554,7 +566,7 @@ export default function AccountPage() {
 
           {/* Tabs */}
           <div className="flex gap-2 mb-5 flex-wrap">
-            {(['orders', 'profile', 'referral'] as const).map(t => (
+            {(['orders', 'profile', ...(isReferrer ? ['referral'] as const : [])] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className="px-4 py-2 rounded-xl border-2 text-xs font-mono uppercase tracking-wider transition-all"
                 style={tab === t
@@ -566,8 +578,8 @@ export default function AccountPage() {
           ))}
         </div>
 
-        {/* Referral dashboard */}
-        {tab === 'referral' && <ReferralTab phone={user.phone} lineUserId={user.line_user_id} />}
+        {/* Referral dashboard — เฉพาะผู้แนะนำ */}
+        {tab === 'referral' && isReferrer && <ReferralTab phone={user.phone} />}
 
         {/* Orders */}
         {tab === 'orders' && (
@@ -835,12 +847,9 @@ export default function AccountPage() {
 // ============================================================
 //  แท็บแนะนำเพื่อน (referral dashboard) — ไม่โชว์ PII ลูกค้า (PDPA)
 // ============================================================
-function ReferralTab({ phone, lineUserId }: { phone?: string; lineUserId?: string }) {
+function ReferralTab({ phone }: { phone?: string }) {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
-  const [pp, setPp] = useState('')
-  const [err, setErr] = useState('')
   const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
@@ -854,20 +863,6 @@ function ReferralTab({ phone, lineUserId }: { phone?: string; lineUserId?: strin
     } catch {} finally { setLoading(false) }
   }, [phone])
   useEffect(() => { load() }, [load])
-
-  const register = async () => {
-    setErr(''); setBusy(true)
-    try {
-      const res = await fetch(`${API}/referral/register`, {
-        method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ phone, line_user_id: lineUserId, promptpay: pp || phone }),
-      })
-      if (onCustomerUnauthorized(res)) return
-      const d = await res.json().catch(() => ({}))
-      if (!res.ok) { setErr(d.detail || 'สมัครไม่สำเร็จ'); return }
-      await load()
-    } catch { setErr('เชื่อมต่อไม่ได้') } finally { setBusy(false) }
-  }
 
   const copy = () => { try { navigator.clipboard.writeText(data?.link || ''); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch {} }
   const lineShare = () => {
@@ -889,20 +884,11 @@ function ReferralTab({ phone, lineUserId }: { phone?: string; lineUserId?: strin
     </div>
   )
 
-  // ยังไม่สมัคร → CTA สมัคร
+  // ยังไม่ใช่ผู้แนะนำ (เฟส invite-only) — ไม่มีปุ่มสมัครเอง
   if (!data?.is_referrer) return (
-    <div className="rounded-3xl border-2 p-5" style={{ background: '#F5F1EB', borderColor: '#D64B2A' }}>
-      <p className="font-black text-lg mb-1" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>รับรายได้จากการแนะนำเพื่อน</p>
-      <p className="text-xs mb-4" style={{ color: '#8C7B6E' }}>เพื่อนสั่งผ่านลิงก์คุณ → คุณได้ 10% ทุกออเดอร์ ตลอด 12 เดือน (เพื่อนก็ได้ลด 50% ออเดอร์แรก)</p>
-      <label className="block text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>PromptPay รับเงิน (เว้นว่าง = ใช้เบอร์ {phone})</label>
-      <input value={pp} onChange={e => setPp(e.target.value)} inputMode="numeric" placeholder={phone}
-        className="w-full px-3 py-2 rounded-xl border-2 text-sm font-mono mb-3" style={{ background: '#EDE8DF', borderColor: '#D8D0C5', color: '#3D1F0F' }} />
-      {err && <p className="text-xs font-mono mb-2" style={{ color: '#D64B2A' }}>{err}</p>}
-      <button onClick={register} disabled={busy}
-        className="w-full py-3 rounded-2xl font-black uppercase text-sm active:scale-95 disabled:opacity-50"
-        style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
-        {busy ? 'กำลังสร้างลิงก์...' : 'รับลิงก์ของฉันเลย — ฟรี'}
-      </button>
+    <div className="rounded-3xl border-2 p-5 text-center" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
+      <p className="font-black text-base mb-1" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>โปรแกรมแนะนำเพื่อน</p>
+      <p className="text-xs" style={{ color: '#8C7B6E' }}>ตอนนี้เปิดเฉพาะผู้ที่ได้รับเชิญ — สนใจร่วมโปรแกรม ทักไลน์ร้านได้เลยค่ะ 🐰</p>
     </div>
   )
 
