@@ -21,6 +21,7 @@ export default function AdminNav() {
     { href: '/admin/upload',   label: 'Import Excel' },
     { href: '/admin/import-shipping', label: 'นำเข้าเลขแทรก' },
     { href: '/admin/products', label: 'สินค้า' },
+    { href: '/admin/referral', label: 'คอมแนะนำ' },
   ]
 
   return (
