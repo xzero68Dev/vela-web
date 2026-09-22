@@ -21,7 +21,8 @@ function StatBox({ big, small }: { big: string; small: string }) {
 
 export default function ReferralPage() {
   const [n, setN] = useState(10)
-  const perMonth = useMemo(() => n * PER, [n])
+  const [rep, setRep] = useState(3)                 // ลูกค้าสั่งซ้ำต่อเดือน (ปกติ 3-4 รอบ)
+  const perMonth = useMemo(() => n * rep * PER, [n, rep])
   const perYear = perMonth * 12
 
   return (
@@ -49,10 +50,16 @@ export default function ReferralPage() {
 
         {/* เครื่องคำนวณสไลเดอร์ */}
         <section className="rounded-3xl border-2 p-5 mb-8" style={{ background: C.card, borderColor: C.line }}>
-          <p className="text-sm font-bold mb-1" style={{ color: C.ink }}>ลองคำนวณรายได้</p>
-          <p className="text-xs font-mono mb-4" style={{ color: C.muted }}>เพื่อนที่สั่งประจำผ่านคุณ: <b style={{ color: C.accent }}>{n} คน</b></p>
+          <p className="text-sm font-bold mb-4" style={{ color: C.ink }}>ลองคำนวณรายได้</p>
+
+          <p className="text-xs font-mono mb-2" style={{ color: C.muted }}>เพื่อนที่สั่งประจำผ่านคุณ: <b style={{ color: C.accent }}>{n} คน</b></p>
           <input type="range" min={1} max={50} value={n} onChange={e => setN(Number(e.target.value))}
             className="w-full mb-4" style={{ accentColor: C.accent }} />
+
+          <p className="text-xs font-mono mb-2" style={{ color: C.muted }}>แต่ละคนสั่งซ้ำ: <b style={{ color: C.accent }}>{rep} ครั้ง/เดือน</b> <span style={{ color: C.faint }}>(ลูกค้า VeLA ปกติ 3-4 ครั้ง/เดือน)</span></p>
+          <input type="range" min={1} max={8} value={rep} onChange={e => setRep(Number(e.target.value))}
+            className="w-full mb-4" style={{ accentColor: C.accent }} />
+
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl p-3 text-center" style={{ background: C.bg }}>
               <p className="font-black text-2xl" style={{ fontFamily: 'var(--font-display)', color: C.green }}>฿{perMonth.toLocaleString()}</p>
@@ -64,7 +71,7 @@ export default function ReferralPage() {
             </div>
           </div>
           <p className="text-xs font-mono mt-3 text-center" style={{ color: C.faint }}>
-            ตัวอย่างการคำนวณ — รายได้จริงขึ้นกับยอดสั่งจริง
+            คิดจากยอดเฉลี่ย ฿{AOV}/ออเดอร์ × 10% = ฿{PER}/ออเดอร์ · ตัวอย่างการคำนวณ รายได้จริงขึ้นกับยอดสั่งจริง
           </p>
         </section>
 
@@ -73,9 +80,9 @@ export default function ReferralPage() {
           <p className="text-sm font-bold mb-3" style={{ color: C.ink }}>ทำงานยังไง</p>
           <div className="space-y-2">
             {[
-              ['1', 'ได้รับลิงก์', 'ทางร้านเชิญและออกลิงก์ส่วนตัวให้คุณ'],
+              ['1', 'ได้รับลิงก์ส่วนตัว', 'ทางร้านเชิญและเปิดสิทธิ์ให้ — เข้า “บัญชีของฉัน → แนะนำเพื่อน” จะเห็นลิงก์ กดก๊อปหรือแชร์ LINE ได้เลย'],
               ['2', 'แชร์ลิงก์ของคุณ', 'เพื่อนกดลิงก์แล้วสั่ง — เพื่อนได้ลด 50% ออเดอร์แรกด้วย'],
-              ['3', 'รับรายได้', 'ทุกออเดอร์ของเพื่อน คุณได้ 10% ตลอด 12 เดือน'],
+              ['3', 'รับรายได้', 'ทุกออเดอร์ของเพื่อน คุณได้ 10% ตลอด 12 เดือน ดูยอดสดในแดชบอร์ด โอนสิ้นเดือน'],
             ].map(([no, t, d]) => (
               <div key={no} className="flex gap-3 rounded-2xl border-2 p-3" style={{ background: C.card, borderColor: C.line }}>
                 <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center font-black text-sm"
