@@ -865,10 +865,6 @@ function ReferralTab({ phone }: { phone?: string }) {
   useEffect(() => { load() }, [load])
 
   const copy = () => { try { navigator.clipboard.writeText(data?.link || ''); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch {} }
-  const lineShare = () => {
-    const msg = `ลองกาแฟสกัดเย็น VeLA ดูสิ 🐰 สั่งผ่านลิงก์นี้ลด 50% ออเดอร์แรกเลย ${data?.link || ''}`
-    window.open(`https://line.me/R/share?text=${encodeURIComponent(msg)}`, '_blank')
-  }
 
   const baht = (v: any) => `฿${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
   const KIND: Record<string, string> = { commission: 'คอม 10%', bonus_first5: 'โบนัสคนใหม่', reversal: 'คืนคอม' }
@@ -899,12 +895,8 @@ function ReferralTab({ phone }: { phone?: string }) {
       <div className="rounded-3xl border-2 p-4" style={{ background: '#F5F1EB', borderColor: '#D8D0C5' }}>
         <p className="text-xs font-mono mb-1" style={{ color: '#8C7B6E' }}>ลิงก์ของคุณ</p>
         <div className="rounded-xl border-2 px-3 py-2 mb-3 break-all text-xs font-mono" style={{ background: '#EDE8DF', borderColor: '#E0D9CE', color: '#3D1F0F' }}>{data.link}</div>
-        <div className="flex gap-2">
-          <button onClick={copy} className="flex-1 py-2.5 rounded-2xl font-black uppercase text-xs active:scale-95"
-            style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>{copied ? '✓ ก๊อปแล้ว' : '📋 ก๊อปลิงก์'}</button>
-          <button onClick={lineShare} className="flex-1 py-2.5 rounded-2xl font-black uppercase text-xs active:scale-95"
-            style={{ fontFamily: 'var(--font-display)', background: '#06C755', color: '#fff' }}>แชร์ LINE</button>
-        </div>
+        <button onClick={copy} className="w-full py-2.5 rounded-2xl font-black uppercase text-xs active:scale-95"
+          style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>{copied ? '✓ ก๊อปลิงก์แล้ว' : '📋 ก๊อปลิงก์'}</button>
       </div>
 
       {/* ตัวเลข */}
