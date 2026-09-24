@@ -11,9 +11,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // หน้าหลักที่ต้องการให้ Google เก็บ (คงที่)
   const staticEntries: MetadataRoute.Sitemap = [
-    { url: `${SITE}/`,            lastModified: now, changeFrequency: 'weekly',  priority: 1.0 },
-    { url: `${SITE}/leaderboard`, lastModified: now, changeFrequency: 'daily',   priority: 0.7 },
-    { url: `${SITE}/referral`,    lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${SITE}/`,                       lastModified: now, changeFrequency: 'weekly',  priority: 1.0 },
+    { url: `${SITE}/cold-brew-concentrate`,  lastModified: now, changeFrequency: 'weekly',  priority: 0.9 },
+    { url: `${SITE}/leaderboard`,            lastModified: now, changeFrequency: 'daily',   priority: 0.7 },
+    { url: `${SITE}/referral`,               lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
   ]
 
   // หน้าสินค้า /product/[SKU] — ดึงจาก feed แล้ว dedupe (200ml ชี้ URL เดียวกับ 1L)

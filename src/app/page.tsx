@@ -16,7 +16,11 @@ const orgLd = {
   '@type': 'Organization',
   '@id': `${SITE}/#organization`,
   name: 'VeLA Cold Brew',
-  alternateName: ['VeLA', 'VeLA Cold Brew Coffee', 'เวลา โคลด์บรูว์', 'VeLA กาแฟสกัดเย็น'],
+  alternateName: ['VeLA', 'VeLA Cold Brew Coffee', 'เวลา โคลด์บรูว์', 'VeLA กาแฟสกัดเย็น', 'VeLA Cold Brew ภูเก็ต'],
+  // ระบุตัวตนให้ชัดว่าเป็นแบรนด์ "หัวเชื้อสกัดเย็นจากภูเก็ต" — กัน Google สับสนกับ VE/LA (คาเฟ่กรุงเทพฯ velabkk.com) ที่ชื่อคล้ายกัน
+  disambiguatingDescription: 'แบรนด์หัวเชื้อกาแฟสกัดเย็นเข้มข้น (cold brew concentrate) จากจังหวัดภูเก็ต สั่งออนไลน์ส่งทั่วไทย — คนละแบรนด์กับคาเฟ่ VE/LA ในกรุงเทพฯ',
+  foundingLocation: { '@type': 'Place', name: 'ภูเก็ต ประเทศไทย' },
+  slogan: 'หัวเชื้อกาแฟสกัดเย็นเข้มข้น จากภูเก็ต ส่งทั่วไทย',
   url: SITE,
   logo: `${SITE}/logo.png`,
   image: `${SITE}/logo.png`,

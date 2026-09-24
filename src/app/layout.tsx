@@ -39,30 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="th">
       <body>
-        {/* Schema.org — ข้อมูลร้าน (ช่วย Google เข้าใจว่าเป็นร้านกาแฟสกัดเย็น ภูเก็ต ส่งทั่วไทย) */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'Store',
-            name: 'VeLA Cold Brew Coffee',
-            image: 'https://velacoldbrew.com/logo.png',
-            url: 'https://velacoldbrew.com',
-            telephone: '+66906980460',
-            priceRange: '฿฿',
-            description: 'กาแฟสกัดเย็นเข้มข้น (cold brew concentrate) จากภูเก็ต สั่งออนไลน์ส่งทั่วไทย',
-            address: {
-              '@type': 'PostalAddress',
-              streetAddress: '143/32 หมู่บ้านสามกองปาร์ค หมู่ 5 ถ.ประชาสามัคคี',
-              addressLocality: 'ต.รัษฎา อ.เมืองภูเก็ต',
-              addressRegion: 'ภูเก็ต',
-              postalCode: '83000',
-              addressCountry: 'TH',
-            },
-            areaServed: { '@type': 'Country', name: 'Thailand' },
-            sameAs: ['https://shopee.co.th/velacafe'],
-          }) }}
-        />
+        {/* Organization/WebSite JSON-LD อยู่ที่หน้าแรก (src/app/page.tsx) แล้ว — ไม่ใส่ Store ซ้ำที่นี่ กันสัญญาณ entity ชนกัน */}
 
         {/* Google Analytics 4 */}
         <Script
