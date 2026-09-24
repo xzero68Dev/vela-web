@@ -16,6 +16,7 @@ type Order = {
   channel: string; status: string
   slip_url?: string; paid_at?: string; note?: string; total?: number
   preferred_carrier?: string
+  trackings?: { tracking?: string; carrier?: string; ship_date?: string }[]
 }
 type ShipInfo = { tracking?: string; carrier?: string }
 
@@ -63,12 +64,39 @@ export default function AdminOrdersPage() {
   const [receiptBusy,  setReceiptBusy]  = useState(false)
   const [receiptResult, setReceiptResult] = useState<{ receipt_url: string; pdf_url: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [addMore, setAddMore] = useState(false)                 // เพิ่มเลขพัสดุอีก (ออเดอร์เดียวหลายแทรก)
+  const [deliveryFile, setDeliveryFile] = useState<File | null>(null)
+  const [deliveryPreview, setDeliveryPreview] = useState('')
+  const [deliveryUrl, setDeliveryUrl]   = useState('')
+  const [photoBusy, setPhotoBusy]       = useState(false)
 
-  const fetchOrders = useCallback(async () => {
+  // เลขพัสดุทั้งหมดของออเดอร์ (บางออเดอร์มีหลายแทรก) — join มากับ order จาก backend
+  const trkList = (o?: Order | null): { tracking?: string; carrier?: string; ship_date?: string }[] => {
+    if (!o) return []
+    const t = o.trackings
+    if (Array.isArray(t) && t.length) return t.filter(x => x.tracking && x.tracking !== '-')
+    return (o as any).tracking && (o as any).tracking !== '-' ? [{ tracking: (o as any).tracking, carrier: (o as any).carrier }] : []
+  }
+
+  const resetDeliveryPhoto = () => { setDeliveryFile(null); setDeliveryPreview(''); setDeliveryUrl('') }
+
+  const uploadDeliveryPhoto = async (file: File): Promise<string> => {
+    const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `delivery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const res  = await fetch(`${SB_URL}/storage/v1/object/slips/${path}`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return `${SB_URL}/storage/v1/object/public/slips/${path}`
+  }
+
+  const fetchOrders = useCallback(async (): Promise<Order[]> => {
     setLoading(true)
     try {
       const res = await fetch(`${API}/admin/orders-list?sort=${sortBy}&limit=1000`, { headers: adminHeaders() })
-      if (onAdminUnauthorized(res)) return
+      if (onAdminUnauthorized(res)) return []
       const payload = await res.json()
       const list: Order[] = Array.isArray(payload?.orders) ? payload.orders : []
       setOrders(list)
@@ -77,6 +105,7 @@ export default function AdminOrdersPage() {
       list.forEach((o: any) => { if (o.tracking) map[o.order_id] = { tracking: o.tracking, carrier: o.carrier } })
       setShipping(map)
       setUpdated(new Date().toLocaleTimeString('th-TH'))
+      return list
     } finally { setLoading(false) }
   }, [sortBy])
 
@@ -139,8 +168,10 @@ export default function AdminOrdersPage() {
       // ส่งเอง (ไม่มีเลข/"-") → "จัดส่งแล้ว" เลย; มีเลขจริง → "เตรียมจัดส่ง" (cron เลื่อนเป็นจัดส่งแล้วตอนขนส่งรับพัสดุ)
       const isSelfDelivery = !shipForm.tracking.trim() || shipForm.tracking.trim() === '-'
       setShipForm({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' })
-      await fetchOrders()
-      setSelected(prev => prev ? { ...prev, status: isSelfDelivery ? 'จัดส่งแล้ว' : 'เตรียมจัดส่ง' } : null)
+      setAddMore(false)
+      const list = await fetchOrders()
+      const fresh = list.find(x => x.order_id === o.order_id)
+      setSelected(fresh || { ...o, status: isSelfDelivery ? 'จัดส่งแล้ว' : 'เตรียมจัดส่ง' })
     } finally { setActing(false) }
   }
 
@@ -167,15 +198,28 @@ export default function AdminOrdersPage() {
   }
 
   const confirmDelivered = async (o: Order, notify: boolean) => {
-    if (!confirm(`ยืนยันว่าพัสดุ ${o.customer} ส่งถึงแล้ว?${notify ? '\nระบบจะแจ้ง SMS/LINE ลูกค้าทันที' : '\n(ไม่ส่ง SMS)'}`)) return
+    const hasPhoto = !!(deliveryUrl || deliveryFile)
+    if (!confirm(`ยืนยันว่าพัสดุ ${o.customer} ส่งถึงแล้ว?${notify ? `\nระบบจะแจ้ง SMS/LINE ลูกค้าทันที${hasPhoto ? ' (แนบรูปการส่งทาง LINE)' : ''}` : '\n(ไม่ส่ง SMS)'}`)) return
     setActing(true)
     try {
-      const res = await fetch(`${API}/admin/confirm-delivered?order_id=${encodeURIComponent(o.order_id)}&notify=${notify}`, {
+      // อัปโหลดรูปการส่งเอง (ถ้ามี) ก่อน แล้วแนบ URL ไปกับการแจ้งลูกค้า
+      let photoUrl = deliveryUrl
+      if (deliveryFile && !photoUrl) {
+        setPhotoBusy(true)
+        try { photoUrl = await uploadDeliveryPhoto(deliveryFile); setDeliveryUrl(photoUrl) }
+        catch (e: any) { alert(`อัปโหลดรูปไม่สำเร็จ: ${e?.message || e}`); return }
+        finally { setPhotoBusy(false) }
+      }
+      const q = new URLSearchParams({ order_id: o.order_id, notify: String(notify) })
+      if (photoUrl) q.set('photo_url', photoUrl)
+      const res = await fetch(`${API}/admin/confirm-delivered?${q.toString()}`, {
         method: 'POST', headers: adminHeaders(),
       })
       if (!res.ok) { alert(`ยืนยันไม่สำเร็จ: ${await res.text()}`); return }
-      await fetchOrders()
-      setSelected(prev => prev ? { ...prev, status: 'จัดส่งสำเร็จ' } : null)
+      resetDeliveryPhoto()
+      const list = await fetchOrders()
+      const fresh = list.find(x => x.order_id === o.order_id)
+      setSelected(fresh || { ...o, status: 'จัดส่งสำเร็จ' })
     } finally { setActing(false) }
   }
 
@@ -272,8 +316,33 @@ export default function AdminOrdersPage() {
     } finally { setReceiptBusy(false) }
   }
 
+  const PhotoPicker = () => (
+    <div className="rounded-xl border-2 p-3 space-y-2" style={{ borderColor: '#E0D9CE', background: '#F5F1EB' }}>
+      <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>📷 แนบรูปหลักฐานการส่ง (ส่งเอง) — จะแนบไปกับ LINE ลูกค้า</p>
+      {deliveryPreview || deliveryUrl ? (
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={deliveryPreview || deliveryUrl} alt="รูปการส่ง"
+            className="w-16 h-16 rounded-lg object-cover border-2" style={{ borderColor: '#E0D9CE' }} />
+          <button onClick={resetDeliveryPhoto}
+            className="text-xs font-mono px-3 py-1.5 rounded-lg border-2"
+            style={{ borderColor: '#D8D0C5', color: '#B4462F', background: '#fff' }}>✕ ลบรูป</button>
+          {photoBusy && <span className="text-xs font-mono" style={{ color: '#8C7B6E' }}>กำลังอัปโหลด…</span>}
+        </div>
+      ) : (
+        <label className="block text-xs font-mono px-3 py-2 rounded-lg border-2 cursor-pointer text-center"
+          style={{ borderColor: '#D8D0C5', color: '#8C7B6E', background: '#fff' }}>
+          📎 เลือกรูปการส่ง…
+          <input type="file" accept="image/*" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) { setDeliveryFile(f); setDeliveryUrl(''); setDeliveryPreview(URL.createObjectURL(f)) } }} />
+        </label>
+      )}
+    </div>
+  )
+
   if (!ready) return null
-  const ship = selected ? shipping[selected.order_id] : null
+  const trackings = trkList(selected)
+  const ship = trackings[0] || (selected ? shipping[selected.order_id] : null)
 
   return (
     <main className="min-h-screen pb-20" style={{ background: '#EDE8DF' }}>
@@ -426,7 +495,7 @@ export default function AdminOrdersPage() {
                  </button>
                )}
                <button
-                onClick={() => { setSelected(o); setShipForm({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' }) }}
+                onClick={() => { setSelected(o); setShipForm({ tracking: '', carrier: 'POST SABUY', cost: '', weight: '' }); setAddMore(false); resetDeliveryPhoto() }}
                 className="flex-1 min-w-0 text-left rounded-2xl border-2 px-4 py-3 transition-all hover:shadow-sm active:scale-[0.99]"
                 style={{
                   background: o.slip_url && o.status === 'รอชำระเงิน' ? '#FFF5F3' : '#F5F1EB',
@@ -454,6 +523,11 @@ export default function AdminOrdersPage() {
                       {o.order_id} · {o.order_date}
                       {s?.tracking && ` · ${s.tracking}`}
                       {s?.carrier && ` (${s.carrier})`}
+                      {trkList(o).length > 1 && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full" style={{ background: '#E4DBF5', color: '#5B3A9B' }}>
+                          +{trkList(o).length - 1} แทรก
+                        </span>
+                      )}
                     </p>
                   </div>
                   {o.total ? (
@@ -621,7 +695,10 @@ export default function AdminOrdersPage() {
                   { label: 'วันที่',  value: selected.order_date },
                   ...(selected.preferred_carrier ? [{ label: 'ขนส่งที่ลูกค้าเลือก', value: selected.preferred_carrier === 'kex' ? 'KEX Express' : 'ไปรษณีย์ไทย EMS' }] : []),
                   ...(selected.note ? [{ label: 'หมายเหตุ', value: selected.note }] : []),
-                  ...(ship?.tracking ? [{ label: 'Tracking', value: `${ship.carrier || ''} · ${ship.tracking}` }] : []),
+                  ...trackings.map((t, i) => ({
+                    label: trackings.length > 1 ? `Tracking ${i + 1}/${trackings.length}` : 'Tracking',
+                    value: `${t.carrier || ''} · ${t.tracking}`,
+                  })),
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between gap-3 px-4 py-2.5">
                     <p className="text-xs font-mono flex-shrink-0" style={{ color: '#C5BAB0' }}>{label}</p>
@@ -683,28 +760,47 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {/* มีเลขพัสดุแล้ว → ปุ่มแก้เลขพัสดุ (กรณีกรอกผิด) */}
-              {ship?.tracking && ship.tracking !== '-' && (
-                <div className="rounded-2xl border-2 p-4 flex items-center justify-between gap-3" style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
-                  <div className="min-w-0">
-                    <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>เลขพัสดุ</p>
-                    <p className="text-sm font-mono truncate" style={{ color: '#3D1F0F' }}>{ship.tracking}{ship.carrier ? ` (${ship.carrier})` : ''}</p>
+              {/* มีเลขพัสดุแล้ว → แสดงทุกแทรก + ปุ่มแก้ (เดี่ยว) + เพิ่มเลขพัสดุอีก (หลายแทรก/ออเดอร์) */}
+              {trackings.length > 0 && (
+                <div className="rounded-2xl border-2 p-4 space-y-2" style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
+                      เลขพัสดุ{trackings.length > 1 ? ` (${trackings.length} กล่อง)` : ''}
+                    </p>
+                    <button onClick={() => setAddMore(v => !v)}
+                      className="text-xs font-mono px-2.5 py-1 rounded-lg border-2"
+                      style={{ borderColor: '#5B3A9B', color: '#5B3A9B', background: '#F1EBFA' }}>
+                      {addMore ? '− ปิด' : '+ เพิ่มเลขพัสดุอีก'}
+                    </button>
                   </div>
-                  <button onClick={() => fixTracking(selected.order_id, ship?.tracking)} disabled={acting}
-                    className="flex-shrink-0 px-4 py-2 rounded-xl font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-40"
-                    style={{ fontFamily: 'var(--font-display)', background: '#B8860B', color: '#fff' }}>
-                    ✏️ แก้เลขพัสดุ
-                  </button>
+                  {trackings.map((t, i) => (
+                    <div key={`${t.tracking}-${i}`} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        {trackings.length > 1 && <span className="text-xs font-mono mr-1" style={{ color: '#5B3A9B' }}>#{i + 1}</span>}
+                        <span className="text-sm font-mono" style={{ color: '#3D1F0F' }}>{t.tracking}{t.carrier ? ` (${t.carrier})` : ''}</span>
+                      </div>
+                      {trackings.length === 1 && (
+                        <button onClick={() => fixTracking(selected.order_id, t.tracking)} disabled={acting}
+                          className="flex-shrink-0 px-4 py-2 rounded-xl font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-40"
+                          style={{ fontFamily: 'var(--font-display)', background: '#B8860B', color: '#fff' }}>
+                          ✏️ แก้เลขพัสดุ
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
 
-              {/* Action: เพิ่ม tracking */}
+              {/* Action: เพิ่ม tracking (รวมกรณีเพิ่มเลขพัสดุอีกกล่องให้ออเดอร์เดิม) */}
               {(
                 (selected.channel === 'web' && selected.status === 'ชำระแล้ว') ||
-                (selected.channel !== 'web' && !ship?.tracking)
+                (selected.channel !== 'web' && !ship?.tracking) ||
+                addMore
               ) && (
-                <div className="rounded-2xl border-2 p-4 space-y-3" style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
-                  <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>เพิ่มการจัดส่ง</p>
+                <div className="rounded-2xl border-2 p-4 space-y-3" style={{ background: '#EDE8DF', borderColor: addMore ? '#5B3A9B' : '#E0D9CE' }}>
+                  <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>
+                    {addMore && trackings.length > 0 ? 'เพิ่มเลขพัสดุอีกกล่อง' : 'เพิ่มการจัดส่ง'}
+                  </p>
                   <select value={shipForm.carrier} onChange={e => setShipForm(s => ({ ...s, carrier: e.target.value }))}
                     className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
                     style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }}>
@@ -748,12 +844,15 @@ export default function AdminOrdersPage() {
                     )}
                   </div>
                   {selected.channel !== 'web' && !ship?.tracking && (
-                    <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
-                      style={{ background: '#F5F1EB' }}>
-                      <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}
-                        className="w-4 h-4" />
-                      <span className="text-xs font-mono" style={{ color: '#3D1F0F' }}>ส่ง SMS/LINE แจ้งลูกค้าด้วย</span>
-                    </label>
+                    <>
+                      {PhotoPicker()}
+                      <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
+                        style={{ background: '#F5F1EB' }}>
+                        <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}
+                          className="w-4 h-4" />
+                        <span className="text-xs font-mono" style={{ color: '#3D1F0F' }}>ส่ง SMS/LINE แจ้งลูกค้าด้วย</span>
+                      </label>
+                    </>
                   )}
                 </div>
               )}
@@ -774,6 +873,7 @@ export default function AdminOrdersPage() {
                       🔍 ดูสถานะ {ship.tracking}
                     </a>
                   )}
+                  {PhotoPicker()}
                   <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
                     style={{ background: '#F5F1EB' }}>
                     <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}
@@ -791,6 +891,7 @@ export default function AdminOrdersPage() {
               {/* Action: ยืนยันส่งสำเร็จสำหรับ Shopee ที่ status ยังไม่ใช่ จัดส่งแล้ว แต่มี tracking แล้ว */}
               {selected.channel !== 'web' && selected.status !== 'จัดส่งแล้ว' && selected.status !== 'จัดส่งสำเร็จ' && ship?.tracking && (
                 <div className="space-y-2">
+                  {PhotoPicker()}
                   <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer"
                     style={{ background: '#F5F1EB' }}>
                     <input type="checkbox" checked={sendSms} onChange={e => setSendSms(e.target.checked)}

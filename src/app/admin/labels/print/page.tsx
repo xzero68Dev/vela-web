@@ -48,7 +48,7 @@ function TrackQR({ value }: { value: string }) {
   return url ? <img src={url} alt="track qr" className="trackqr" /> : null
 }
 
-function Label({ order, ship }: { order: any; ship?: any }) {
+function Label({ order, ship, part }: { order: any; ship?: any; part?: string }) {
   const items = parseItems(order.sku)
   const totalQty = items.reduce((s, i) => s + i.qty, 0)
   const carrier = ship?.carrier || CARRIER_LABEL[order.preferred_carrier] || order.preferred_carrier || ''
@@ -111,7 +111,7 @@ function Label({ order, ship }: { order: any; ship?: any }) {
 
       {/* ผู้รับ */}
       <div className="to">
-        <div className="lbl">ผู้รับ / TO</div>
+        <div className="lbl">ผู้รับ / TO {part ? <b style={{ color: '#000' }}>· พัสดุ {part}</b> : ''}</div>
         <div className="to-name">{order.customer}</div>
         <div className="to-phone">โทร {order.phone || '-'}</div>
         <div className="to-addr">{fullAddr}</div>
@@ -160,7 +160,6 @@ function LabelsInner() {
   const sp = useSearchParams()
   const ids = (sp.get('ids') || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
   const [orders, setOrders] = useState<any[]>([])
-  const [ships, setShips]   = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -176,10 +175,7 @@ function LabelsInner() {
         const byId: Record<string, any> = {}
         arr.forEach((o: any) => { byId[o.order_id] = o })
         setOrders(ids.map(i => byId[i]).filter(Boolean))
-        // เลขพัสดุ join มากับ order แล้ว
-        const sm: Record<string, any> = {}
-        arr.forEach((o: any) => { if (!sm[o.order_id]) sm[o.order_id] = { order_id: o.order_id, tracking: o.tracking, carrier: o.carrier } })
-        setShips(sm)
+        // เลขพัสดุ (รวมหลายแทรก/ออเดอร์) join มากับ order แล้ว → แตกเป็นใบตอน render
       } catch {}
       finally { setLoading(false) }
     })()
@@ -187,6 +183,19 @@ function LabelsInner() {
   }, [ready])
 
   if (!ready) return null
+
+  // แตกออเดอร์เป็น 1 ใบต่อ 1 เลขพัสดุ (บางออเดอร์มีหลายแทรก)
+  const units = orders.flatMap(o => {
+    const trks = Array.isArray(o.trackings) && o.trackings.length
+      ? o.trackings
+      : [{ tracking: o.tracking, carrier: o.carrier }]
+    return trks.map((t: any, i: number) => ({
+      order: o,
+      ship: { order_id: o.order_id, tracking: t.tracking, carrier: t.carrier },
+      part: trks.length > 1 ? `${i + 1}/${trks.length}` : '',
+      key: `${o.order_id}-${i}`,
+    }))
+  })
 
   return (
     <div className="labels-root">
@@ -246,7 +255,7 @@ function LabelsInner() {
       `}</style>
 
       <div className="toolbar">
-        <button className="btn" onClick={() => window.print()}>🖨️ พิมพ์ใบแปะหน้า ({orders.length} ใบ)</button>
+        <button className="btn" onClick={() => window.print()}>🖨️ พิมพ์ใบแปะหน้า ({units.length} ใบ)</button>
         <p className="hint">Paper size: <b>100 × 150 (SF Express)</b> · Margins: <b>None</b> · ปิด Headers and footers</p>
       </div>
 
@@ -255,7 +264,7 @@ function LabelsInner() {
       ) : orders.length === 0 ? (
         <p style={{ textAlign: 'center', fontFamily: 'monospace', color: '#c00' }}>ไม่พบออเดอร์</p>
       ) : (
-        orders.map(o => <Label key={o.order_id} order={o} ship={ships[o.order_id]} />)
+        units.map(u => <Label key={u.key} order={u.order} ship={u.ship} part={u.part} />)
       )}
     </div>
   )
