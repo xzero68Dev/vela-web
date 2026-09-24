@@ -8,7 +8,7 @@ import QRCode from 'qrcode'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 
-const SHOP = { name: 'VeLA Cold Brew', phone: '090-698-0460' }
+const SHOP = { name: 'VeLA Cold Brew', phone: '062-453-5388' }
 
 const CARRIER_LABEL: Record<string, string> = {
   thailand_post: 'ไปรษณีย์ไทย EMS', kex: 'KEX Express',

@@ -26,7 +26,7 @@ const orgLd = {
   image: `${SITE}/logo.png`,
   description:
     'ร้านกาแฟสกัดเย็น (cold brew) จากภูเก็ต — หัวเชื้อกาแฟสกัดเย็นเข้มข้น เมล็ด Arabica แม่จันใต้ ไม่มีน้ำตาล ผลิตสดทุกวัน สั่งออนไลน์ส่งทั่วไทย',
-  telephone: '+66906980460',
+  telephone: '+66624535388',
   address: {
     '@type': 'PostalAddress',
     streetAddress: '143/32 หมู่บ้านสามกองปาร์ค หมู่ 5 ถ.ประชาสามัคคี ต.รัษฎา',

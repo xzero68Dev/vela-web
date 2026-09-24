@@ -60,7 +60,7 @@ export default function ReturnPolicyPage() {
 
         <h2 style={H2}>3. วิธีติดต่อขอเปลี่ยน/คืนเงิน</h2>
         <p>
-          ทักหาเราได้ที่ <strong>LINE ร้าน</strong> หรือโทร <strong>090-698-0460</strong>
+          ทักหาเราได้ที่ <strong>LINE ร้าน</strong> หรือโทร <strong>062-453-5388</strong>
           แจ้งหมายเลขคำสั่งซื้อ + รูปถ่ายสินค้า ทีมงานจะดำเนินการให้เร็วที่สุด
           โดยทั่วไปได้ข้อสรุปภายใน 1–2 วันทำการ
         </p>
@@ -73,7 +73,7 @@ export default function ReturnPolicyPage() {
 
         <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '16px 18px', marginTop: 28 }}>
           <p style={{ margin: 0, color: C.muted, fontSize: 14 }}>
-            มีคำถามเกี่ยวกับคำสั่งซื้อหรือการจัดส่ง? ทักไลน์ร้านหรือโทร 090-698-0460 ได้ทุกวัน ·{' '}
+            มีคำถามเกี่ยวกับคำสั่งซื้อหรือการจัดส่ง? ทักไลน์ร้านหรือโทร 062-453-5388 ได้ทุกวัน ·{' '}
             <Link href="/" style={{ color: C.orange, fontWeight: 700 }}>กลับหน้าแรก</Link>
           </p>
         </div>
