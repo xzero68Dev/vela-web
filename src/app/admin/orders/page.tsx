@@ -112,6 +112,58 @@ export default function AdminOrdersPage() {
   useEffect(() => { if (ready) fetchOrders() }, [ready, fetchOrders])
   useEffect(() => { setPage(1) }, [tab, carrierFilter, search, statusFilter])
 
+  // ── สร้างออเดอร์เอง (ลูกค้าสั่งตรงทางไลน์) ──
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createBusy, setCreateBusy] = useState(false)
+  const [prodList,   setProdList]   = useState<any[]>([])
+  const [cForm, setCForm] = useState({
+    customer: '', phone: '', full_address: '', province: '', zip: '', note: '',
+    status: 'ชำระแล้ว', total: '', tracking: '', carrier: 'POST SABUY', shipping_cost: '',
+  })
+  const [cItems, setCItems] = useState<{ sku: string; name: string; qty: number; price: number }[]>([])
+  const cSku = cItems.map(i => `${i.name} x${i.qty}`).join(', ')
+  const cQty = cItems.reduce((s, i) => s + i.qty, 0)
+  const cSug = cItems.reduce((s, i) => s + i.price * i.qty, 0)
+
+  const openCreate = async () => {
+    setCForm({ customer: '', phone: '', full_address: '', province: '', zip: '', note: '',
+      status: 'ชำระแล้ว', total: '', tracking: '', carrier: 'POST SABUY', shipping_cost: '' })
+    setCItems([]); setCreateOpen(true)
+    if (!prodList.length) {
+      try { const r = await fetch(`${API}/products`); const d = await r.json(); setProdList(Array.isArray(d.products) ? d.products : []) } catch {}
+    }
+  }
+  const addCItem = (sku: string) => {
+    const p = prodList.find(x => String(x.sku || '') === sku); if (!p) return
+    setCItems(a => {
+      const ex = a.find(i => i.sku === sku)
+      if (ex) return a.map(i => i.sku === sku ? { ...i, qty: i.qty + 1 } : i)
+      return [...a, { sku: String(p.sku), name: p.name || p.sku, qty: 1, price: Number(p.price_discounted || p.price || 0) }]
+    })
+  }
+  const submitCreate = async () => {
+    if (!cForm.customer.trim()) { alert('กรุณาใส่ชื่อลูกค้า'); return }
+    const total = cForm.total.trim() ? Number(cForm.total) : cSug
+    setCreateBusy(true)
+    try {
+      const res = await fetch(`${API}/admin/create-order`, {
+        method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          customer: cForm.customer.trim(), phone: cForm.phone.trim().replace(/\D/g, ''),
+          full_address: cForm.full_address.trim(), province: cForm.province.trim(), zip: cForm.zip.trim(),
+          note: cForm.note.trim(), sku: cSku, qty: cQty, total, status: cForm.status,
+          tracking: cForm.tracking.trim(), carrier: cForm.carrier,
+          shipping_cost: cForm.shipping_cost.trim() ? Number(cForm.shipping_cost) : undefined,
+        }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { alert(`สร้างไม่สำเร็จ: ${d.detail || 'error'}`); return }
+      setCreateOpen(false)
+      await fetchOrders()
+      alert(`✅ สร้างออเดอร์ ${d.order_id} แล้ว${d.tracking ? ` + แทรก ${d.tracking}` : ''}`)
+    } finally { setCreateBusy(false) }
+  }
+
   const confirmPayment = async (o: Order) => {
     setActing(true)
     try {
@@ -354,6 +406,8 @@ export default function AdminOrdersPage() {
           <h1 className="font-black text-xl uppercase" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>Orders</h1>
           <div className="flex items-center gap-2">
             {loading && <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: '#D64B2A', borderTopColor: 'transparent' }} />}
+            <button onClick={openCreate} className="text-xs px-3 py-1.5 rounded-xl font-black uppercase"
+              style={{ background: '#1A6B3C', color: '#EDE8DF' }}>➕ สั่งเอง</button>
             <button onClick={fetchOrders} className="text-xs px-3 py-1.5 rounded-xl border-2 font-mono"
               style={{ borderColor: '#D8D0C5', color: '#8C7B6E' }}>↺ {updated}</button>
           </div>
@@ -572,6 +626,102 @@ export default function AdminOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Create-order modal — สร้างออเดอร์เอง (ลูกค้าสั่งตรงทางไลน์) */}
+      {createOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setCreateOpen(false)}>
+          <div className="w-full max-w-lg rounded-t-3xl overflow-y-auto" style={{ background: '#EDE8DF', maxHeight: '92vh' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b-2 flex items-center justify-between sticky top-0 z-10"
+              style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
+              <p className="font-black text-sm uppercase" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>➕ สร้างออเดอร์เอง (สั่งทางไลน์)</p>
+              <button onClick={() => setCreateOpen(false)} style={{ color: '#8C7B6E', fontSize: 22 }}>✕</button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <input value={cForm.customer} onChange={e => setCForm(s => ({ ...s, customer: e.target.value }))}
+                placeholder="ชื่อลูกค้า *" className="w-full px-3 py-2.5 rounded-xl border-2 text-sm"
+                style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
+              <input value={cForm.phone} onChange={e => setCForm(s => ({ ...s, phone: e.target.value }))}
+                placeholder="เบอร์โทร" inputMode="numeric" className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
+                style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
+              <textarea value={cForm.full_address} onChange={e => setCForm(s => ({ ...s, full_address: e.target.value }))}
+                placeholder="ที่อยู่จัดส่ง" rows={2} className="w-full px-3 py-2.5 rounded-xl border-2 text-sm"
+                style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
+              <div className="flex gap-2">
+                <input value={cForm.province} onChange={e => setCForm(s => ({ ...s, province: e.target.value }))}
+                  placeholder="จังหวัด" className="flex-1 px-3 py-2.5 rounded-xl border-2 text-sm"
+                  style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
+                <input value={cForm.zip} onChange={e => setCForm(s => ({ ...s, zip: e.target.value }))}
+                  placeholder="ไปรษณีย์" inputMode="numeric" className="w-28 px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
+                  style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
+              </div>
+
+              <div className="rounded-xl border-2 p-3 space-y-2" style={{ borderColor: '#E0D9CE', background: '#F5F1EB' }}>
+                <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>สินค้า</p>
+                <select value="" onChange={e => { if (e.target.value) addCItem(e.target.value) }}
+                  className="w-full px-3 py-2 rounded-lg border-2 text-sm" style={{ borderColor: '#D8D0C5', background: '#fff' }}>
+                  <option value="">+ เลือกสินค้า…</option>
+                  {prodList.map(p => (
+                    <option key={p.sku} value={p.sku}>{p.name || p.sku} (฿{Number(p.price_discounted || p.price || 0)})</option>
+                  ))}
+                </select>
+                {cItems.map(it => (
+                  <div key={it.sku} className="flex items-center gap-2 text-sm">
+                    <span className="flex-1 truncate">{it.name}</span>
+                    <button onClick={() => setCItems(a => a.map(x => x.sku === it.sku ? { ...x, qty: Math.max(1, x.qty - 1) } : x))} className="px-2 rounded border-2" style={{ borderColor: '#D8D0C5' }}>−</button>
+                    <span className="w-6 text-center font-bold">{it.qty}</span>
+                    <button onClick={() => setCItems(a => a.map(x => x.sku === it.sku ? { ...x, qty: x.qty + 1 } : x))} className="px-2 rounded border-2" style={{ borderColor: '#D8D0C5' }}>+</button>
+                    <button onClick={() => setCItems(a => a.filter(x => x.sku !== it.sku))} style={{ color: '#B4462F' }}>✕</button>
+                  </div>
+                ))}
+                {cItems.length > 0 && <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>รวม {cQty} ชิ้น · ราคาปกติ ฿{cSug.toLocaleString()}</p>}
+              </div>
+
+              <div className="flex gap-2">
+                <input value={cForm.total} onChange={e => setCForm(s => ({ ...s, total: e.target.value.replace(/[^\d.]/g, '') }))}
+                  placeholder={`ยอดที่ลูกค้าจ่าย ฿ (ปกติ ${cSug})`} inputMode="decimal"
+                  className="flex-1 px-3 py-2.5 rounded-xl border-2 text-sm font-bold" style={{ borderColor: '#2E75B6', background: '#F5F1EB' }} />
+                <select value={cForm.status} onChange={e => setCForm(s => ({ ...s, status: e.target.value }))}
+                  className="px-3 py-2.5 rounded-xl border-2 text-sm font-mono" style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }}>
+                  <option value="ชำระแล้ว">ชำระแล้ว</option>
+                  <option value="รอชำระเงิน">รอชำระเงิน</option>
+                  <option value="เตรียมจัดส่ง">เตรียมจัดส่ง</option>
+                </select>
+              </div>
+
+              <div className="rounded-xl border-2 p-3 space-y-2" style={{ borderColor: '#E0D9CE', background: '#F5F1EB' }}>
+                <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>เลขแทรก (ถ้ามีใส่เลย — เว้นว่างได้)</p>
+                <select value={cForm.carrier} onChange={e => setCForm(s => ({ ...s, carrier: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border-2 text-sm font-mono" style={{ borderColor: '#D8D0C5', background: '#fff' }}>
+                  <option value="POST SABUY">POST SABUY</option>
+                  <option value="KEX">KEX Express</option>
+                  <option value="FLASH">Flash Express</option>
+                  <option value="J&T">J&T Express</option>
+                  <option value="ส่งเอง">🚚 ส่งเอง</option>
+                </select>
+                <div className="flex gap-2">
+                  <input value={cForm.tracking} onChange={e => setCForm(s => ({ ...s, tracking: e.target.value }))}
+                    placeholder="เลข Tracking" className="flex-1 px-3 py-2 rounded-lg border-2 text-sm font-mono uppercase" style={{ borderColor: '#D8D0C5', background: '#fff' }} />
+                  <input value={cForm.shipping_cost} onChange={e => setCForm(s => ({ ...s, shipping_cost: e.target.value.replace(/[^\d.]/g, '') }))}
+                    placeholder="ค่าส่ง ฿" inputMode="decimal" className="w-24 px-3 py-2 rounded-lg border-2 text-sm font-mono" style={{ borderColor: '#D8D0C5', background: '#fff' }} />
+                </div>
+              </div>
+
+              <textarea value={cForm.note} onChange={e => setCForm(s => ({ ...s, note: e.target.value }))}
+                placeholder="หมายเหตุ (เช่น สั่งทางไลน์ โอนแล้ว)" rows={2} className="w-full px-3 py-2.5 rounded-xl border-2 text-sm"
+                style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
+
+              <button onClick={submitCreate} disabled={createBusy}
+                className="w-full py-3 rounded-2xl font-black uppercase text-sm disabled:opacity-50"
+                style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
+                {createBusy ? 'กำลังสร้าง…' : '✓ สร้างออเดอร์'}
+              </button>
+              <div className="h-2" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Receipt result — ลิงก์ให้ลูกค้า */}
       {receiptResult && (
