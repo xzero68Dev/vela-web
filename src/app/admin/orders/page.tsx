@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAdminAuth } from '@/components/useAdminAuth'
 import { adminHeaders, onAdminUnauthorized } from '@/components/auth'
 import AdminNav from '@/components/AdminNav'
+import AddressForm, { AddressData } from '@/components/AddressForm'
 
 const SB_URL    = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -116,18 +117,26 @@ export default function AdminOrdersPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
   const [prodList,   setProdList]   = useState<any[]>([])
+  const emptyAddr: AddressData = { name: '', phone: '', full_address: '', subdistrict: '', district: '', province: '', zip: '', is_default: false }
+  const [cAddr, setCAddr] = useState<AddressData>(emptyAddr)
   const [cForm, setCForm] = useState({
-    customer: '', phone: '', full_address: '', province: '', zip: '', note: '',
-    status: 'ชำระแล้ว', total: '', tracking: '', carrier: 'POST SABUY', shipping_cost: '',
+    note: '', status: 'ชำระแล้ว', total: '', tracking: '', carrier: 'POST SABUY', shipping_cost: '',
   })
   const [cItems, setCItems] = useState<{ sku: string; name: string; qty: number; price: number }[]>([])
+  // รวมที่อยู่เป็นบรรทัดเดียว (กทม.ใช้ แขวง/เขต, ตจว.ใช้ ต./อ.)
+  const buildFullAddr = (a: AddressData) => {
+    const bkk = (a.province || '').includes('กรุงเทพ')
+    const sub = a.subdistrict ? `${bkk ? 'แขวง' : 'ต.'}${a.subdistrict}` : ''
+    const dis = a.district ? `${bkk ? 'เขต' : 'อ.'}${a.district}` : ''
+    return [a.full_address, sub, dis].filter(Boolean).join(' ')
+  }
   const cSku = cItems.map(i => `${i.name} x${i.qty}`).join(', ')
   const cQty = cItems.reduce((s, i) => s + i.qty, 0)
   const cSug = cItems.reduce((s, i) => s + i.price * i.qty, 0)
 
   const openCreate = async () => {
-    setCForm({ customer: '', phone: '', full_address: '', province: '', zip: '', note: '',
-      status: 'ชำระแล้ว', total: '', tracking: '', carrier: 'POST SABUY', shipping_cost: '' })
+    setCAddr(emptyAddr)
+    setCForm({ note: '', status: 'ชำระแล้ว', total: '', tracking: '', carrier: 'POST SABUY', shipping_cost: '' })
     setCItems([]); setCreateOpen(true)
     if (!prodList.length) {
       try { const r = await fetch(`${API}/products`); const d = await r.json(); setProdList(Array.isArray(d.products) ? d.products : []) } catch {}
@@ -142,16 +151,17 @@ export default function AdminOrdersPage() {
     })
   }
   const submitCreate = async () => {
-    if (!cForm.customer.trim()) { alert('กรุณาใส่ชื่อลูกค้า'); return }
+    if (!cAddr.name.trim()) { alert('กรุณาใส่ชื่อลูกค้า'); return }
     const total = cForm.total.trim() ? Number(cForm.total) : cSug
     setCreateBusy(true)
     try {
       const res = await fetch(`${API}/admin/create-order`, {
         method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          customer: cForm.customer.trim(), phone: cForm.phone.trim().replace(/\D/g, ''),
-          full_address: cForm.full_address.trim(), province: cForm.province.trim(), zip: cForm.zip.trim(),
-          note: cForm.note.trim(), sku: cSku, qty: cQty, total, status: cForm.status,
+          customer: cAddr.name.trim(), phone: (cAddr.phone || '').trim().replace(/\D/g, ''),
+          full_address: buildFullAddr(cAddr), province: (cAddr.province || '').trim(), zip: (cAddr.zip || '').trim(),
+          note: cForm.note.trim(), sku: cSku, qty: cQty, items: cItems.map(i => ({ sku: i.sku, qty: i.qty })),
+          total, status: cForm.status,
           tracking: cForm.tracking.trim(), carrier: cForm.carrier,
           shipping_cost: cForm.shipping_cost.trim() ? Number(cForm.shipping_cost) : undefined,
         }),
@@ -639,23 +649,8 @@ export default function AdminOrdersPage() {
               <button onClick={() => setCreateOpen(false)} style={{ color: '#8C7B6E', fontSize: 22 }}>✕</button>
             </div>
             <div className="px-5 py-4 space-y-3">
-              <input value={cForm.customer} onChange={e => setCForm(s => ({ ...s, customer: e.target.value }))}
-                placeholder="ชื่อลูกค้า *" className="w-full px-3 py-2.5 rounded-xl border-2 text-sm"
-                style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
-              <input value={cForm.phone} onChange={e => setCForm(s => ({ ...s, phone: e.target.value }))}
-                placeholder="เบอร์โทร" inputMode="numeric" className="w-full px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
-                style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
-              <textarea value={cForm.full_address} onChange={e => setCForm(s => ({ ...s, full_address: e.target.value }))}
-                placeholder="ที่อยู่จัดส่ง" rows={2} className="w-full px-3 py-2.5 rounded-xl border-2 text-sm"
-                style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
-              <div className="flex gap-2">
-                <input value={cForm.province} onChange={e => setCForm(s => ({ ...s, province: e.target.value }))}
-                  placeholder="จังหวัด" className="flex-1 px-3 py-2.5 rounded-xl border-2 text-sm"
-                  style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
-                <input value={cForm.zip} onChange={e => setCForm(s => ({ ...s, zip: e.target.value }))}
-                  placeholder="ไปรษณีย์" inputMode="numeric" className="w-28 px-3 py-2.5 rounded-xl border-2 text-sm font-mono"
-                  style={{ borderColor: '#D8D0C5', background: '#F5F1EB' }} />
-              </div>
+              {/* ชื่อ + เบอร์ + ที่อยู่ (autocomplete ตำบล/อำเภอ/จังหวัด/ไปรษณีย์) */}
+              <AddressForm hideButton initial={cAddr} onChange={setCAddr} onSave={() => {}} />
 
               <div className="rounded-xl border-2 p-3 space-y-2" style={{ borderColor: '#E0D9CE', background: '#F5F1EB' }}>
                 <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>สินค้า</p>
