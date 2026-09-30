@@ -174,6 +174,29 @@ export default function AdminOrdersPage() {
     } finally { setCreateBusy(false) }
   }
 
+  // ── ส่งข้อความ custom หาลูกค้า (แจ้งชะลอส่ง/น้ำท่วม ฯลฯ) ──
+  const [msgOpen,   setMsgOpen]   = useState(false)
+  const [msgText,   setMsgText]   = useState('')
+  const [msgChannel, setMsgChannel] = useState<'auto' | 'line' | 'sms'>('auto')
+  const [msgBusy,   setMsgBusy]   = useState(false)
+  const FLOOD_MSG = 'สวัสดีค่ะ VeLA Cold Brew นะคะ 🙏 เนื่องจากพื้นที่จัดส่งของลูกค้ากำลังมีน้ำท่วม ขนส่งยังนำส่งได้ไม่ปลอดภัย ทางร้านขอชะลอการจัดส่งไว้ชั่วคราวเพื่อกันพัสดุเสียหายค่ะ ออเดอร์ของลูกค้ายังอยู่ครบ พร้อมส่งทันทีเมื่อสถานการณ์คลี่คลาย หรือถ้าต้องการเปลี่ยนที่อยู่/เลื่อนวันส่ง แจ้งได้เลยนะคะ ขอบคุณที่เข้าใจค่ะ 💛'
+  const sendMsg = async () => {
+    if (!selected) return
+    if (!msgText.trim()) { alert('พิมพ์ข้อความก่อนส่ง'); return }
+    if (!confirm(`ส่งข้อความหา ${selected.customer} ทาง ${msgChannel === 'sms' ? 'SMS (เสียเครดิต)' : msgChannel === 'line' ? 'LINE' : 'อัตโนมัติ (LINE ก่อน)'}?`)) return
+    setMsgBusy(true)
+    try {
+      const res = await fetch(`${API}/admin/notify-customer`, {
+        method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ order_id: selected.order_id, message: msgText.trim(), channel: msgChannel }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { alert(`ส่งไม่สำเร็จ: ${d.detail || 'error'}`); return }
+      setMsgOpen(false)
+      alert(`✅ ส่งข้อความแล้ว (ทาง ${d.sent_via === 'line' ? 'LINE' : 'SMS'})`)
+    } finally { setMsgBusy(false) }
+  }
+
   const confirmPayment = async (o: Order) => {
     setActing(true)
     try {
@@ -637,6 +660,60 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
+      {/* Send-message modal — ส่งข้อความ custom หาลูกค้า */}
+      {msgOpen && selected && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setMsgOpen(false)}>
+          <div className="w-full max-w-lg rounded-t-3xl overflow-y-auto" style={{ background: '#EDE8DF', maxHeight: '90vh' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b-2 flex items-center justify-between sticky top-0 z-10"
+              style={{ background: '#EDE8DF', borderColor: '#E0D9CE' }}>
+              <p className="font-black text-sm uppercase" style={{ fontFamily: 'var(--font-display)', color: '#3D1F0F' }}>💬 ส่งข้อความหา {selected.customer}</p>
+              <button onClick={() => setMsgOpen(false)} style={{ color: '#8C7B6E', fontSize: 22 }}>✕</button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              {/* ช่องทาง */}
+              <div className="flex gap-2">
+                {([['auto', 'อัตโนมัติ'], ['line', 'LINE (ฟรี)'], ['sms', 'SMS']] as const).map(([v, label]) => (
+                  <button key={v} onClick={() => setMsgChannel(v)}
+                    className="flex-1 py-2 rounded-xl border-2 text-xs font-mono"
+                    style={msgChannel === v
+                      ? { background: '#1A6B3C', borderColor: '#1A6B3C', color: '#EDE8DF' }
+                      : { background: '#F5F1EB', borderColor: '#D8D0C5', color: '#8C7B6E' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs font-mono" style={{ color: '#C5BAB0' }}>
+                อัตโนมัติ = ส่ง LINE ก่อน ถ้าลูกค้าไม่มี LINE ค่อยส่ง SMS · เบอร์: {selected.phone || '-'}
+              </p>
+
+              {/* เทมเพลตด่วน */}
+              <button onClick={() => setMsgText(FLOOD_MSG)}
+                className="text-xs font-mono px-3 py-1.5 rounded-lg border-2"
+                style={{ borderColor: '#2E75B6', color: '#2E75B6', background: '#F0F6FC' }}>
+                🌊 ใส่ข้อความ "แจ้งชะลอส่ง–น้ำท่วม"
+              </button>
+
+              <textarea value={msgText} onChange={e => setMsgText(e.target.value)}
+                placeholder="พิมพ์ข้อความถึงลูกค้า…" rows={6}
+                className="w-full px-3 py-2.5 rounded-xl border-2 text-sm"
+                style={{ borderColor: '#D8D0C5', background: '#F5F1EB', color: '#3D1F0F' }} />
+              <p className="text-xs font-mono text-right" style={{ color: msgText.length > 300 && msgChannel === 'sms' ? '#D64B2A' : '#C5BAB0' }}>
+                {msgText.length} ตัวอักษร{msgChannel === 'sms' ? ` · SMS ~${Math.max(1, Math.ceil(msgText.length / 70))} เครดิต` : ''}
+              </p>
+
+              <button onClick={sendMsg} disabled={msgBusy}
+                className="w-full py-3 rounded-2xl font-black uppercase text-sm disabled:opacity-50"
+                style={{ fontFamily: 'var(--font-display)', background: '#1A6B3C', color: '#EDE8DF' }}>
+                {msgBusy ? 'กำลังส่ง…' : '📤 ส่งข้อความ'}
+              </button>
+              <div className="h-2" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create-order modal — สร้างออเดอร์เอง (ลูกค้าสั่งตรงทางไลน์) */}
       {createOpen && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}
@@ -874,6 +951,13 @@ export default function AdminOrdersPage() {
                 className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 border-2"
                 style={{ fontFamily: 'var(--font-display)', borderColor: '#2E75B6', color: '#2E75B6', background: '#F5F1EB' }}>
                 🧾 ออกใบเสร็จรับเงิน
+              </button>
+
+              {/* ส่งข้อความหาลูกค้า (แจ้งชะลอส่ง/น้ำท่วม ฯลฯ) */}
+              <button onClick={() => { setMsgText(''); setMsgChannel('auto'); setMsgOpen(true) }}
+                className="w-full py-2.5 rounded-2xl font-black uppercase text-sm transition-all active:scale-95 border-2"
+                style={{ fontFamily: 'var(--font-display)', borderColor: '#1A6B3C', color: '#1A6B3C', background: '#F5F1EB' }}>
+                💬 ส่งข้อความหาลูกค้า
               </button>
 
               {/* Slip */}
