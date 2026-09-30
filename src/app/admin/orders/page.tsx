@@ -166,6 +166,7 @@ export default function AdminOrdersPage() {
           shipping_cost: cForm.shipping_cost.trim() ? Number(cForm.shipping_cost) : undefined,
         }),
       })
+      if (onAdminUnauthorized(res)) return
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { alert(`สร้างไม่สำเร็จ: ${d.detail || 'error'}`); return }
       setCreateOpen(false)
@@ -190,6 +191,7 @@ export default function AdminOrdersPage() {
         method: 'POST', headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ order_id: selected.order_id, message: msgText.trim(), channel: msgChannel }),
       })
+      if (onAdminUnauthorized(res)) return
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { alert(`ส่งไม่สำเร็จ: ${d.detail || 'error'}`); return }
       setMsgOpen(false)
