@@ -8,7 +8,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.c
 
 type Order = { order_id: string; customer?: string; zip?: string }
 type Item = {
-  tracking: string; carrier: string; name: string; zip: string; weight_g?: number
+  tracking: string; carrier: string; name: string; zip: string; weight_g?: number; cost?: number
   order_id: string | null; confidence: string; candidates: Order[]
 }
 
@@ -57,7 +57,7 @@ export default function ImportShippingPage() {
 
   const submit = async () => {
     const payload = items
-      .map((it, i) => ({ order_id: sel[i] || '', tracking: it.tracking, carrier: it.carrier }))
+      .map((it, i) => ({ order_id: sel[i] || '', tracking: it.tracking, carrier: it.carrier, cost: it.cost }))
       .filter(x => x.order_id && x.tracking)
     if (payload.length === 0) { setMsg('❌ ยังไม่มีรายการที่จับคู่ออเดอร์'); return }
     setSaving(true); setMsg('')
@@ -68,7 +68,8 @@ export default function ImportShippingPage() {
       })
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
-      setMsg(`✅ อัปเดตแล้ว ${data.applied.length} ออเดอร์ (พร้อมส่ง)` +
+      const costNote = costTotal > 0 ? ` · ค่าส่งเข้าบัญชี ฿${costTotal.toFixed(2)}` : ''
+      setMsg(`✅ อัปเดตแล้ว ${data.applied.length} ออเดอร์ (พร้อมส่ง)${costNote}` +
              (data.errors?.length ? ` · พลาด ${data.errors.length}` : ''))
       setItems([]); setSel({})
     } catch (e: any) {
@@ -79,6 +80,10 @@ export default function ImportShippingPage() {
   if (!ready) return null
 
   const matchedCount = items.filter((_, i) => sel[i]).length
+  // รวมค่าส่งเฉพาะแถวที่จับคู่ออเดอร์แล้ว (ที่จะถูกบันทึกลงบัญชีจริง)
+  const costRows  = items.filter((it, i) => sel[i] && it.cost && it.cost > 0)
+  const costTotal = costRows.reduce((s, it) => s + (it.cost || 0), 0)
+  const costCount = costRows.length
   const inp = { borderColor: '#D8D0C5', background: '#EDE8DF', color: '#3D1F0F' }
 
   return (
@@ -109,10 +114,10 @@ export default function ImportShippingPage() {
           <>
             <div className="rounded-2xl border-2 overflow-hidden mb-4" style={{ background: '#F5F1EB', borderColor: '#E0D9CE' }}>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm" style={{ minWidth: 720 }}>
+                <table className="w-full text-sm" style={{ minWidth: 800 }}>
                   <thead>
                     <tr style={{ background: '#E8E4DE' }}>
-                      {['เลขแทรก', 'ขนส่ง', 'ชื่อในบิล', 'ซิป', 'จับคู่ออเดอร์', 'สถานะ'].map(h => (
+                      {['เลขแทรก', 'ขนส่ง', 'ชื่อในบิล', 'ซิป', 'ค่าส่ง', 'จับคู่ออเดอร์', 'สถานะ'].map(h => (
                         <th key={h} className="text-left px-3 py-2 font-mono text-xs" style={{ color: '#8C7B6E' }}>{h}</th>
                       ))}
                     </tr>
@@ -126,6 +131,9 @@ export default function ImportShippingPage() {
                           <td className="px-3 py-2 font-mono text-xs" style={{ color: '#8C7B6E' }}>{it.carrier}</td>
                           <td className="px-3 py-2 text-xs" style={{ color: '#3D1F0F' }}>{it.name || '-'}</td>
                           <td className="px-3 py-2 font-mono text-xs" style={{ color: '#8C7B6E' }}>{it.zip}</td>
+                          <td className="px-3 py-2 font-mono text-xs whitespace-nowrap" style={{ color: it.cost ? '#1A6B3C' : '#B9B0A4' }}>
+                            {it.cost ? `฿${it.cost.toFixed(2)}` : '—'}
+                          </td>
                           <td className="px-3 py-2">
                             <select value={sel[i] ?? ''} onChange={e => setSel(p => ({ ...p, [i]: e.target.value }))}
                               className="px-2 py-1.5 rounded-lg border-2 text-xs font-mono w-full" style={inp}>
@@ -157,9 +165,14 @@ export default function ImportShippingPage() {
                 style={{ fontFamily: 'var(--font-display)', background: '#D64B2A', color: '#EDE8DF' }}>
                 {saving ? 'กำลังบันทึก...' : `✓ ยืนยัน ${matchedCount} ออเดอร์ → พร้อมส่ง`}
               </button>
-              <p className="text-xs font-mono" style={{ color: '#8C7B6E' }}>
-                แถวสีแดง/ข้าม = จับคู่ไม่ได้ เลือกออเดอร์เองจาก dropdown หรือปล่อยข้ามไว้
-              </p>
+              <div className="text-xs font-mono" style={{ color: '#8C7B6E' }}>
+                <p>แถวสีแดง/ข้าม = จับคู่ไม่ได้ เลือกออเดอร์เองจาก dropdown หรือปล่อยข้ามไว้</p>
+                {costTotal > 0 && (
+                  <p className="mt-1" style={{ color: '#1A6B3C' }}>
+                    รวมค่าส่งที่จะบันทึกลงบัญชี: ฿{costTotal.toFixed(2)} ({costCount} รายการ)
+                  </p>
+                )}
+              </div>
             </div>
           </>
         )}
