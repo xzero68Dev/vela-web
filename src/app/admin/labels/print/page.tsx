@@ -51,8 +51,15 @@ function TrackQR({ value }: { value: string }) {
 function Label({ order, ship, part }: { order: any; ship?: any; part?: string }) {
   const items = parseItems(order.sku)
   const totalQty = items.reduce((s, i) => s + i.qty, 0)
-  const carrier = ship?.carrier || CARRIER_LABEL[order.preferred_carrier] || order.preferred_carrier || ''
   const tracking = ship?.tracking && ship.tracking !== '-' ? ship.tracking : ''
+  // ร้านกด "จัดส่งเอง": ไม่มีเลขพัสดุจริง (ออเดอร์ขนส่งจริงมีเลขเสมอ) แต่สถานะส่งแล้ว/ส่งสำเร็จ
+  //   → ต้องขึ้น "จัดส่งเอง" ไม่ใช่ตกไปโชว์ขนส่งที่ลูกค้าเลือกตอนสั่ง (EMS/KEX) ซึ่งร้านไม่ได้ส่งทางนั้น
+  const selfCarrier = ship?.carrier === 'ส่งเอง' || ship?.carrier === 'Seller Own Fleet'
+  const selfDelivery = selfCarrier ||
+    (!tracking && (order.status === 'จัดส่งแล้ว' || order.status === 'จัดส่งสำเร็จ'))
+  const carrier = selfDelivery
+    ? 'จัดส่งเอง'
+    : (ship?.carrier || CARRIER_LABEL[order.preferred_carrier] || order.preferred_carrier || '')
   const fullAddr = [order.full_address, order.province, order.zip].filter(Boolean).join(' ')
 
   // Auto-fit รายการสินค้าให้อยู่ในแผ่นเสมอ (กันรายการเยอะแล้วโดนตัดหาย)
