@@ -770,7 +770,7 @@ export default function AccountPage() {
                   />
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-sm" style={{ color: '#8C7B6E' }}>ใส่เบอร์โทรเพื่อรับส่วนลดลูกค้าใหม่ 50% + เพิ่มที่อยู่จัดส่งได้</p>
+                    <p className="text-sm" style={{ color: '#8C7B6E' }}>ใส่เบอร์โทรเพื่อเก็บแต้ม/สิทธิพิเศษสมาชิก + เพิ่มที่อยู่จัดส่งได้</p>
                     <input value={newPhone}
                       onChange={e => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="เบอร์โทรศัพท์ (เช่น 0812345678)"

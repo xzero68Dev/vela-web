@@ -61,14 +61,9 @@ export default function ProductClient({ sku }: { sku: string }) {
       .catch(() => setLoading(false))
   }, [])
 
-  // เช็คส่วนลดลูกค้าใหม่
+  // โปรลูกค้าใหม่ 50% ปิดแล้ว — ไม่โชว์ tag ลด 50% บนหน้าสินค้าอีก
   useEffect(() => {
-    if (!user?.phone) return
-    const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
-    fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(user.phone)}`)
-      .then(r => r.json())
-      .then(d => setFirstOrderDiscount(d.eligible === true))
-      .catch(() => {})
+    setFirstOrderDiscount(false)
   }, [user?.phone])
 
   const prod1L  = products.find(p => p.sku === rawSku)

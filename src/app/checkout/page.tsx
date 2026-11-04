@@ -9,7 +9,7 @@ import AddressForm from '@/components/AddressForm'
 import AddressList from '@/components/AddressList'
 import { getUtm } from '@/lib/utm'
 import { fbTrack } from '@/lib/fbpixel'
-import { firstOrderDiscountAmount, FIRST_ORDER_CAP, bestDiscount } from '@/lib/promo'
+import { FIRST_ORDER_CAP, bestDiscount } from '@/lib/promo'
 import { authHeaders } from '@/lib/customerAuth'
 
 const API    = process.env.NEXT_PUBLIC_API_URL    || 'https://vela-tracking.onrender.com'
@@ -143,8 +143,8 @@ function CheckoutForm() {
     const t = setTimeout(() => {
       fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(eligPhone)}&line_user_id=${encodeURIComponent(user?.line_user_id || '')}`)
         .then(r => r.json())
-        .then(d => { setFirstOrderDiscount(d.eligible === true); setVipPct(d.vip_discount_pct || 0) })
-        .catch(() => setFirstOrderDiscount(localStorage.getItem('vela_first_order_discount') === '1'))
+        .then(d => { setFirstOrderDiscount(false); setVipPct(d.vip_discount_pct || 0) })   // โปรลูกค้าใหม่ 50% ปิดแล้ว · VIP ยังทำงานปกติ
+        .catch(() => setFirstOrderDiscount(false))
     }, 450)   // debounce ระหว่างพิมพ์เบอร์
     return () => clearTimeout(t)
   }, [eligPhone, user?.line_user_id])
@@ -383,26 +383,16 @@ function CheckoutForm() {
           </Link>
         </div>
 
-        {/* ลูกค้าใหม่รับส่วนลด 50% อัตโนมัติ — ไม่ต้องล็อกอิน (ผูกเบอร์ที่กรอก) */}
+        {/* โปร 50% ปิดแล้ว — เชิญสมัครสมาชิก (ไม่บังคับ) แทนแบนเนอร์ส่วนลดลูกค้าใหม่ */}
         {!user && (
           <div className="rounded-2xl border-2 px-5 py-4 mb-4" style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
-            <div className="flex items-start gap-3 mb-3">
-              <span className="text-2xl leading-none">🎉</span>
-              <div className="flex-1">
-                <p className="font-black text-base leading-tight" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-                  {firstOrderDiscount ? 'ยินดีด้วย! คุณได้ส่วนลดลูกค้าใหม่ 50%' : 'ลูกค้าใหม่รับส่วนลด 50% อัตโนมัติ'}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: '#8C7B6E' }}>
-                  {firstOrderDiscount && firstOrderDiscountAmount(subtotal) > 0
-                    ? <>ลดในออเดอร์นี้ <b style={{ color: '#D64B2A' }}>฿{firstOrderDiscountAmount(subtotal).toLocaleString()}</b> · สูงสุด ฿{FIRST_ORDER_CAP}</>
-                    : <>กรอกเบอร์โทรด้านล่าง ระบบจะลดให้อัตโนมัติ · สูงสุด ฿{FIRST_ORDER_CAP} · ออเดอร์แรกเท่านั้น</>}
-                </p>
-              </div>
-            </div>
-            <LineLoginButton onDone={() => {}} />
-            <p className="text-xs font-mono mt-2 text-center" style={{ color: '#C5BAB0' }}>
-              ล็อกอิน LINE ไว้เช็คพัสดุ/สะสมแต้มได้ (ไม่บังคับ — กรอกเบอร์ก็รับส่วนลดได้เลย)
+            <p className="font-black text-base leading-tight" style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
+              สมัครสมาชิกรับสิทธิพิเศษลูกค้าประจำ
             </p>
+            <p className="text-xs mt-0.5 mb-3" style={{ color: '#8C7B6E' }}>
+              ล็อกอิน LINE เพื่อเก็บแต้ม เช็คพัสดุ และรับสิทธิพิเศษ (ไม่บังคับ — สั่งแบบไม่ล็อกอินก็ได้)
+            </p>
+            <LineLoginButton onDone={() => {}} />
           </div>
         )}
 
@@ -472,14 +462,6 @@ function CheckoutForm() {
             <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
               <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(Math.round(subtotal / 0.7) - subtotal).toLocaleString()}</p>
-            </div>
-          )}
-          {/* ชวนกรอกเบอร์รับ 50% — เฉพาะ guest ที่ยังไม่ได้ปลดสิทธิ์ */}
-          {!user && !firstOrderDiscount && subtotal > 0 && firstOrderDiscountAmount(subtotal) > 0 && (
-            <div className="px-5 py-2 border-t border-dashed" style={{ background: '#FFF9F0', borderColor: '#F0C890' }}>
-              <p className="text-xs font-mono text-center" style={{ color: '#D64B2A' }}>
-                👆 กรอกเบอร์โทรด้านล่าง รับส่วนลดลูกค้าใหม่ 50% อัตโนมัติ — ลดอีก ฿{firstOrderDiscountAmount(subtotal).toLocaleString()}
-              </p>
             </div>
           )}
           <div className="px-5 py-3 flex justify-between">

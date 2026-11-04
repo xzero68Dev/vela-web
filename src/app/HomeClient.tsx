@@ -389,13 +389,9 @@ export default function HomeClient() {
       .catch(() => setLoading(false))
   }, [])
 
-  // เช็คส่วนลดลูกค้าใหม่เมื่อ login แล้ว
+  // โปรลูกค้าใหม่ 50% ปิดแล้ว — ไม่โชว์ tag/ส่วนลดลูกค้าใหม่อีก (VIP ยังทำงานปกติผ่าน checkout)
   useEffect(() => {
-    if (!user?.phone) return
-    fetch(`${API}/products/check-first-order?phone=${encodeURIComponent(user.phone)}`)
-      .then(r => r.json())
-      .then(d => setFirstOrderDiscount(d.eligible === true))
-      .catch(() => {})
+    setFirstOrderDiscount(false)
   }, [user?.phone])
 
   const saveCart = (newCart: CartItem[]) => {
@@ -488,29 +484,22 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* Promo banner — ลูกค้าใหม่ลด 50% อัตโนมัติ (ไม่ต้องล็อกอิน ผูกเบอร์ที่ checkout) */}
+      {/* โปรลูกค้าใหม่ 50% ปิดแล้ว — โชว์ข้อความเชิญสมัครสมาชิกแทน (รองรับคนที่มาจากลิงก์โปรเก่า launch50/comeback50) */}
       <section className="px-5 pt-2 mb-4">
         <div className="max-w-5xl mx-auto">
           <div className="rounded-2xl px-5 py-3 border-2"
             style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
-            <p className="font-black text-sm md:text-base uppercase leading-tight text-center"
+            <p className="font-black text-sm md:text-base leading-tight text-center"
               style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-              🎉 ลูกค้าใหม่! ออเดอร์แรกลด 50% สูงสุด ฿130
+              โปรนี้หมดแล้วค่ะ 🙏 สมัครสมาชิกเพื่อรับสิทธิพิเศษสำหรับลูกค้าประจำ
             </p>
-            {!user ? (
+            {!user && (
               <div className="mt-2 flex flex-col items-center gap-2">
-                <p className="text-xs font-mono text-center" style={{ color: '#8C7B6E' }}>
-                  👉 ลดอัตโนมัติตอน checkout · แค่กรอกเบอร์ ไม่ต้องล็อกอิน · 1 สิทธิ์/เบอร์
-                </p>
                 <LineLoginButton />
                 <p className="text-[11px] font-mono text-center" style={{ color: '#C5BAB0' }}>
-                  (ล็อกอิน LINE ไว้เช็คพัสดุ/สะสมแต้มได้ — ไม่บังคับ)
+                  สมัครสมาชิกฟรีด้วย LINE — เก็บแต้ม เช็คพัสดุ และรับสิทธิพิเศษลูกค้าประจำ
                 </p>
               </div>
-            ) : (
-              <p className="text-xs font-mono mt-0.5 text-center" style={{ color: '#8C7B6E' }}>
-                {firstOrderDiscount ? '✓ คุณได้รับสิทธิ์ลูกค้าใหม่ 50% แล้ว — ลดตอนสั่งซื้อ' : 'ลดอัตโนมัติตอนสั่งซื้อ · 1 สิทธิ์/เบอร์'}
-              </p>
             )}
           </div>
         </div>
