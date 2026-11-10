@@ -430,38 +430,29 @@ function CheckoutForm() {
             <p className="text-xs font-mono uppercase tracking-wider" style={{ color: '#C5BAB0' }}>สรุปคำสั่งซื้อ</p>
           </div>
           {cart.map(item => {
-            // VIP เห็นราคาตั้ง (original) เพราะ VIP% คิดจากราคาตั้ง | คนอื่นเห็นราคาปกติ (ลด 30% แล้ว)
-            const unit = best.kind === 'vip' ? (item.price_original || item.price) : item.price
+            // โชว์ "ราคาเต็ม" (ราคาตั้ง/original) ต่อชิ้นเสมอ — ส่วนลดแยกไปหักเป็นบรรทัดด้านล่าง
+            const unit = item.price_original || item.price
             return (
               <div key={item.sku} className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
                 <p className="text-sm" style={{ color: '#3D1F0F' }}>{item.name} × {item.qty}</p>
-                <p className="text-sm font-mono" style={{ color: '#D64B2A' }}>฿{(unit * item.qty).toLocaleString()}</p>
+                <p className="text-sm font-mono" style={{ color: '#3D1F0F' }}>฿{(unit * item.qty).toLocaleString()}</p>
               </div>
             )
           })}
-          {/* รวมสินค้า (ก่อนหักส่วนลด) — แสดงเมื่อมีส่วนลด เพื่อให้เห็นก่อน/หลังชัด */}
-          {discount > 0 && (
-            <div className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
-              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>รวมสินค้า{best.kind === 'vip' ? ' (ราคาตั้ง)' : ''}</p>
-              <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>฿{best.base.toLocaleString()}</p>
-            </div>
-          )}
-          {/* บรรทัดส่วนลดจริง: ลูกค้าใหม่ 50% หรือ VIP% (เพดาน ฿130) */}
-          {discount > 0 && (
+          {/* รวมสินค้า (ราคาเต็ม) — ยอดก่อนหักส่วนลด */}
+          <div className="px-5 py-3 flex justify-between border-b" style={{ borderColor: '#E0D9CE' }}>
+            <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>รวมสินค้า (ราคาเต็ม)</p>
+            <p className="text-sm font-mono" style={{ color: '#8C7B6E' }}>฿{origSubtotal.toLocaleString()}</p>
+          </div>
+          {/* ส่วนลด (หักจากราคาเต็ม → เหลือยอดสุทธิ): VIP% หรือส่วนลดโปรโมชันปกติ */}
+          {origSubtotal > total && (
             <div className="px-5 py-2 flex justify-between" style={{ background: best.kind === 'vip' ? '#FFFBEA' : '#FFF5F3' }}>
               <p className="text-xs font-mono" style={{ color: best.kind === 'vip' ? '#B8860B' : '#D64B2A' }}>
                 {best.kind === 'vip'
                   ? <>👑 ส่วนลดลูกค้า VIP {vipPct}%</>
-                  : <>🎉 ส่วนลดลูกค้าใหม่ 50%{discount >= FIRST_ORDER_CAP ? ` (สูงสุด ฿${FIRST_ORDER_CAP})` : ''}</>}
+                  : <>ส่วนลด {Math.round((1 - total / origSubtotal) * 100)}%</>}
               </p>
-              <p className="text-xs font-mono" style={{ color: best.kind === 'vip' ? '#B8860B' : '#D64B2A' }}>-฿{discount.toLocaleString()}</p>
-            </div>
-          )}
-          {/* ส่วนลด 30% ปกติ — โชว์ให้ลูกค้าที่ไม่ได้ใช้สิทธิ์พิเศษ (ราคาลด 30% ฝังในราคาอยู่แล้ว) */}
-          {discount === 0 && subtotal > 0 && (
-            <div className="px-5 py-2 flex justify-between" style={{ background: '#FFF5F3' }}>
-              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>ส่วนลด 30%</p>
-              <p className="text-xs font-mono" style={{ color: '#D64B2A' }}>-฿{(Math.round(subtotal / 0.7) - subtotal).toLocaleString()}</p>
+              <p className="text-xs font-mono" style={{ color: best.kind === 'vip' ? '#B8860B' : '#D64B2A' }}>-฿{(origSubtotal - total).toLocaleString()}</p>
             </div>
           )}
           <div className="px-5 py-3 flex justify-between">
