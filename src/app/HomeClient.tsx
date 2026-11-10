@@ -484,14 +484,14 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* โปรลูกค้าใหม่ 50% ปิดแล้ว — โชว์ข้อความเชิญสมัครสมาชิกแทน (รองรับคนที่มาจากลิงก์โปรเก่า launch50/comeback50) */}
+      {/* โปรลูกค้าใหม่ 50% ปิดแล้ว — โชว์ข้อความเชิญสมัครสมาชิกแทน (ไม่พูดว่า 'โปรหมด' เพื่อไม่ให้ลูกค้าใหม่งง) */}
       <section className="px-5 pt-2 mb-4">
         <div className="max-w-5xl mx-auto">
           <div className="rounded-2xl px-5 py-3 border-2"
             style={{ background: '#FFF5F3', borderColor: '#D64B2A' }}>
             <p className="font-black text-sm md:text-base leading-tight text-center"
               style={{ fontFamily: 'var(--font-display)', color: '#D64B2A' }}>
-              โปรนี้หมดแล้วค่ะ 🙏 สมัครสมาชิกเพื่อรับสิทธิพิเศษสำหรับลูกค้าประจำ
+              🎁 สมัครสมาชิกรับสิทธิพิเศษสำหรับลูกค้าประจำ
             </p>
             {!user && (
               <div className="mt-2 flex flex-col items-center gap-2">
