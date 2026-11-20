@@ -5,6 +5,7 @@ import VelaBunny from '@/components/VelaBunny'
 import LineLoginButton from '@/components/LineLoginButton'
 import { useAuth } from '@/context/AuthContext'
 import { fbTrack } from '@/lib/fbpixel'
+import { oaiqTrack, satang } from '@/lib/oaiq'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://vela-tracking.onrender.com'
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -412,6 +413,11 @@ export default function HomeClient() {
       contents:     [{ id: product.sku, quantity: 1 }],
       value:        cartPrice,
       currency:     'THB',
+    })
+    // ChatGPT Ads: items_added
+    oaiqTrack('items_added', {
+      type: 'contents', amount: satang(cartPrice), currency: 'THB',
+      contents: [{ id: product.sku, name: product.name, content_type: 'product', quantity: 1 }],
     })
     setCart(prev => {
       const existing = prev.find(i => i.sku === product.sku)

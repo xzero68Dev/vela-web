@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { AuthProvider } from '@/context/AuthContext'
+import OaiqTracker from '@/components/OaiqTracker'
 import './globals.css'
+
+const OAI_PIXEL_ID = process.env.NEXT_PUBLIC_OAI_PIXEL_ID || ''
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://velacoldbrew.com'),
@@ -75,7 +78,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </noscript>
 
+        {/* ChatGPT Ads (OpenAI Ads) Pixel — โหลดเฉพาะเมื่อตั้ง NEXT_PUBLIC_OAI_PIXEL_ID แล้ว */}
+        {OAI_PIXEL_ID && (
+          <>
+            <Script src="https://bzrcdn.openai.com/sdk/oaiq.min.js" strategy="afterInteractive" />
+            <Script id="oaiq-init" strategy="afterInteractive">{`
+              window.oaiq = window.oaiq || function(){(window.oaiq.q = window.oaiq.q || []).push(arguments)};
+              oaiq("init", { pixelId: "${OAI_PIXEL_ID}" });
+            `}</Script>
+          </>
+        )}
+
         <AuthProvider>
+          {OAI_PIXEL_ID && <OaiqTracker />}
           {children}
         </AuthProvider>
       </body>

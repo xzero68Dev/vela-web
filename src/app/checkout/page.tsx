@@ -9,6 +9,7 @@ import AddressForm from '@/components/AddressForm'
 import AddressList from '@/components/AddressList'
 import { getUtm } from '@/lib/utm'
 import { fbTrack } from '@/lib/fbpixel'
+import { oaiqTrack, satang, toContents, getOppref, getObref } from '@/lib/oaiq'
 import { FIRST_ORDER_CAP, bestDiscount } from '@/lib/promo'
 import { authHeaders } from '@/lib/customerAuth'
 
@@ -125,6 +126,13 @@ function CheckoutForm() {
       value:       cart.reduce((s, i) => s + i.price * i.qty, 0),
       currency:    'THB',
     })
+    // ChatGPT Ads: checkout_started
+    oaiqTrack('checkout_started', {
+      type: 'contents',
+      amount: satang(cart.reduce((s, i) => s + i.price * i.qty, 0)),
+      currency: 'THB',
+      contents: toContents(cart),
+    })
   }, [cart])
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0)
@@ -233,6 +241,8 @@ function CheckoutForm() {
           preferred_carrier:    carrier,   // ขนส่งที่ลูกค้าเลือก
           line_user_id:         user?.line_user_id || undefined,  // ส่งแจ้งเตือนรับออเดอร์ทาง LINE
           account_phone:        user?.phone || undefined,          // เบอร์บัญชีคนสั่ง (LINE/OTP) — ผูกแต้ม
+          oppref:               getOppref() || undefined,          // ChatGPT Ads click id (cookie __oppref)
+          obref:                getObref() || undefined,           // ChatGPT Ads click id ระยะยาว (cookie __obref)
           ...getUtm(),  // utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer, landing_page
         })
       })

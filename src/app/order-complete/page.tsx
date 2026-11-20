@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { fbTrack, fbTrackCustom, firePurchaseOnce, isPaidStatus } from '@/lib/fbpixel'
+import { oaiqOrderCreatedOnce } from '@/lib/oaiq'
 
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SB_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -49,6 +50,9 @@ function SlipUpload({ orderId, total }: { orderId: string; total: number }) {
                         num_items: lp.num_items, value: Number(lp.value) || Number(total) || 0, currency: 'THB' }
           }
           firePurchaseOnce(orderId, payload)
+          // ChatGPT Ads: order_created (paid) — dedup กับ server ด้วย event_id order_<orderId>
+          oaiqOrderCreatedOnce(orderId, Number((payload.value as number)) || Number(total) || 0,
+            (payload.contents as Record<string, unknown>[]) || undefined)
         } catch {}
       } else {
         const r: string = verData.reason || ''
@@ -186,6 +190,9 @@ function OrderCompleteContent() {
       if (isPaidStatus(order.status)) {
         // เปิดหน้าซ้ำหลังจ่ายแล้ว (หรือ order ถูกยืนยันแล้ว) → ยิง Purchase จริง (dedup ด้วย order_id)
         firePurchaseOnce(orderId, payload)
+        // ChatGPT Ads: order_created (paid) — dedup กับ server ด้วย event_id order_<orderId>
+        oaiqOrderCreatedOnce(orderId, Number((payload.value as number)) || Number(order.total) || 0,
+          (payload.contents as Record<string, unknown>[]) || undefined)
       } else {
         // เพิ่งกดสั่ง ยังไม่จ่าย → custom event ไม่ให้ FB นับเป็นยอดขาย/ไป optimize ผิดคน
         fbTrackCustom('PlaceOrder', payload)

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { fbTrack } from '@/lib/fbpixel'
+import { oaiqTrack, satang } from '@/lib/oaiq'
 import { SKU_META, SKU_DETAIL } from '@/lib/products-data'
 
 type Spec = { label: string; value: string }
@@ -120,6 +121,11 @@ export default function ProductClient({ sku }: { sku: string }) {
       contents:     [{ id: current.sku, quantity: qty }],
       value:        price * qty,
       currency:     'THB',
+    })
+    // ChatGPT Ads: items_added
+    oaiqTrack('items_added', {
+      type: 'contents', amount: satang(price * qty), currency: 'THB',
+      contents: [{ id: current.sku, name: current.name, content_type: 'product', quantity: qty }],
     })
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
